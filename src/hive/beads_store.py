@@ -27,6 +27,24 @@ class NewTask:
 class BeadsStore:
     process: BeadsProcess
 
+    def set_priority(self, identifier: BeadId, priority: int) -> None:
+        value = self.process.run(
+            ["update", identifier, "--priority", str(priority)], mutation=True
+        )
+        try:
+            results = sequence(value, "updated issues")
+            if len(results) != 1:
+                raise HiveError(
+                    ErrorCode.INVALID_RECORD, "Expected one priority acknowledgement"
+                )
+            updated = record(results[0])
+            if updated.get("id") != identifier or updated.get("priority") != priority:
+                raise HiveError(
+                    ErrorCode.INVALID_RECORD, "Priority update was not acknowledged"
+                )
+        except HiveError as error:
+            raise HiveError(error.code, error.detail, uncertain=True) from error
+
     def add_dependencies(
         self, dependent: BeadId, prerequisites: tuple[BeadId, ...]
     ) -> None:

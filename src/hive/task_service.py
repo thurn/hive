@@ -4,7 +4,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 
 from hive import transitions
-from hive.admission import admit, next_ready
+from hive.admission import admit, blockers, next_ready
 from hive.bead_json import decode_bead
 from hive.beads_store import BeadsStore
 from hive.configuration import Configuration, find_configuration
@@ -63,6 +63,50 @@ class TaskService:
             claimed = admit(bead, owner, project, active, known, configuration.capacity)
             self.store.save_lifecycle(claimed)
             return claimed
+
+    def ready(self, project: ProjectId) -> tuple[Bead, ...]:
+        """Advisory read only; the caller still needs an atomic claim."""
+        configuration, active = self.snapshot()
+        configuration.project(project)
+        known = {bead.id: bead for bead in active}
+        candidates = tuple(
+            b for b in active if b.project == project and isinstance(b.state, Queued)
+        )
+        missing = {
+            dependency
+            for b in candidates
+            for dependency in b.dependencies
+            if dependency not in known
+        }
+        known.update(
+            (bead.id, bead) for bead in self.store.tasks(ids=tuple(sorted(missing)))
+        )
+        return tuple(
+            sorted(
+                (bead for bead in candidates if not blockers(bead, known)),
+                key=lambda b: (b.priority, b.created, b.id),
+            )
+        )
+
+    def enter_turn(
+        self, identifier: BeadId, project: ProjectId, previous: Owner, current: Owner
+    ) -> Bead:
+        return self._change(
+            identifier,
+            project,
+            lambda bead: transitions.enter_turn(bead, previous, current),
+        )
+
+    def prioritize(self, identifier: BeadId, project: ProjectId, priority: int) -> None:
+        if isinstance(priority, bool) or not 0 <= priority <= 4:
+            raise HiveError(ErrorCode.INVALID_INPUT, "Priority must be P0 through P4")
+        with self.guards.mutation():
+            bead = self.store.get(identifier)
+            if bead.project != project:
+                raise HiveError(
+                    ErrorCode.INVALID_INPUT, "Task is outside the executor's project"
+                )
+            self.store.set_priority(identifier, priority)
 
     def _change(
         self, identifier: BeadId, project: ProjectId, apply: Callable[[Bead], Bead]

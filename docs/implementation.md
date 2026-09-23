@@ -29,15 +29,22 @@ Nothing in this tracking document reduces that scope.
   slots, and exercise cross-project dependencies and project ceilings. A killed
   filer leaves deferred dependency intent that another process can repair.
   Settled work keeps its execution binding; paused historical corruption does
-  not block unrelated ready work. Task CLI and complete workflow remain.
+  not block unrelated ready work. Source-selected task commands now expose
+  filing, direct/next claims, ready/show/status reads, lifecycle changes,
+  dependencies, priorities, project registration, and capacity configuration.
+  Real CLI/server journeys cover protected pauses, stale turns, artifact
+  completion, follow-on claims, maintenance, provider outage, malformed status,
+  and compare-and-swap configuration edits. Native recovery and the complete
+  Codex/Tollgate workflow remain unimplemented.
 - Local-master bootstrap and immutable source selection are implemented for
   the command entrypoint. Real Git/process tests keep a call alive across a
   commit, verify delayed imports and assets remain consistent, ignore working
   edits, reject broken new source, and race eight preparation clients. A shared
   maintenance guard is acquired before source selection and inherited by the
   selected application. The initial `source` diagnostic releases it without
-  contacting Beads. Task command dispatch and exceptional dependency/state
-  maintenance tooling remain; this is not the real CI-wait acceptance test.
+  contacting Beads. Task mutations retain that inherited guard through their
+  guarded operation; read commands release it first. Exceptional dependency
+  and state maintenance tooling remain; this is not the real CI-wait test.
 - Tollgate workspaces, blocking delivery, recovery, and thin MCP transport.
 - Native task registry, titles, recruitment, interruption and stop hooks.
 - All eight skills and progressive-disclosure instructions.

@@ -83,7 +83,9 @@ def decode_configuration(value: object) -> Configuration:
             )
         overrides.append((identifier, limit))
     return Configuration(
-        bead_id(data.get("id")), tuple(projects), Capacity(ceiling, tuple(overrides))
+        bead_id(data.get("id")),
+        tuple(projects),
+        Capacity(ceiling, tuple(sorted(overrides))),
     )
 
 

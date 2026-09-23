@@ -11,8 +11,9 @@ remaining acceptance evidence without treating partial scaffolding as delivery.
 ## Source-selected command
 
 `~/hive/bin/hive source --json` reports the local-master commit used for the
-invocation. This diagnostic works without a task server. Task commands are
-still being implemented.
+invocation. This diagnostic works without a task server. The task commands use
+the explicitly configured server-mode Beads database; see
+[command usage](docs/commands.md).
 
 The launcher uses Python 3.12 and reads `~/.config/hive/bootstrap.json` when
 present. Defaults select `~/hive`, `~/.local/state/hive`, and `~/brain/hive`

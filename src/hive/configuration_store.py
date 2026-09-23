@@ -69,11 +69,20 @@ class ConfigurationStore:
                 raise HiveError(error.code, error.detail, uncertain=True) from error
 
     def replace(
-        self, projects: tuple[Project, ...], capacity: Capacity
+        self,
+        projects: tuple[Project, ...],
+        capacity: Capacity,
+        *,
+        observed: Configuration | None = None,
     ) -> Configuration:
         with self.guards.mutation(), self.guards.admission():
             records = self.store.active_records()
             old = find_configuration(records)
+            if observed is not None and old != observed:
+                raise HiveError(
+                    ErrorCode.BUSY,
+                    "Configuration changed; read it again before editing",
+                )
             for raw in records:
                 if raw.get("issue_type") in {"role", "agent", "message"}:
                     continue
