@@ -72,7 +72,9 @@ def main() -> int:
             os.environ.get("PATH", ""),
         )
     )
-    deadline = time.monotonic() + 120
+    # Real database/CLI journeys exceed two minutes on hosted macOS runners.
+    # Keep one bounded budget without dropping scenarios or internal timeouts.
+    deadline = time.monotonic() + 180
     if boundary_rules():
         return 1
     python = sys.executable

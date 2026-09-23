@@ -71,6 +71,10 @@ Nothing in this tracking document reduces that scope.
 ## Verification obligations
 
 Each code commit must pass `scripts/check` and Tollgate before promotion.
+The complete local/hosted check has a three-minute deadline. The 50-test suite
+passed locally in roughly 86 seconds; hosted macOS exhausted the former
+two-minute budget with passing scenarios still underway. Per-operation
+timeouts and all behavioral assertions remain unchanged.
 Meaningful integration tests must use disposable databases and projects.
 Do not alter Fulcrum workers or its database to make tests convenient.
 
