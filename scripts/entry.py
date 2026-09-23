@@ -7,6 +7,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 if sys.argv[1:] == ["mcp"]:
     from hive.mcp_transport import main
+elif sys.argv[1:] == ["hook"]:
+    from hive.hooks import main
 else:
     from hive.cli import main
 

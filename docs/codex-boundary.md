@@ -44,6 +44,7 @@ cannot restart it, and permits only a one-to-three-second command deadline.
 
 These documented inputs support retaining the original owner/turn pair for
 deferral. They do not establish that this desktop installation delivers those
-events. Native event capture, hook trust, deadline behavior, and the reminder
-guard still need implementation and runtime verification; no hooks were
-installed by this inspection.
+events. The [hook adapter and reminder guard](hooks.md) now have subprocess
+and real-Beads coverage. Native event capture, hook trust, deadline acceptance,
+and cleanup driven by proven ended turns still need runtime integration and
+verification. No live hooks were installed by this implementation.

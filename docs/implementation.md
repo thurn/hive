@@ -74,18 +74,26 @@ Nothing in this tracking document reduces that scope.
   enclosing role during inline filing, retain capacity independence, and repair
   stale title acknowledgements. Status exposes drift without blocking work.
   See `task-ui.md` and `codex-boundary.md`. Actual native role integration,
-  recruitment, interruption and stop hooks remain.
+  recruitment, and deployed interruption/stop event verification remain.
 - All eight role skills and shared entry, filing, delivery, interruption and
   recruitment instructions are authored under `skills`. `config show` exposes
   read-only project bindings for role entry. These instructions use implemented
   task/UI/delivery commands and native tools; they are not installed over
-  Fulcrum's live names. Real role behavior, stop hooks, emergency control
+  Fulcrum's live names. Real role behavior, native hook acceptance, emergency control
   ergonomics, archival history/exemptions, and native acceptance remain.
   Archivist explicitly refuses unsafe cleanup until its missing boundary exists.
   The eight skill manifests and local links validate. Independent read-only
   forward evaluation covers full capacity, planning approval, inline filing,
   active/unknown archival candidates, and overlapping pause conditions. This is
   instruction evidence, not the still-required native assembled workflow.
+- Native-shaped Stop/Interrupt handling now enters through the source-selected
+  launcher. A local atomic guard limits reminders per turn and completion;
+  Beads admission predicates decide whether a reminder is useful. Interruptions
+  retain their native owner pair, pause the exact claim without releasing its
+  slot, and can be reapplied at turn entry after a temporary Beads failure.
+  See `hooks.md`. Hook trust/configuration, actual deployed event delivery,
+  deadline acceptance, and ended-turn pruning remain; these are not established
+  by protocol fixtures or the pure guard's cleanup operation.
 - Archivist eligibility, descendant checks, race repair, manual unarchive.
 - Incremental telemetry, traces, token pricing, coverage, and retention.
 - Consistent issue backup, timers, safe restore and Fulcrum cutover tooling.
@@ -95,8 +103,8 @@ Nothing in this tracking document reduces that scope.
 ## Verification obligations
 
 Each code commit must pass `scripts/check` and Tollgate before promotion.
-The complete local/hosted check has a five-minute deadline. The current 54-test
-suite passed locally in 97 seconds, alongside lint, Black, and strict Pyre.
+The complete local/hosted check has a five-minute deadline. The current 58-test
+suite passed locally in 120 seconds, alongside lint, Black, and strict Pyre.
 Hosted macOS run 35832926989 reached the former three-minute deadline near the
 end of the suite with every completed scenario passing; Linux passed. The
 expanded allowance covers slower hosted database/CLI execution without removing

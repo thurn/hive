@@ -91,11 +91,41 @@ class TaskService:
     def enter_turn(
         self, identifier: BeadId, project: ProjectId, previous: Owner, current: Owner
     ) -> Bead:
-        return self._change(
-            identifier,
-            project,
-            lambda bead: transitions.enter_turn(bead, previous, current),
-        )
+        import sqlite3
+
+        from hive.reminders import ReminderGuard
+
+        with self.guards.mutation(), self.guards.admission():
+            bead = self.store.get(identifier)
+            if bead.project != project:
+                raise HiveError(ErrorCode.INVALID_INPUT, "Task is outside this project")
+            transitions.require_owner(bead, previous)
+            try:
+                interrupted = ReminderGuard(
+                    self.guards.directory / "reminders.sqlite3"
+                ).interrupted(previous)
+            except (OSError, ValueError, sqlite3.Error) as error:
+                raise HiveError(
+                    ErrorCode.RECOVERY_REQUIRED,
+                    f"Native interruption observation is unavailable: {error}",
+                ) from error
+            if interrupted:
+                paused = transitions.defer(
+                    bead,
+                    PauseReason.USER,
+                    "Native Codex user interruption",
+                    expected_owner=previous,
+                )
+                self.store.save_lifecycle(paused)
+                from hive.reminders import observe_transition
+
+                observe_transition(
+                    self.guards.directory / "reminders.sqlite3", bead, paused
+                )
+                raise HiveError(ErrorCode.PAUSED, "The previous turn was interrupted")
+            changed = transitions.enter_turn(bead, previous, current)
+            self.store.save_lifecycle(changed)
+            return changed
 
     def prioritize(self, identifier: BeadId, project: ProjectId, priority: int) -> None:
         if isinstance(priority, bool) or not 0 <= priority <= 4:
@@ -119,6 +149,13 @@ class TaskService:
                 )
             changed = apply(bead)
             self.store.save_lifecycle(changed)
+            # Preserve observation ordering under the existing admission lock.
+            # Failure does not turn successful Beads work into failure.
+            from hive.reminders import observe_transition
+
+            observe_transition(
+                self.guards.directory / "reminders.sqlite3", bead, changed
+            )
             return changed
 
     def advance(

@@ -88,6 +88,7 @@ def parser() -> Parser:
         if name == "wait":
             operation.add_argument("--timeout-seconds", type=int, default=3600)
     groups.add_parser("mcp", help="serve blocking tools over stdio")
+    groups.add_parser("hook", help="handle one native Stop/Interrupt event on stdin")
     groups.add_parser("source", help="show the selected local-master source")
     status = groups.add_parser("status", help="show work and malformed records")
     status.add_argument("--project")
