@@ -27,6 +27,18 @@ are not evidence that Hive's full workflow or latency target is implemented.
   between those writes.
 - `bd -C` requires an initialized Beads project, even for `bd init`. Setup
   must run initialization with an explicit working directory first.
+- Infrastructure uses the native `role` type, registered in `types.custom`,
+  with `--no-history`. Without that flag, native role creation produces an
+  ephemeral wisp subject to collection. The permanent configuration record
+  still receives a native `hv-wisp-` ID; ordinary work retains `hv-` IDs.
+- `bd dep add --file -` accepts JSONL edges and checks cycles inside a native
+  transaction. Hive stages the task as deferred with the intended prerequisite
+  IDs before attaching edges. It clears that intent only after the graph is
+  present; an interrupted writer leaves inspectable, non-runnable work.
+- `bd query "status!=closed OR assignee!=none" --all --limit 0` includes
+  unfinished tasks and corrupt closed records that still claim ownership.
+  It avoids decoding irrelevant closed history in the admission boundary.
+  The provider's own query cost still needs full end-to-end measurement.
 
 Primary source at the inspected commit:
 
@@ -46,9 +58,9 @@ be filtered out and silently removed from its capacity count.
 The process adapter now fixes the server endpoint and database explicitly,
 discards ambient routing variables, disables server auto-start, and preserves
 uncertainty after failed writes. Its real-server tests also check preservation
-of non-Hive metadata and resumption after deferred creation. They do not yet
-prove concurrent compound admission or recovery of interrupted graph changes.
+of non-Hive metadata and resumption after deferred creation. They also cover
+concurrent compound admission and interrupted graph changes.
 
-Still required: guarded compound task operations, interrupted-write and
-concurrent-claim integration tests, and end-to-end measurements. These
-observations do not justify direct Dolt access by themselves.
+Still required: complete CLI measurements, native recovery, and assembled
+workflow acceptance. These observations do not justify direct Dolt access by
+themselves.

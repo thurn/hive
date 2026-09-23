@@ -24,7 +24,7 @@ from hive.state_json import NativeState, decode_state, encode_state
 
 def bead_id(value: object) -> BeadId:
     identifier = string(value, "bead ID")
-    if not re.fullmatch(r"hv-[a-z0-9]+(?:\.[a-z0-9]+)*", identifier):
+    if not re.fullmatch(r"hv-(?:wisp-)?[a-z0-9]+(?:\.[a-z0-9]+)*", identifier):
         raise HiveError(ErrorCode.INVALID_RECORD, "Expected a native hv- bead ID")
     return BeadId(identifier)
 
@@ -35,6 +35,10 @@ def decode_bead(value: object) -> Bead:
         record(data.get("metadata"), "metadata").get("hive"), "Hive metadata"
     )
     identifier = bead_id(data.get("id"))
+    if data.get("ephemeral"):
+        raise HiveError(
+            ErrorCode.INVALID_RECORD, "Implementation beads must be persistent"
+        )
     # Configuration and registry records use Beads infrastructure types and are
     # decoded elsewhere. They must never accidentally count as work items.
     if data.get("issue_type") not in {

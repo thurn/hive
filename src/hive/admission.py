@@ -8,6 +8,7 @@ from hive.identity import BeadId, ProjectId
 from hive.model import (
     Bead,
     Capacity,
+    Deferred,
     Done,
     Drafting,
     Owned,
@@ -43,7 +44,16 @@ def admit(
             ErrorCode.INVALID_INPUT, "Bead is outside the executor's project"
         )
     if not isinstance(bead.state, Queued):
-        raise HiveError(ErrorCode.ALREADY_OWNED, "Only queued work can be claimed")
+        code = (
+            ErrorCode.PAUSED
+            if isinstance(bead.state, Deferred)
+            else (
+                ErrorCode.ALREADY_OWNED
+                if isinstance(bead.state, Owned)
+                else ErrorCode.INVALID_INPUT
+            )
+        )
+        raise HiveError(code, "Only queued work can be claimed")
     owned = [item for item in active if owner_of(item.state) is not None]
     for item in owned:
         existing = owner_of(item.state)

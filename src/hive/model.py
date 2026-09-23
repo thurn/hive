@@ -110,6 +110,7 @@ class Deferred:
     reason: PauseReason
     note: str
     work: RetainedWork
+    pending_dependencies: tuple[BeadId, ...] = ()
 
 
 @dataclass(frozen=True)

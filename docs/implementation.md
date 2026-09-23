@@ -15,16 +15,21 @@ Nothing in this tracking document reduces that scope.
   pure domain operations implemented, with process-level lock exclusion and
   crash-release tests, protected pauses, retained delivery continuation, and
   artifact completion. Negative Pyre fixtures reject interchangeable IDs.
-  Database transactions and native stopped-writer checks remain adapter work;
-  these tests do not establish end-to-end admission or recovery yet.
+  Native stopped-writer checks remain adapter work; pure recovery operations
+  are not sufficient evidence for safe peer recovery.
 - Server-only Beads adapter, configuration, CLI, real concurrent database tests:
   native lifecycle/dependency JSON boundaries implemented and validated against
   observed server output. See `beads-boundary.md` for atomicity findings.
   Explicit server transport and native create/read/update primitives are now
   covered by disposable-server tests, including routing isolation, outage,
   retained lifecycle, dependency hydration, and uncertain responses. CI prepares
-  pinned test binaries on Linux and macOS. Compound operations, configuration
-  records, task CLI, and concurrent admission database tests remain.
+  pinned test binaries on Linux and macOS. Guarded compound admission, filing,
+  transitions, project registration, and capacity changes are implemented.
+  Independent processes race real database claims, keep review within eight
+  slots, and exercise cross-project dependencies and project ceilings. A killed
+  filer leaves deferred dependency intent that another process can repair.
+  Settled work keeps its execution binding; paused historical corruption does
+  not block unrelated ready work. Task CLI and complete workflow remain.
 - Local-master bootstrap, immutable source selection, maintenance write barrier.
 - Tollgate workspaces, blocking delivery, recovery, and thin MCP transport.
 - Native task registry, titles, recruitment, interruption and stop hooks.

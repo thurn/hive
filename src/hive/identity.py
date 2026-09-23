@@ -5,6 +5,7 @@ from typing import NewType
 
 BeadId = NewType("BeadId", str)
 ProjectId = NewType("ProjectId", str)
+CodexProjectId = NewType("CodexProjectId", str)
 CodexTaskId = NewType("CodexTaskId", str)
 CodexTurnId = NewType("CodexTurnId", str)
 CandidateId = NewType("CandidateId", str)

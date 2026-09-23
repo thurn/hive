@@ -4,8 +4,8 @@ from dataclasses import dataclass
 from typing import assert_never
 
 from hive.errors import ErrorCode, HiveError
-from hive.identity import CandidateId, CodexTaskId, CodexTurnId, SourceCommit
-from hive.jsonvalue import record, string
+from hive.identity import BeadId, CandidateId, CodexTaskId, CodexTurnId, SourceCommit
+from hive.jsonvalue import record, sequence, string
 from hive.model import (
     ArtifactDelivery,
     Cancelled,
@@ -36,6 +36,16 @@ def decode_state(status: str, assignee: str, data: dict[str, object]) -> State:
     turn = data.get("turn")
     pause = data.get("pause")
     outcome = data.get("outcome")
+    pending = tuple(
+        BeadId(string(value, "pending prerequisite"))
+        for value in sequence(
+            data.get("pending_dependencies", []), "pending dependencies"
+        )
+    )
+    if pending and status != "deferred":
+        raise HiveError(
+            ErrorCode.INVALID_RECORD, "Unfinished dependency edits require deferral"
+        )
     owner = None
     if assignee:
         owner = Owner(CodexTaskId(assignee), CodexTurnId(string(turn, "owning turn")))
@@ -82,8 +92,10 @@ def decode_state(status: str, assignee: str, data: dict[str, object]) -> State:
                 raise HiveError(
                     ErrorCode.INVALID_RECORD, "Unsettled owner has no phase"
                 )
-            return Deferred(reason, note, Draining(owner, phase))
-        return Deferred(reason, note, Unstarted() if phase is None else Settled(phase))
+            return Deferred(reason, note, Draining(owner, phase), pending)
+        return Deferred(
+            reason, note, Unstarted() if phase is None else Settled(phase), pending
+        )
     if pause is not None:
         raise HiveError(ErrorCode.INVALID_RECORD, "Runnable work retains a pause")
     if status == "in_progress" and owner is not None and phase is not None:
@@ -110,6 +122,8 @@ def encode_state(state: State) -> NativeState:
         )
     if isinstance(state, Deferred):
         data["pause"] = {"reason": state.reason, "note": state.note}
+        if state.pending_dependencies:
+            data["pending_dependencies"] = list(state.pending_dependencies)
         work = state.work
         if isinstance(work, Unstarted):
             return NativeState("deferred", "", data)

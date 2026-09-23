@@ -9,6 +9,10 @@
 - Only successful completion satisfies a prerequisite. Cancellation does not.
 - A user pause or pending design approval cannot be downgraded by changing its
   reason. Resumption does not discard retained workspace or candidate identity.
+- Unfinished work preserves its project's repository and native task binding,
+  including queued and settled deferred work without a current assignee.
+- Interrupted prerequisite attachment leaves deferred intent; missing required
+  edges prevent resumption until they are repaired or explicitly removed.
 - Recovery must establish that native owners and writers stopped before its
   owner-and-turn comparison can release a claim.
 - A local lock provides exclusion, not rollback of separate database commands.

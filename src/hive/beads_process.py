@@ -15,7 +15,13 @@ class BeadsProcess:
     executable: str = "bd"
     timeout: float = 10
 
-    def run(self, arguments: list[str], *, mutation: bool = False) -> object:
+    def run(
+        self,
+        arguments: list[str],
+        *,
+        mutation: bool = False,
+        input_text: str | None = None,
+    ) -> object:
         command = [
             self.executable,
             "-C",
@@ -34,6 +40,7 @@ class BeadsProcess:
                 cwd=self.connection.directory,
                 env=self.connection.environment(),
                 capture_output=True,
+                input=None if input_text is None else input_text.encode("utf-8"),
                 timeout=self.timeout,
             )
         except OSError as error:

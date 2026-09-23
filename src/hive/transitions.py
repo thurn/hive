@@ -88,7 +88,7 @@ def defer(bead: Bead, reason: PauseReason, note: str) -> Bead:
             and reason != state.reason
         ):
             raise HiveError(ErrorCode.PAUSED, "Cannot replace a protected pause")
-        return replace(bead, state=Deferred(reason, note, state.work))
+        return replace(bead, state=replace(state, reason=reason, note=note))
     raise HiveError(ErrorCode.INVALID_INPUT, "Terminal work cannot be deferred")
 
 
@@ -112,6 +112,12 @@ def resume(bead: Bead, *, user_authorized: bool = False) -> Bead:
     if state.reason in {PauseReason.USER, PauseReason.APPROVAL} and not user_authorized:
         raise HiveError(
             ErrorCode.PAUSED, "Explicit user resumption or approval is required"
+        )
+    missing = set(state.pending_dependencies).difference(bead.dependencies)
+    if missing:
+        raise HiveError(
+            ErrorCode.DEPENDENCY_BLOCKED,
+            "Dependency attachment is incomplete: " + ", ".join(sorted(missing)),
         )
     return replace(bead, state=Queued(work))
 

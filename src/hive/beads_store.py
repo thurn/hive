@@ -27,6 +27,79 @@ class NewTask:
 class BeadsStore:
     process: BeadsProcess
 
+    def add_dependencies(
+        self, dependent: BeadId, prerequisites: tuple[BeadId, ...]
+    ) -> None:
+        if not prerequisites:
+            return
+        payload = "".join(
+            json.dumps({"from": dependent, "to": prerequisite, "type": "blocks"}) + "\n"
+            for prerequisite in prerequisites
+        )
+        value = self.process.run(
+            ["dep", "add", "--file", "-"], mutation=True, input_text=payload
+        )
+        try:
+            result = record(value, "dependency result")
+            edges = sequence(result.get("dependencies"), "added dependencies")
+            expected = {prerequisite for prerequisite in prerequisites}
+            actual: set[str] = set()
+            from hive.jsonvalue import string
+
+            for item in edges:
+                edge = record(item, "dependency")
+                if edge.get("issue_id") != dependent or edge.get("type") != "blocks":
+                    raise HiveError(
+                        ErrorCode.INVALID_RECORD, "Wrong dependency acknowledgement"
+                    )
+                actual.add(string(edge.get("depends_on_id"), "prerequisite"))
+            if (
+                result.get("status") != "added"
+                or result.get("count") != len(expected)
+                or actual != expected
+            ):
+                raise HiveError(
+                    ErrorCode.INVALID_RECORD, "Incomplete dependency acknowledgement"
+                )
+        except HiveError as error:
+            raise HiveError(error.code, error.detail, uncertain=True) from error
+
+    def active_records(self) -> tuple[dict[str, object], ...]:
+        """Include corrupted closed owners without decoding unrelated history."""
+        values = sequence(
+            self.process.run(
+                [
+                    "query",
+                    "status!=closed OR assignee!=none",
+                    "--all",
+                    "--limit",
+                    "0",
+                ]
+            ),
+            "active issues",
+        )
+        return tuple(record(value, "issue") for value in values)
+
+    def dependency(
+        self, dependent: BeadId, prerequisite: BeadId, *, remove: bool = False
+    ) -> None:
+        operation = "remove" if remove else "add"
+        value = self.process.run(
+            ["dep", operation, dependent, prerequisite], mutation=True
+        )
+        try:
+            result = record(value, "dependency result")
+            if (
+                result.get("status") != ("removed" if remove else "added")
+                or result.get("issue_id") != dependent
+                or result.get("depends_on_id") != prerequisite
+            ):
+                raise HiveError(
+                    ErrorCode.INVALID_RECORD, "Unexpected dependency result"
+                )
+        except HiveError as error:
+            raise HiveError(error.code, error.detail, uncertain=True) from error
+
     def tasks(self, *, ids: tuple[BeadId, ...] | None = None) -> tuple[Bead, ...]:
         if ids == ():
             return ()
