@@ -143,8 +143,10 @@ validated fallback through a rejected lookup and subsequent outage, stop with
 an unread supervisor pipe, truncate both child streams, and drain a timed-out
 child's descendants.
 
-Response-start attribution, model/service-tier evidence, pricing, trace spans,
-retention, and per-bead reports remain required. The diagnostic
-report exposes their absence and returns no dollar amount. A response's token
+Response-start attribution, actual upstream model/service-tier evidence, trace
+spans, retention, and per-bead reports remain required. The usage diagnostic
+returns counters
+without a dollar amount; [cost reporting](cost-reporting.md) adds estimates from
+recorded turn models and explicit API-tier assumptions. A response's token
 count alone cannot establish its bead or role at response start; do not assign
 historical usage from the task's current title or current enrollment focus.

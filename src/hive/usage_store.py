@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 
+from hive import turn_model
 from hive.errors import ErrorCode, HiveError
 from hive.identity import CodexTaskId
 from hive.jsonvalue import integer, parse, record, sequence, string
@@ -45,6 +46,13 @@ class UsageStore:
                     usage TEXT, input INTEGER, cached INTEGER, cache_write INTEGER,
                     output INTEGER, reasoning INTEGER);
                 CREATE INDEX IF NOT EXISTS responses_task ON responses(task);
+                CREATE TABLE IF NOT EXISTS turn_models (
+                    task TEXT NOT NULL, turn TEXT NOT NULL, model TEXT NOT NULL,
+                    observed TEXT NOT NULL, conflicted INTEGER NOT NULL,
+                    PRIMARY KEY(task, turn));
+                CREATE TABLE IF NOT EXISTS response_estimates (
+                    response TEXT NOT NULL, tier TEXT NOT NULL, quote TEXT NOT NULL,
+                    PRIMARY KEY(response, tier));
                 CREATE TABLE IF NOT EXISTS gaps (
                     task TEXT NOT NULL, device INTEGER NOT NULL, inode INTEGER NOT NULL,
                     position INTEGER NOT NULL, detail TEXT NOT NULL,
@@ -57,7 +65,12 @@ class UsageStore:
             connection.close()
 
     def collect(
-        self, task: CodexTaskId, path: Path, *, budget: int = MAX_BATCH
+        self,
+        task: CodexTaskId,
+        path: Path,
+        *,
+        budget: int = MAX_BATCH,
+        from_start: bool = False,
     ) -> dict[str, object]:
         if not MAX_LINE < budget <= MAX_BATCH:
             raise HiveError(ErrorCode.INVALID_INPUT, "Invalid transcript byte budget")
@@ -118,6 +131,8 @@ class UsageStore:
                             0,
                             0,
                         )
+                    if from_start:
+                        position, skipping = 0, 0
                     chunk_start = position
                     chunk = read(stream, position, bool(skipping), budget)
                     for line in chunk.records:
@@ -125,7 +140,11 @@ class UsageStore:
                             gap(line.offset, "Oversized transcript record was skipped")
                             continue
                         try:
-                            event = decode(parse(line.data.decode("utf-8")), task)
+                            raw = parse(line.data.decode("utf-8"))
+                            model = turn_model.decode(raw, task)
+                            if model is not None:
+                                turn_model.save(connection, model)
+                            event = decode(raw, task)
                             if event is not None:
                                 self.save(connection, event)
                         except (HiveError, UnicodeError) as failure:
@@ -251,28 +270,6 @@ class UsageStore:
             summed: dict[str, object] | None = None
             if known:
                 summed = tokens(dict(zip(counter_names, totals, strict=True))).value()
-            source: object = connection.execute(
-                "SELECT scanned, remaining, incomplete, error FROM sources WHERE task = ?",
-                (task,),
-            ).fetchone()
-            scan = None if source is None else row(source, 4)
-            gap_count: object = connection.execute(
-                "SELECT COUNT(*) FROM gaps WHERE task = ?", (task,)
-            ).fetchone()
-            gaps = integer(row(gap_count, 1)[0], "gap count")
-            recent: object = connection.execute(
-                "SELECT position, detail FROM gaps WHERE task = ? ORDER BY rowid DESC LIMIT 20",
-                (task,),
-            ).fetchall()
-            details: list[dict[str, object]] = []
-            for raw in sequence(recent, "recent gaps"):
-                offset, detail = row(raw, 2)
-                details.append(
-                    {
-                        "offset": integer(offset, "gap offset"),
-                        "detail": string(detail, "gap detail"),
-                    }
-                )
             return {
                 "code": "ObservedUsage",
                 "task": task,
@@ -280,24 +277,52 @@ class UsageStore:
                 "responses_with_usage": known,
                 "responses_missing_usage": observed - known,
                 "known_tokens": summed,
-                "parse_gaps": gaps,
-                "recent_gaps": details,
-                "last_scan": None if scan is None else string(scan[0], "scan time"),
-                "remaining_bytes": (
-                    None
-                    if scan is None or scan[1] is None
-                    else integer(scan[1], "remaining bytes")
-                ),
-                "incomplete_tail": (
-                    None
-                    if scan is None or scan[2] is None
-                    else bool(integer(scan[2], "incomplete tail"))
-                ),
-                "source_error": (
-                    None
-                    if scan is None or scan[3] is None
-                    else string(scan[3], "source error")
-                ),
+                **source_status(connection, task),
                 "api_equivalent_usd": None,
-                "coverage": "Observed responses only; model, pricing and bead attribution are not established",
+                "coverage": "Usage counters only; use hive cost --task for estimates. Bead attribution remains unavailable",
             }
+
+
+def source_status(
+    connection: sqlite3.Connection, task: CodexTaskId
+) -> dict[str, object]:
+    source: object = connection.execute(
+        "SELECT scanned, remaining, incomplete, error FROM sources WHERE task = ?",
+        (task,),
+    ).fetchone()
+    scan = None if source is None else row(source, 4)
+    gap_count: object = connection.execute(
+        "SELECT COUNT(*) FROM gaps WHERE task = ?", (task,)
+    ).fetchone()
+    gaps = integer(row(gap_count, 1)[0], "gap count")
+    recent: object = connection.execute(
+        "SELECT position, detail FROM gaps WHERE task = ? ORDER BY rowid DESC LIMIT 20",
+        (task,),
+    ).fetchall()
+    details: list[dict[str, object]] = []
+    for raw in sequence(recent, "recent gaps"):
+        offset, detail = row(raw, 2)
+        details.append(
+            {
+                "offset": integer(offset, "gap offset"),
+                "detail": string(detail, "gap detail"),
+            }
+        )
+    return {
+        "parse_gaps": gaps,
+        "recent_gaps": details,
+        "last_scan": None if scan is None else string(scan[0], "scan time"),
+        "remaining_bytes": (
+            None
+            if scan is None or scan[1] is None
+            else integer(scan[1], "remaining bytes")
+        ),
+        "incomplete_tail": (
+            None
+            if scan is None or scan[2] is None
+            else bool(integer(scan[2], "incomplete tail"))
+        ),
+        "source_error": (
+            None if scan is None or scan[3] is None else string(scan[3], "source error")
+        ),
+    }

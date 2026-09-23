@@ -5,7 +5,7 @@ from pathlib import Path
 
 from hive.beads_store import NewTask
 from hive.configuration import Project
-from hive.identity import BeadId, CandidateId, CodexTaskId, ProjectId
+from hive.identity import BeadId, CandidateId, CodexTaskId, PricingTier, ProjectId
 from hive.model import Capacity, Delivery, Owner, PauseReason, Phase
 from hive.session import AppliedName, FailedName, Focus
 
@@ -192,11 +192,18 @@ class CollectTranscript:
     task: CodexTaskId
     path: Path
     budget: int
+    from_start: bool = False
 
 
 @dataclass(frozen=True)
 class ReadUsage:
     task: CodexTaskId
+
+
+@dataclass(frozen=True)
+class ReadCost:
+    task: CodexTaskId
+    tier: PricingTier
 
 
 @dataclass(frozen=True)
@@ -239,6 +246,7 @@ type Request = (
     | ListSessions
     | CollectTranscript
     | ReadUsage
+    | ReadCost
     | SweepCollection
     | WatchCollection
     | CollectionStatus
@@ -259,6 +267,7 @@ def mutates(request: Request) -> bool:
             ListSessions,
             CollectTranscript,
             ReadUsage,
+            ReadCost,
             SweepCollection,
             WatchCollection,
             CollectionStatus,

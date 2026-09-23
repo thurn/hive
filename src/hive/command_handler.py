@@ -65,6 +65,7 @@ def handle(request: c.Request, context: LaunchContext) -> dict[str, object]:
         (
             c.CollectTranscript,
             c.ReadUsage,
+            c.ReadCost,
             c.SweepCollection,
             c.WatchCollection,
             c.CollectionStatus,
@@ -94,8 +95,17 @@ def handle(request: c.Request, context: LaunchContext) -> dict[str, object]:
                     UsageStore(context.state / "telemetry.sqlite3")
                 ).status()
             observations = UsageStore(context.state / "telemetry.sqlite3")
+            if isinstance(request, c.ReadCost):
+                from hive.cost_report import report
+
+                return report(observations, request.task, request.tier)
             return (
-                observations.collect(request.task, request.path, budget=request.budget)
+                observations.collect(
+                    request.task,
+                    request.path,
+                    budget=request.budget,
+                    from_start=request.from_start,
+                )
                 if isinstance(request, c.CollectTranscript)
                 else observations.report(request.task)
             )

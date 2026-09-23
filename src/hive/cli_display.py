@@ -26,6 +26,22 @@ def session_line(value: object) -> str:
 
 def display(result: dict[str, object]) -> str:
     code = string(result.get("code"), "result code")
+    if code == "ApiEquivalentCost":
+        estimate = result["observed_estimate_usd"]
+        subset = result["priced_subset_usd"]
+        return (
+            f"{result['task']}: API-equivalent estimate USD {estimate if estimate is not None else 'unknown'}\n"
+            f"Priced subset USD {subset if subset is not None else 'unknown'}; "
+            f"{result['priced_responses']} priced, {result['unpriced_responses']} unpriced responses\n"
+            f"Assumed pricing tier: {result['pricing_tier_assumption']}. {result['model_basis']}\n"
+            f"{result['coverage']}\n"
+            f"Last scan: {result['last_scan']}; bytes remaining: {result['remaining_bytes']}; gaps: {result['parse_gaps']}"
+            + (
+                ""
+                if result["source_error"] is None
+                else f"\nSource unavailable: {result['source_error']}"
+            )
+        )
     if code == "CollectorStopped":
         return "Collector stopped."
     if code == "CollectionBatch":

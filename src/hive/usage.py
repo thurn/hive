@@ -28,7 +28,7 @@ class Tokens:
         if (
             any(isinstance(v, bool) or v < 0 for v in values)
             or self.cached_input > self.input
-            or self.cache_write_input > self.input
+            or self.cached_input + self.cache_write_input > self.input
             or self.reasoning_output > self.output
         ):
             raise HiveError(ErrorCode.INVALID_RECORD, "Inconsistent token counters")

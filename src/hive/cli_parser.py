@@ -15,6 +15,7 @@ from hive.identity import (
     CodexProjectId,
     CodexTaskId,
     CodexTurnId,
+    PricingTier,
     ProjectId,
     SourceCommit,
 )
@@ -47,6 +48,16 @@ def parser() -> Parser:
         "--json", action="store_true", help="structured output; accepted anywhere"
     )
     groups = root.add_subparsers(dest="group", required=True)
+    cost = groups.add_parser(
+        "cost", help="estimate API-equivalent spend for a native task"
+    )
+    cost.add_argument("--task", required=True)
+    cost.add_argument(
+        "--tier",
+        choices=[tier.value for tier in PricingTier],
+        default="standard",
+        help="assumed API pricing tier, not observed subscription billing",
+    )
     telemetry = groups.add_parser("telemetry").add_subparsers(
         dest="action", required=True
     )
@@ -56,6 +67,11 @@ def parser() -> Parser:
     collect.add_argument("--task", required=True)
     collect.add_argument("--transcript", required=True)
     collect.add_argument("--max-bytes", type=int, default=1_048_576)
+    collect.add_argument(
+        "--from-start",
+        action="store_true",
+        help="replay from the start without recounting responses",
+    )
     usage = telemetry.add_parser(
         "usage", help="show observed usage and missing coverage"
     )
@@ -213,6 +229,11 @@ def delivery(value: object) -> Delivery:
 
 def decode(data: dict[str, object]) -> c.Request:
     group = data.get("group")
+    if group == "cost":
+        return c.ReadCost(
+            CodexTaskId(string(data.get("task"), "native task")),
+            PricingTier(string(data.get("tier"), "pricing tier")),
+        )
     if group == "mcp":
         raise HiveError(
             ErrorCode.INVALID_INPUT, "Start stdio MCP with hive mcp and no flags"
@@ -252,6 +273,7 @@ def decode(data: dict[str, object]) -> c.Request:
             task,
             Path(string(data.get("transcript"), "transcript")).expanduser().resolve(),
             integer(data.get("max_bytes"), "byte budget", minimum=1),
+            data.get("from_start") is True,
         )
     if group == "session":
         if action == "list":
