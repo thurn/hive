@@ -14,6 +14,8 @@ from hive.filing import Filing
 from hive.launch_context import LaunchContext
 from hive.locking import Guards
 from hive.model import Bead
+from hive.session import value as session_value
+from hive.session_store import SessionStore
 from hive.task_service import TaskService
 from hive.task_status import read_status, status_value, task_value
 from hive.tollgate import Tollgate
@@ -62,6 +64,24 @@ def handle(request: c.Request, context: LaunchContext) -> dict[str, object]:
     guards = Guards(context.state / "locks")
     configuration = ConfigurationStore(store, guards)
     service = TaskService(store, guards)
+    if isinstance(request, (c.EnterSession, c.RecordName, c.ListSessions)):
+        registry = SessionStore(store, guards)
+        if isinstance(request, c.ListSessions):
+            return {
+                "code": "Sessions",
+                "sessions": [session_value(s) for s in registry.list(request.project)],
+            }
+        session = (
+            registry.enter(
+                request.task,
+                request.project,
+                request.focus,
+                inline_bead=request.inline_bead,
+            )
+            if isinstance(request, c.EnterSession)
+            else registry.record_name(request.task, request.title, request.result)
+        )
+        return {"code": "Session", "session": session_value(session)}
     if isinstance(request, (c.CreateWorkspace, c.SubmitWork, c.ApproveWork)):
         raise HiveError(
             ErrorCode.INVALID_INPUT,

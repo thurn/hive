@@ -63,7 +63,12 @@ Nothing in this tracking document reduces that scope.
   and pre-start cancellation, repeated cancellation followed by EOF, and
   draining native wait clients without canceling provider work. The native
   Codex 30-minute call and deployed provider acceptance remain unproven.
-- Native task registry, titles, recruitment, interruption and stop hooks.
+- Native task enrollment and typed title intent/outcome commands are implemented
+  in Beads infrastructure records. CLI/server tests race enrollment, preserve an
+  enclosing role during inline filing, retain capacity independence, and repair
+  stale title acknowledgements. Status exposes drift without blocking work.
+  See `task-ui.md` and `codex-boundary.md`. Actual native role integration,
+  recruitment, interruption and stop hooks remain.
 - All eight skills and progressive-disclosure instructions.
 - Archivist eligibility, descendant checks, race repair, manual unarchive.
 - Incremental telemetry, traces, token pricing, coverage, and retention.

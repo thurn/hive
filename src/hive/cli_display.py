@@ -15,8 +15,32 @@ def task_line(value: object) -> str:
     return f"[{task['id']}] P{task['priority']} {task['title']} · {state['status']}{suffix}"
 
 
+def session_line(value: object) -> str:
+    session = record(value)
+    naming = record(session.get("naming"))
+    name = f"{session['task']}: {session['title']} · title {naming['kind']}"
+    if naming.get("kind") == "failed":
+        name += f": {naming['detail']}"
+    return name
+
+
 def display(result: dict[str, object]) -> str:
     code = string(result.get("code"), "result code")
+    if code == "Session":
+        result_session = record(result.get("session"))
+        suffix = (
+            "\nApply this title with the native naming tool; retry once on failure and record the outcome."
+            if result_session.get("rename_required") is True
+            else ""
+        )
+        return session_line(result_session) + suffix
+    if code == "Sessions":
+        return (
+            "\n".join(
+                session_line(s) for s in sequence(result.get("sessions"), "sessions")
+            )
+            or "No enrolled tasks."
+        )
     if code == "SourceSelected":
         return f"Local master {result['commit']}\nSource: {result['directory']}"
     if code == "Configured":
@@ -44,6 +68,13 @@ def display(result: dict[str, object]) -> str:
             details = record(problem)
             lines.append(f"Invalid record {details['id']}: {details['detail']}")
         if code == "Status":
+            lines.extend(
+                session_line(s)
+                for s in sequence(result.get("sessions", []), "sessions")
+            )
+            for problem in sequence(result.get("ui_problems", []), "UI problems"):
+                details = record(problem)
+                lines.append(f"Task UI unavailable: {details['detail']}")
             lines.append("Resource observations: unknown")
         return "\n".join(lines)
     if code == "Updated":

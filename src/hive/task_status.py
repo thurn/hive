@@ -8,6 +8,8 @@ from hive.configuration import Configuration, find_configuration
 from hive.errors import HiveError
 from hive.identity import ProjectId
 from hive.model import Bead, owner_of
+from hive.session import Session, sessions
+from hive.session import value as session_value
 from hive.state_json import encode_state
 
 
@@ -22,6 +24,8 @@ class StatusReport:
     configuration: Configuration | None
     tasks: tuple[Bead, ...]
     problems: tuple[RecordProblem, ...]
+    sessions: tuple[Session, ...] = ()
+    ui_problems: tuple[RecordProblem, ...] = ()
 
     @property
     def owned_count(self) -> int | None:
@@ -62,7 +66,15 @@ def decode_status(
             tasks.append(decode_bead(raw))
         except HiveError as error:
             problems.append(RecordProblem(name, error.detail))
-    return StatusReport(configuration, tuple(tasks), tuple(problems))
+    try:
+        enrolled = sessions(records)
+        ui_problems: tuple[RecordProblem, ...] = ()
+    except HiveError as error:
+        enrolled = ()
+        ui_problems = (RecordProblem("sessions", error.detail),)
+    return StatusReport(
+        configuration, tuple(tasks), tuple(problems), enrolled, ui_problems
+    )
 
 
 def task_value(bead: Bead) -> dict[str, object]:
@@ -106,6 +118,14 @@ def status_value(report: StatusReport, project: ProjectId | None) -> dict[str, o
         "problems": [
             {"id": problem.identifier, "detail": problem.detail}
             for problem in report.problems
+        ],
+        "sessions": [
+            session_value(s)
+            for s in report.sessions
+            if project is None or s.project == project
+        ],
+        "ui_problems": [
+            {"id": p.identifier, "detail": p.detail} for p in report.ui_problems
         ],
         "resources": {"cpu": None, "memory_pressure": None, "tollgate_queue": None},
     }

@@ -4,8 +4,9 @@ from dataclasses import dataclass
 
 from hive.beads_store import NewTask
 from hive.configuration import Project
-from hive.identity import BeadId, CandidateId, ProjectId
+from hive.identity import BeadId, CandidateId, CodexTaskId, ProjectId
 from hive.model import Capacity, Delivery, Owner, PauseReason, Phase
+from hive.session import AppliedName, FailedName, Focus
 
 
 @dataclass(frozen=True)
@@ -159,6 +160,26 @@ class InspectDelivery:
     project: ProjectId
 
 
+@dataclass(frozen=True)
+class EnterSession:
+    task: CodexTaskId
+    project: ProjectId
+    focus: Focus
+    inline_bead: bool
+
+
+@dataclass(frozen=True)
+class RecordName:
+    task: CodexTaskId
+    title: str
+    result: AppliedName | FailedName
+
+
+@dataclass(frozen=True)
+class ListSessions:
+    project: ProjectId | None
+
+
 type Request = (
     SourceRequest
     | Initialize
@@ -175,10 +196,22 @@ type Request = (
     | ExternalRequest
     | WaitDelivery
     | InspectDelivery
+    | EnterSession
+    | RecordName
+    | ListSessions
 )
 
 
 def mutates(request: Request) -> bool:
     return not isinstance(
-        request, (SourceRequest, Status, Ready, Show, WaitDelivery, InspectDelivery)
+        request,
+        (
+            SourceRequest,
+            Status,
+            Ready,
+            Show,
+            WaitDelivery,
+            InspectDelivery,
+            ListSessions,
+        ),
     )

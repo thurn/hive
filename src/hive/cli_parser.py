@@ -1,6 +1,7 @@
 """Turn command-line input into validated requests at one explicit boundary."""
 
 import argparse
+import os
 from pathlib import Path
 from typing import NoReturn
 
@@ -32,6 +33,7 @@ from hive.model import (
     WorkKind,
 )
 from hive.phase_json import decode_phase
+from hive.session import AppliedName, FailedName, Focus, Role
 
 
 class Parser(argparse.ArgumentParser):
@@ -45,6 +47,23 @@ def parser() -> Parser:
         "--json", action="store_true", help="structured output; accepted anywhere"
     )
     groups = root.add_subparsers(dest="group", required=True)
+    session = groups.add_parser("session").add_subparsers(dest="action", required=True)
+    listing = session.add_parser("list", help="show enrolled tasks and title drift")
+    listing.add_argument("--project")
+    enter = session.add_parser("enter", help="enroll or record a role/bead transition")
+    enter.add_argument("--task", default=os.environ.get("CODEX_THREAD_ID"))
+    enter.add_argument("--project", required=True)
+    enter.add_argument("--role", choices=[r.value for r in Role], required=True)
+    enter.add_argument("--subject", required=True)
+    enter.add_argument("--bead")
+    enter.add_argument("--stage", default="")
+    enter.add_argument("--inline-bead", action="store_true")
+    named = session.add_parser("named", help="record the native title tool result")
+    named.add_argument("--task", default=os.environ.get("CODEX_THREAD_ID"))
+    named.add_argument("--title", required=True)
+    outcome = named.add_mutually_exclusive_group(required=True)
+    outcome.add_argument("--applied", action="store_true")
+    outcome.add_argument("--error")
     workspace = groups.add_parser("workspace").add_subparsers(
         dest="action", required=True
     )
@@ -180,6 +199,33 @@ def decode(data: dict[str, object]) -> c.Request:
             None if project is None else ProjectId(string(project, "project"))
         )
     action = data.get("action")
+    if group == "session":
+        if action == "list":
+            project = data.get("project")
+            return c.ListSessions(
+                None if project is None else ProjectId(string(project, "project"))
+            )
+        task = CodexTaskId(
+            string(data.get("task"), "native task; pass --task outside Codex")
+        )
+        if action == "named":
+            outcome = (
+                AppliedName()
+                if data.get("applied") is True
+                else FailedName(string(data.get("error"), "rename error"))
+            )
+            return c.RecordName(task, string(data.get("title"), "title"), outcome)
+        return c.EnterSession(
+            task,
+            ProjectId(string(data.get("project"), "project")),
+            Focus(
+                Role(string(data.get("role"), "role")),
+                string(data.get("subject"), "subject"),
+                None if data.get("bead") is None else bead_id(data.get("bead")),
+                string(data.get("stage"), "stage", empty=True),
+            ),
+            data.get("inline_bead") is True,
+        )
     if group in {"workspace", "delivery"}:
         project = ProjectId(string(data.get("project"), "project"))
         if action == "wait":
