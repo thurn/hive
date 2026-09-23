@@ -1,0 +1,87 @@
+"""Run the same bounded checks locally, in Tollgate, and in GitHub CI."""
+
+from __future__ import annotations
+
+import ast
+import os
+import signal
+import subprocess
+import sys
+import time
+from pathlib import Path
+
+ROOT: Path = Path(__file__).resolve().parents[1]
+
+
+def boundary_rules() -> int:
+    """Keep unchecked typing escape hatches out of application code."""
+    failures: list[str] = []
+    for path in sorted((ROOT / "src").rglob("*.py")):
+        source = path.read_text()
+        for node in ast.walk(ast.parse(source)):
+            if isinstance(node, ast.ImportFrom) and node.module in {
+                "typing",
+                "typing_extensions",
+            }:
+                for alias in node.names:
+                    if alias.name in {"Any", "cast"}:
+                        failures.append(f"{path}:{node.lineno}: {alias.name} forbidden")
+            if isinstance(node, ast.Attribute) and node.attr in {"Any", "cast"}:
+                failures.append(f"{path}:{node.lineno}: typing escape hatch forbidden")
+        for number, line in enumerate(source.splitlines(), 1):
+            if any(
+                marker in line
+                for marker in (
+                    "type: ignore",
+                    "pyre-ignore",
+                    "pyre-fixme",
+                    "pyre-unsafe",
+                )
+            ):
+                failures.append(f"{path}:{number}: type suppression forbidden")
+    for failure in failures:
+        print(failure, file=sys.stderr)
+    return 1 if failures else 0
+
+
+def run(command: list[str], deadline: float) -> int:
+    remaining = deadline - time.monotonic()
+    if remaining <= 0:
+        return 124
+    print("+ " + " ".join(command[1:]), flush=True)
+    process = subprocess.Popen(command, cwd=ROOT, process_group=0)
+    try:
+        return process.wait(timeout=remaining)
+    except subprocess.TimeoutExpired:
+        print("Check deadline exceeded", file=sys.stderr)
+        return 124
+    finally:
+        try:
+            os.killpg(process.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+        process.wait()
+
+
+def main() -> int:
+    os.environ["PYTHONPATH"] = str(ROOT / "src")
+    os.environ["PATH"] = os.pathsep.join(
+        (str(Path(sys.executable).parent), os.environ.get("PATH", ""))
+    )
+    deadline = time.monotonic() + 120
+    if boundary_rules():
+        return 1
+    for arguments in (
+        ["ruff", "check", "src", "tests", "scripts"],
+        ["black", "--check", "src", "tests", "scripts"],
+        ["pyre_check.client.pyre", "--noninteractive", "check"],
+        ["unittest", "discover", "-s", "tests", "-v"],
+    ):
+        result = run([sys.executable, "-m", *arguments], deadline)
+        if result:
+            return result
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
