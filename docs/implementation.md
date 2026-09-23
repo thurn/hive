@@ -18,6 +18,9 @@ Nothing in this tracking document reduces that scope.
   resolving a user pause cannot discard pending design approval. Native JSON and
   the CLI expose every condition, and ambiguous resumption is refused. Negative
   Pyre fixtures reject interchangeable IDs.
+  Deferral compares the expected task/turn pair under the admission lock;
+  callbacks from prior turns cannot pause a newer attempt or settled work.
+  Omitting the pair explicitly expects unowned work and cannot race a claim.
   Native stopped-writer checks remain adapter work; pure recovery operations
   are not sufficient evidence for safe peer recovery.
 - Server-only Beads adapter, configuration, CLI, real concurrent database tests:

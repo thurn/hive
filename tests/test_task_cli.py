@@ -62,6 +62,7 @@ class TaskCliTests(unittest.TestCase):
                 "defer",
                 first,
                 *SCOPE,
+                *WORKER,
                 "--reason",
                 "user-pause",
                 "--note",
@@ -99,6 +100,34 @@ class TaskCliTests(unittest.TestCase):
                 expected="StaleOwner",
             )
             current = ("--owner", "task-1", "--turn", "turn-2")
+            before_delayed_stop = cli.call("task", "show", first)
+            for stale in (WORKER, (), ("--owner", "another-task", "--turn", "turn-2")):
+                cli.call(
+                    "task",
+                    "defer",
+                    first,
+                    *SCOPE,
+                    *stale,
+                    "--reason",
+                    "user-pause",
+                    "--note",
+                    "Delayed stop",
+                    expected="StaleOwner",
+                )
+            for partial in (("--owner", "task-1"), ("--turn", "turn-2")):
+                cli.call(
+                    "task",
+                    "defer",
+                    first,
+                    *SCOPE,
+                    *partial,
+                    "--reason",
+                    "user-pause",
+                    "--note",
+                    "Incomplete identity",
+                    expected="InvalidInput",
+                )
+            self.assertEqual(cli.call("task", "show", first), before_delayed_stop)
             cli.call("task", "advance", first, *SCOPE, *current, "--phase-json", review)
             cli.call(
                 "task",

@@ -35,7 +35,13 @@ def transition(service: TaskService, request: c.Change) -> Bead:
     if isinstance(event, c.Advance):
         return service.advance(bead, project, event.owner, event.phase)
     if isinstance(event, c.Defer):
-        return service.defer(bead, project, event.reason, event.note)
+        return service.defer(
+            bead,
+            project,
+            event.reason,
+            event.note,
+            expected_owner=event.expected_owner,
+        )
     if isinstance(event, c.Resume):
         return service.resume(
             bead, project, reason=event.reason, user_authorized=event.user_authorized

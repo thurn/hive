@@ -108,6 +108,7 @@ class SessionCliTests(unittest.TestCase):
                 "defer",
                 bead,
                 *SCOPE,
+                *WORKER,
                 "--reason",
                 "user-pause",
                 "--note",

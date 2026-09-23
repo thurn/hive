@@ -17,7 +17,11 @@ submission acknowledgment, use native Tollgate inventory keyed by the recorded
 branch or source commit. If the outcome cannot be established, keep the last
 valid phase and escalate; never blindly repeat creation or submission.
 
-An explicit user stop adds `user-pause` promptly. Stop your write-capable tools
+An explicit user stop adds `user-pause` promptly through `task defer`, supplying
+the owning `--owner` and `--turn` pair. An old turn's callback must preserve that
+pair and stop on `StaleOwner`; it must not adopt a newer turn's identity to retry.
+Omitting both flags asserts that the bead is unowned, not permission to pause
+whatever owner now exists. Stop your write-capable tools
 and child review activity. For a retained delivery candidate, attempt supported
 native Tollgate cancellation where applicable, then inspect the actual result.
 Cancellation acknowledgment may be a no-op for already terminal work; it does

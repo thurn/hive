@@ -129,12 +129,22 @@ class TaskService:
         )
 
     def defer(
-        self, identifier: BeadId, project: ProjectId, reason: PauseReason, note: str
+        self,
+        identifier: BeadId,
+        project: ProjectId,
+        reason: PauseReason,
+        note: str,
+        *,
+        expected_owner: Owner | None,
     ) -> Bead:
         if not note.strip():
             raise HiveError(ErrorCode.INVALID_INPUT, "Deferral requires a note")
         return self._change(
-            identifier, project, lambda bead: transitions.defer(bead, reason, note)
+            identifier,
+            project,
+            lambda bead: transitions.defer(
+                bead, reason, note, expected_owner=expected_owner
+            ),
         )
 
     def resume(

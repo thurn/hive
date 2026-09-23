@@ -68,9 +68,13 @@ def owner(number: int) -> Owner:
 
 class LifecycleTests(unittest.TestCase):
     def test_each_pause_condition_requires_its_own_resolution(self) -> None:
-        pending = defer(task("hv-plan"), PauseReason.APPROVAL, "Design pending")
-        pending = defer(pending, PauseReason.USER, "Stop")
-        pending = defer(pending, PauseReason.CHECKPOINT, "Resources busy")
+        pending = defer(
+            task("hv-plan"), PauseReason.APPROVAL, "Design pending", expected_owner=None
+        )
+        pending = defer(pending, PauseReason.USER, "Stop", expected_owner=None)
+        pending = defer(
+            pending, PauseReason.CHECKPOINT, "Resources busy", expected_owner=None
+        )
         with self.assertRaises(HiveError):
             resume(pending, user_authorized=True)
         for selected in (PauseReason.APPROVAL, PauseReason.USER):
@@ -100,10 +104,14 @@ class LifecycleTests(unittest.TestCase):
             CandidateId("candidate-retained"),
         )
         original = replace(task("hv-retained"), state=Owned(owner(1), phase))
-        paused = settle(defer(original, PauseReason.USER, "Stop"), owner(1))
+        paused = settle(
+            defer(original, PauseReason.USER, "Stop", expected_owner=owner(1)), owner(1)
+        )
         queued = resume(paused, user_authorized=True)
         # An additional checkpoint while queued must not discard retained work.
-        queued = resume(defer(queued, PauseReason.CHECKPOINT, "Resources busy"))
+        queued = resume(
+            defer(queued, PauseReason.CHECKPOINT, "Resources busy", expected_owner=None)
+        )
         reclaimed = admit(queued, owner(2), queued.project, [], {}, Capacity())
         self.assertEqual(reclaimed.state, Owned(owner(2), phase))
         delivered = complete(
@@ -172,7 +180,18 @@ class LifecycleTests(unittest.TestCase):
             )
             for index in range(8)
         ]
-        paused = defer(active[0], PauseReason.USER, "Stop this work")
+        paused = defer(
+            active[0], PauseReason.USER, "Stop this work", expected_owner=owner(0)
+        )
+        for stale in (None, owner(1)):
+            with self.assertRaises(HiveError) as caught:
+                defer(
+                    paused,
+                    PauseReason.CHECKPOINT,
+                    "Late callback",
+                    expected_owner=stale,
+                )
+            self.assertEqual(caught.exception.code, ErrorCode.STALE_OWNER)
         active[0] = paused
         with self.assertRaises(HiveError) as caught:
             admit(task("hv-new"), owner(9), ProjectId("search"), active, {}, Capacity())
@@ -183,6 +202,14 @@ class LifecycleTests(unittest.TestCase):
             recover(paused, owner(0), "old owner ended")
         settled = settle(paused, owner(0))
         self.assertIsNone(owner_of(settled.state))
+        with self.assertRaises(HiveError) as caught:
+            defer(
+                settled,
+                PauseReason.CHECKPOINT,
+                "Late callback",
+                expected_owner=owner(0),
+            )
+        self.assertEqual(caught.exception.code, ErrorCode.STALE_OWNER)
         with self.assertRaises(HiveError):
             resume(settled)
         active[0] = settled

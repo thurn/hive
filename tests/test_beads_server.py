@@ -37,7 +37,9 @@ class BeadsServerTests(unittest.TestCase):
             claimed = admit(original, owner, original.project, (), {}, Capacity())
             store.save_lifecycle(claimed)
             self.assertEqual(store.get(original.id).state, claimed.state)
-            paused = settle(defer(claimed, PauseReason.USER, "Stop"), owner)
+            paused = settle(
+                defer(claimed, PauseReason.USER, "Stop", expected_owner=owner), owner
+            )
             store.save_lifecycle(paused)
             resumed = resume(paused, user_authorized=True)
             store.save_lifecycle(resumed)

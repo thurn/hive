@@ -121,7 +121,9 @@ class TaskOperationTests(unittest.TestCase):
             service.claim(task.project, held_by, task.id)
             workspace = WorktreePath(connection.directory / "retained-workspace")
             service.advance(task.id, task.project, held_by, Implementing(workspace))
-            service.defer(task.id, task.project, PauseReason.USER, "Pause")
+            service.defer(
+                task.id, task.project, PauseReason.USER, "Pause", expected_owner=held_by
+            )
             service.settle(task.id, task.project, held_by)
             for projects in (
                 (),
@@ -150,7 +152,13 @@ class TaskOperationTests(unittest.TestCase):
                 NewTask(prerequisite.project, "Paused", "Later", "Done"),
                 (prerequisite.id,),
             )
-            service.defer(paused.id, paused.project, PauseReason.USER, "Pause")
+            service.defer(
+                paused.id,
+                paused.project,
+                PauseReason.USER,
+                "Pause",
+                expected_owner=None,
+            )
             # A malformed unowned historical record is irrelevant to this claim.
             store.process.run(
                 ["update", prerequisite.id, "--status", "closed"], mutation=True
@@ -238,7 +246,13 @@ class TaskOperationTests(unittest.TestCase):
             with self.assertRaises(HiveError) as caught:
                 service.claim(first.project, held_by)
             self.assertEqual(caught.exception.code, ErrorCode.ALREADY_OWNED)
-            service.defer(first.id, first.project, PauseReason.USER, "Stop")
+            service.defer(
+                first.id,
+                first.project,
+                PauseReason.USER,
+                "Stop",
+                expected_owner=held_by,
+            )
             with self.assertRaises(HiveError) as caught:
                 service.claim(first.project, owner("excess"))
             self.assertEqual(caught.exception.code, ErrorCode.CAPACITY_FULL)

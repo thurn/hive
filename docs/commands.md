@@ -86,7 +86,8 @@ hive task enter-turn hv-fg3 --project search --owner native-task-id \
 hive task advance hv-fg3 --project search \
   --owner native-task-id --turn new-turn-id \
   --phase-json '{"kind":"implementing","workspace":"/work/search-fg3"}'
-hive task defer hv-fg3 --project search --reason user-pause --note 'User stopped'
+hive task defer hv-fg3 --project search --owner native-task-id --turn new-turn-id \
+  --reason user-pause --note 'User stopped'
 hive task settle hv-fg3 --project search \
   --owner native-task-id --turn new-turn-id
 hive task resume hv-fg3 --project search --user-authorized
@@ -95,6 +96,11 @@ hive task resume hv-fg3 --project search --user-authorized
 Deferral retains ownership while writers settle. Only the owner calls `settle`
 after stopping its writers; this is not peer recovery. Use `--user-authorized`
 only when the user has actually resumed the work or approved the design.
+For deferral, `--owner` and `--turn` together assert the expected owner. Omitting
+both asserts unowned work, so a raced claim rejects that deferral. A callback
+must retain its original task/turn pair; never reread a newer owner merely to
+retry a stale stop. This comparison protects deferred owners as well as active
+ones. Supplying only one identity field is invalid.
 Each deferral reason is retained until explicitly resolved. Adding a user pause
 while design approval is pending preserves both. `resume --reason user-pause
 --user-authorized` resolves only the user pause; `resume --reason design-approval

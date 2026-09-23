@@ -30,7 +30,8 @@ resolving one never resolves the other. File follow-up findings by default even
 at capacity; filing neither claims a slot nor starts implementation.
 
 Native dependency edits reject work that still has an owner. If your owned bead
-discovers an unstarted prerequisite, checkpoint and defer it, settle its writers,
+discovers an unstarted prerequisite, checkpoint and defer it with your current
+`--owner` and `--turn`, settle its writers,
 then file/link the prerequisite before reopening the parent. Use the
 [interruption and repair guidance](repair.md) for a crash or uncertain outcome.
 

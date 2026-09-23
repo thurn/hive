@@ -33,3 +33,17 @@ The enrollment/title CLI described in [task UI](task-ui.md) stores UI intent and
 reported outcomes. It does not certify native activity. The actual role skills,
 stop hooks, descendant inspection, and real native acceptance scenarios remain
 required before Hive is complete.
+
+## Stop and interruption contract
+
+The [released hook reference](https://learn.chatgpt.com/docs/hooks), checked on
+September 23, documents native `turn_id` on `Stop` and `Interrupt`.
+`Stop` supplies `stop_hook_active`; returning a blocking decision creates a
+continuation prompt. `Interrupt` concerns the interrupted main-thread turn,
+cannot restart it, and permits only a one-to-three-second command deadline.
+
+These documented inputs support retaining the original owner/turn pair for
+deferral. They do not establish that this desktop installation delivers those
+events. Native event capture, hook trust, deadline behavior, and the reminder
+guard still need implementation and runtime verification; no hooks were
+installed by this inspection.

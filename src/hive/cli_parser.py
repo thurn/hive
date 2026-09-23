@@ -140,6 +140,8 @@ def parser() -> Parser:
         if name == "advance":
             command.add_argument("--phase-json", required=True)
         elif name == "defer":
+            command.add_argument("--owner", help="expected native task owner")
+            command.add_argument("--turn", help="expected native owning turn")
             command.add_argument(
                 "--reason", choices=[r.value for r in PauseReason], required=True
             )
@@ -341,6 +343,11 @@ def decode(data: dict[str, object]) -> c.Request:
         event = c.Defer(
             PauseReason(string(data.get("reason"), "pause reason")),
             string(data.get("note"), "pause note"),
+            (
+                None
+                if data.get("owner") is None and data.get("turn") is None
+                else owner(data)
+            ),
         )
     elif action == "resume":
         event = c.Resume(

@@ -72,6 +72,7 @@ class Advance:
 class Defer:
     reason: PauseReason
     note: str
+    expected_owner: Owner | None
 
 
 @dataclass(frozen=True)

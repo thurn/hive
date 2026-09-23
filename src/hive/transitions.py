@@ -74,8 +74,12 @@ def advance(bead: Bead, owner: Owner, phase: Phase) -> Bead:
     return replace(bead, state=Owned(owner, phase))
 
 
-def defer(bead: Bead, reason: PauseReason, note: str) -> Bead:
+def defer(
+    bead: Bead, reason: PauseReason, note: str, *, expected_owner: Owner | None
+) -> Bead:
     """Revocation does not pretend that the previous owner's resources stopped."""
+    if owner_of(bead.state) != expected_owner:
+        raise HiveError(ErrorCode.STALE_OWNER, "Ownership changed before deferral")
     state = bead.state
     condition = PauseCondition(reason, note)
     if isinstance(state, Queued):
