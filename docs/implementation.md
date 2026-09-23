@@ -69,7 +69,17 @@ Nothing in this tracking document reduces that scope.
   stale title acknowledgements. Status exposes drift without blocking work.
   See `task-ui.md` and `codex-boundary.md`. Actual native role integration,
   recruitment, interruption and stop hooks remain.
-- All eight skills and progressive-disclosure instructions.
+- All eight role skills and shared entry, filing, delivery, interruption and
+  recruitment instructions are authored under `skills`. `config show` exposes
+  read-only project bindings for role entry. These instructions use implemented
+  task/UI/delivery commands and native tools; they are not installed over
+  Fulcrum's live names. Real role behavior, stop hooks, emergency control
+  ergonomics, archival history/exemptions, and native acceptance remain.
+  Archivist explicitly refuses unsafe cleanup until its missing boundary exists.
+  The eight skill manifests and local links validate. Independent read-only
+  forward evaluation covers full capacity, planning approval, inline filing,
+  active/unknown archival candidates, and overlapping pause conditions. This is
+  instruction evidence, not the still-required native assembled workflow.
 - Archivist eligibility, descendant checks, race repair, manual unarchive.
 - Incremental telemetry, traces, token pricing, coverage, and retention.
 - Consistent issue backup, timers, safe restore and Fulcrum cutover tooling.
@@ -79,10 +89,11 @@ Nothing in this tracking document reduces that scope.
 ## Verification obligations
 
 Each code commit must pass `scripts/check` and Tollgate before promotion.
-The complete local/hosted check has a three-minute deadline. The 50-test suite
-passed locally in roughly 86 seconds; hosted macOS exhausted the former
-two-minute budget with passing scenarios still underway. Per-operation
-timeouts and all behavioral assertions remain unchanged.
+The complete local/hosted check has a three-minute deadline. The current 53-test
+suite passed locally in 99 seconds, alongside lint, Black, and strict Pyre.
+Hosted macOS exhausted the former two-minute budget with passing scenarios
+still underway. Per-operation timeouts and all behavioral assertions remain
+unchanged.
 Meaningful integration tests must use disposable databases and projects.
 Do not alter Fulcrum workers or its database to make tests convenient.
 

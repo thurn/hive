@@ -5,10 +5,13 @@ Commands return concise text by default. Add `--json` anywhere for a structured
 result; failures have a `code`, a `detail`, and an `uncertain` flag on stderr.
 Successful JSON goes to stdout. A failed command exits nonzero.
 
-The current commands operate on Beads and local ownership. Native task naming,
-recruitment, stopped-writer recovery, skills, and cost
-collection are still under implementation. These commands do not replace those
+The current commands operate on Beads and local ownership. Native role acceptance,
+recruitment integration, stopped-writer recovery, and cost collection are still
+under implementation. These commands do not replace those
 required parts of the full workflow.
+
+For `session enter`, `session named`, and `session list`, see
+[task enrollment and naming](task-ui.md). These UI operations do not claim work.
 
 ## Explicit database and project setup
 
@@ -19,6 +22,7 @@ initialize Beads, or adopt Fulcrum's database.
 
 ```sh
 hive config initialize
+hive config show --json
 hive config register --project search --repository /work/search \
   --invariants /work/search/INVARIANTS.md --native-id native-project-id
 hive config capacity --global-limit 8 --project-limits-json '{"search":2}'

@@ -15,6 +15,11 @@ class SourceRequest:
 
 
 @dataclass(frozen=True)
+class ReadConfiguration:
+    pass
+
+
+@dataclass(frozen=True)
 class Initialize:
     pass
 
@@ -182,6 +187,7 @@ class ListSessions:
 
 type Request = (
     SourceRequest
+    | ReadConfiguration
     | Initialize
     | Register
     | SetCapacity
@@ -207,6 +213,7 @@ def mutates(request: Request) -> bool:
         request,
         (
             SourceRequest,
+            ReadConfiguration,
             Status,
             Ready,
             Show,

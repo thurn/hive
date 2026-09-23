@@ -230,8 +230,32 @@ class TaskCliTests(unittest.TestCase):
                 expected="InvalidInput",
             )
             guards = Guards(cli.state / "locks")
+            configuration_before = cli.call("config", "show", expected="Configured")
             guards.stop_mutations("Testing maintenance")
             cli.call("status", expected="Status")
+            configuration_during = cli.call("config", "show", expected="Configured")
+            self.assertEqual(configuration_during, configuration_before)
+            settings = record(configuration_during["hive_config"])
+            self.assertEqual(settings["global_limit"], 8)
+            self.assertEqual(settings["project_limits"], {"search": 2, "alpha": 1})
+            search = next(
+                record(project)
+                for project in sequence(settings["projects"], "projects")
+                if record(project)["id"] == "search"
+            )
+            self.assertEqual(
+                search,
+                {
+                    "id": "search",
+                    "repository": str(cli.state.parent / "project"),
+                    "invariants": str(cli.state.parent / "project/invariants.md"),
+                    "native_id": "native-search",
+                },
+            )
+            shown = cli.run("config", "show")
+            self.assertEqual(shown.returncode, 0, shown.stderr)
+            for field in ("repository", "invariants", "native_id"):
+                self.assertIn(str(search[field]), shown.stdout)
             cli.call("task", "claim", dependent, *SCOPE, *WORKER, expected="Paused")
             with guards.maintenance():
                 pass

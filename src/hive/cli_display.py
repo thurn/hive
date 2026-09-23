@@ -49,7 +49,15 @@ def display(result: dict[str, object]) -> str:
             string(record(p).get("id"), "project")
             for p in sequence(config.get("projects"), "projects")
         ]
-        return f"Global capacity: {config['global_limit']}\nProjects: {', '.join(projects) or 'none'}"
+        lines = [
+            f"Global capacity: {config['global_limit']}\nProjects: {', '.join(projects) or 'none'}"
+        ]
+        for raw in sequence(config.get("projects"), "projects"):
+            project = record(raw)
+            lines.append(
+                f"{project['id']}: {project['repository']}\n  Invariants: {project['invariants']}\n  Native project: {project['native_id']}"
+            )
+        return "\n".join(lines)
     if code in {"Status", "Ready"}:
         lines: list[str] = []
         if code == "Status":

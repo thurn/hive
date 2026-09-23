@@ -92,6 +92,7 @@ def parser() -> Parser:
     status = groups.add_parser("status", help="show work and malformed records")
     status.add_argument("--project")
     config = groups.add_parser("config").add_subparsers(dest="action", required=True)
+    config.add_parser("show", help="read project bindings and admission settings")
     config.add_parser(
         "initialize", help="initialize Hive records in an existing hv- server database"
     )
@@ -245,6 +246,8 @@ def decode(data: dict[str, object]) -> c.Request:
             return c.SubmitWork(identifier, project, owner(data))
         return c.ApproveWork(identifier, project, owner(data))
     if group == "config":
+        if action == "show":
+            return c.ReadConfiguration()
         if action == "initialize":
             return c.Initialize()
         if action == "register":

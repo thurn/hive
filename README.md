@@ -42,6 +42,15 @@ must not import task policy or manage workers. Prepared snapshots are retained
 so an active invocation cannot lose delayed imports or assets; automatic source
 cache pruning is not currently provided.
 
+## Role skills
+
+The eight roles are authored in `skills/` with shared instructions loaded only
+when needed. During development use their explicit source paths; do not rebind
+Fulcrum's unqualified skill names while its assignments are live. Installation,
+native role acceptance, and remaining backend capabilities are tracked in the
+[implementation status](docs/implementation.md). The archivist currently reports
+its missing observation/exemption boundary instead of archiving unsafely.
+
 ## Development
 
 Use Python 3.12. Install the pinned development environment, then run all checks:

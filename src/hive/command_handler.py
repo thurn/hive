@@ -96,6 +96,8 @@ def handle(request: c.Request, context: LaunchContext) -> dict[str, object]:
                 delivered=True,
             )
         return candidate_value(provider.inspect(request.candidate))
+    if isinstance(request, c.ReadConfiguration):
+        return configuration_result(configuration.read())
     if isinstance(request, c.Initialize):
         return configuration_result(configuration.initialize())
     if isinstance(request, c.Register):
