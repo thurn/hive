@@ -85,6 +85,8 @@ async def wait_for_delivery(
     try:
         process = await asyncio.create_subprocess_exec(
             sys.executable,
+            "-I",
+            "-S",
             str(launcher),
             "delivery",
             "wait",

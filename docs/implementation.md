@@ -46,11 +46,14 @@ Nothing in this tracking document reduces that scope.
   the command entrypoint. Real Git/process tests keep a call alive across a
   commit, verify delayed imports and assets remain consistent, ignore working
   edits, reject broken new source, and race eight preparation clients. A shared
-  maintenance guard is acquired before source selection and inherited by the
+  maintenance guard is acquired before source selection and transferred to the
   selected application. The initial `source` diagnostic releases it without
-  contacting Beads. Task mutations retain that inherited guard through their
+  contacting Beads. Task mutations retain that guard through their
   guarded operation; read commands release it first. Exceptional dependency
   and state maintenance tooling remain; this is not the real CI-wait test.
+  Normal calls now reuse one isolated interpreter for bootstrap and application.
+  The selected path excludes ambient modules and editable-package hooks; delayed
+  application and bootstrap imports remain on the invocation's source snapshot.
 - Tollgate workspace creation, reviewed-source submission, exact candidate
   approval, inspection, and foreground blocking waits are implemented. Owner
   checks precede external effects; neither Hive lock spans provider calls.
@@ -92,8 +95,8 @@ Nothing in this tracking document reduces that scope.
 ## Verification obligations
 
 Each code commit must pass `scripts/check` and Tollgate before promotion.
-The complete local/hosted check has a five-minute deadline. The current 53-test
-suite passed locally in 99 seconds, alongside lint, Black, and strict Pyre.
+The complete local/hosted check has a five-minute deadline. The current 54-test
+suite passed locally in 97 seconds, alongside lint, Black, and strict Pyre.
 Hosted macOS run 35832926989 reached the former three-minute deadline near the
 end of the suite with every completed scenario passing; Linux passed. The
 expanded allowance covers slower hosted database/CLI execution without removing
@@ -105,6 +108,11 @@ Do not alter Fulcrum workers or its database to make tests convenient.
 The <100ms p95 target is unproven until complete CLI operations meet it at eight
 concurrent clients with 1,000 unfinished beads, observation and backup active.
 Real 30-minute delivery wait and assembled agent lifecycle are also unproven.
+The [warm read profile](read-latency.md) retains a reproducible disposable probe
+and raw samples. The startup change reduced eight-client source-only p95 from
+112ms to 75ms, but complete task reads/ready queries still measured 224/233ms.
+This reduced fixture does not establish acceptance; native Beads reads alone
+exceeded 100ms in both runs. No direct Dolt exception has been introduced.
 
 Pause metadata now contains a nonempty array of distinct reason/note objects.
 There is no legacy reader or automatic conversion. Hive production state has

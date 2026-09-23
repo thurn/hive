@@ -1,2 +1,2 @@
 #!/bin/sh
-exec "${HIVE_PYTHON:-python3.12}" "$(dirname "$0")/../scripts/hive.py" "$@"
+exec "${HIVE_PYTHON:-python3.12}" -I -S "$(dirname "$0")/../scripts/hive.py" "$@"

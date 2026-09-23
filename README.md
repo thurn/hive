@@ -37,6 +37,13 @@ never falls back to older code. Ordinary code commits need no installation or
 restart. Runtime dependency changes require explicit environment maintenance;
 the current runtime has no third-party dependencies.
 
+The canonical launcher starts one isolated, standard-library-only Python
+interpreter (`-I -S`). It selects committed source before importing application
+policy, replaces the bootstrap import path, and hands the maintenance guard to
+the selected entrypoint in that same process. Ambient `PYTHONPATH`, installed
+development packages, and editable-package hooks cannot supply missing modules.
+Direct Python invocation of the launcher first reenters this isolation mode.
+
 The bootstrap itself contains only source selection and guard transfer. It
 must not import task policy or manage workers. Prepared snapshots are retained
 so an active invocation cannot lose delayed imports or assets; automatic source

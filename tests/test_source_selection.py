@@ -39,6 +39,7 @@ def commit(repository: Path, subject: str) -> str:
 def fixture(root: Path) -> tuple[Path, dict[str, str]]:
     repository = root / "repository"
     (repository / "src/hive").mkdir(parents=True)
+    (repository / "src/hive_bootstrap").mkdir()
     (repository / "scripts").mkdir()
     (repository / "pyproject.toml").write_text("[project]\ndependencies = []\n")
     (repository / "src/hive/__init__.py").write_text("")
@@ -52,12 +53,16 @@ def fixture(root: Path) -> tuple[Path, dict[str, str]]:
         " if sys.argv[1:] == ['hold']:\n"
         "  print('ready',flush=True)\n  sys.stdin.readline()\n"
         " from hive.asset import VALUE\n"
+        " from hive_bootstrap.late import VALUE as bootstrap_value\n"
         " print(json.dumps({'commit':os.environ['HIVE_SELECTED_COMMIT'],"
-        "'value':VALUE,'asset':Path(__file__).with_name('asset.txt').read_text()}))\n"
+        "'value':VALUE,'asset':Path(__file__).with_name('asset.txt').read_text(),"
+        "'bootstrap_value':bootstrap_value}))\n"
         " return 0\n"
     )
     (repository / "src/hive/asset.py").write_text("VALUE = 'old'\n")
     (repository / "src/hive/asset.txt").write_text("old asset")
+    (repository / "src/hive_bootstrap/__init__.py").write_text("")
+    (repository / "src/hive_bootstrap/late.py").write_text("VALUE = 'old bootstrap'\n")
     git(repository, "init", "-b", "master")
     git(repository, "config", "user.name", "Hive test")
     git(repository, "config", "user.email", "test@localhost")
@@ -86,6 +91,52 @@ def call(environment: dict[str, str]) -> subprocess.CompletedProcess[str]:
 
 
 class SourceSelectionTests(unittest.TestCase):
+    def test_launcher_excludes_ambient_modules_and_site_packages(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary).resolve()
+            repository, environment = fixture(root)
+            runtime = root / "runtime"
+            subprocess.run(
+                [sys.executable, "-m", "venv", "--without-pip", str(runtime)],
+                check=True,
+                capture_output=True,
+                timeout=20,
+            )
+            shadow = root / "shadow"
+            shadow.mkdir()
+            (shadow / "ambient_only.py").write_text("VALUE = 'ambient'\n")
+            site = runtime / "lib/python3.12/site-packages"
+            (site / "installed_only.py").write_text("VALUE = 'development package'\n")
+            (repository / "src/hive/cli.py").write_text(
+                "import importlib.util,json,os,sys\n"
+                "def main():\n"
+                " os.close(int(os.environ['HIVE_MUTATION_GUARD_FD']))\n"
+                " print(json.dumps({'isolated':sys.flags.isolated,"
+                "'no_site':sys.flags.no_site,"
+                "'ambient':importlib.util.find_spec('ambient_only') is not None,"
+                "'installed':importlib.util.find_spec('installed_only') is not None}))\n"
+                " return 0\n"
+            )
+            commit(repository, "test: report selected import isolation")
+            python = str(runtime / "bin/python")
+            environment.update(HIVE_PYTHON=python, PYTHONPATH=str(shadow))
+            for command in (
+                [str(ROOT / "bin/hive")],
+                [python, str(ROOT / "scripts/hive.py")],
+            ):
+                result = subprocess.run(
+                    [*command, "source", "--json"],
+                    env=environment,
+                    capture_output=True,
+                    text=True,
+                    timeout=20,
+                )
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(
+                    record(parse(result.stdout)),
+                    {"isolated": 1, "no_site": 1, "ambient": False, "installed": False},
+                )
+
     def test_new_commits_replace_new_calls_without_changing_live_source(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary).resolve()
@@ -109,6 +160,9 @@ class SourceSelectionTests(unittest.TestCase):
                     pass
                 (repository / "src/hive/asset.py").write_text("VALUE = 'new'\n")
                 (repository / "src/hive/asset.txt").write_text("new asset")
+                (repository / "src/hive_bootstrap/late.py").write_text(
+                    "VALUE = 'new bootstrap'\n"
+                )
                 # Working-tree edits cannot leak into application behavior.
                 unchanged = call(environment)
                 self.assertEqual(unchanged.returncode, 0, unchanged.stderr)
@@ -118,7 +172,12 @@ class SourceSelectionTests(unittest.TestCase):
                 self.assertEqual(current.returncode, 0, current.stderr)
                 self.assertEqual(
                     record(parse(current.stdout)),
-                    {"commit": newer, "value": "new", "asset": "new asset"},
+                    {
+                        "commit": newer,
+                        "value": "new",
+                        "asset": "new asset",
+                        "bootstrap_value": "new bootstrap",
+                    },
                 )
                 # Ordinary calls never create package installations in snapshots.
                 self.assertFalse(
@@ -128,7 +187,12 @@ class SourceSelectionTests(unittest.TestCase):
                 self.assertEqual(old.returncode, 0, error)
                 self.assertEqual(
                     record(parse(output)),
-                    {"commit": initial, "value": "old", "asset": "old asset"},
+                    {
+                        "commit": initial,
+                        "value": "old",
+                        "asset": "old asset",
+                        "bootstrap_value": "old bootstrap",
+                    },
                 )
                 (repository / "src/hive/cli.py").write_text(
                     "this is not valid Python!\n"
@@ -182,7 +246,7 @@ class SourceSelectionTests(unittest.TestCase):
                 self.assertEqual(record(parse(failed.stderr))["code"], "Busy")
             self.assertEqual(call(environment).returncode, 0)
 
-    def test_inherited_guard_survives_exec_and_releases_on_exit(self) -> None:
+    def test_selected_application_retains_guard_and_releases_on_exit(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary).resolve()
             _, environment = fixture(root)

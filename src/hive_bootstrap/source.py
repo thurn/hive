@@ -1,15 +1,11 @@
 """Prepare committed source once and retain it for the lifetime of each call."""
 
 import fcntl
-import io
 import os
 import re
 import subprocess
 import sys
-import tarfile
-import tempfile
 import time
-import tomllib
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -23,7 +19,7 @@ class Source:
 
 
 def lock(path: Path, *, shared: bool = False) -> int:
-    """Return an owned descriptor; callers close it or transfer it through exec."""
+    """Return an owned descriptor; callers close it or transfer application ownership."""
     path.parent.mkdir(parents=True, exist_ok=True)
     descriptor = os.open(path, os.O_CREAT | os.O_RDWR, 0o600)
     deadline = time.monotonic() + 2
@@ -72,6 +68,11 @@ def prepare(settings: Settings, commit: str) -> Source:
     destination = sources / commit
     if destination.is_dir():
         return Source(commit, destination)
+    import io
+    import tarfile
+    import tempfile
+    import tomllib
+
     descriptor = lock(settings.state / "source-preparation.lock")
     try:
         if destination.is_dir():
@@ -81,8 +82,13 @@ def prepare(settings: Settings, commit: str) -> Source:
             staged = Path(temporary) / "source"
             staged.mkdir()
             archive = git(settings, "archive", "--format=tar", commit)
-            with tarfile.open(fileobj=io.BytesIO(archive), mode="r:") as bundle:
-                bundle.extractall(staged, filter="data")
+            try:
+                with tarfile.open(fileobj=io.BytesIO(archive), mode="r:") as bundle:
+                    bundle.extractall(staged, filter="data")
+            except tarfile.TarError as error:
+                raise RuntimeError(
+                    f"Cannot prepare source {commit}: {error}"
+                ) from error
             # Hive currently has no runtime dependencies. Adding any is explicit
             # environment maintenance, never an implicit install on ordinary calls.
             project: object = tomllib.loads(
@@ -99,6 +105,7 @@ def prepare(settings: Settings, commit: str) -> Source:
                     [
                         sys.executable,
                         "-I",
+                        "-S",
                         "-c",
                         "import sys; sys.path.insert(0, sys.argv[1]); import hive.cli",
                         str(staged / "src"),
@@ -128,7 +135,13 @@ def select(settings: Settings) -> Source:
     # Recheck after preparation so a concurrent commit can supersede a slow
     # preparation. Do not fall back to previously selected source on failure.
     for _ in range(3):
-        source = prepare(settings, current_commit(settings))
+        commit = current_commit(settings)
+        directory = settings.state / "sources" / commit
+        # The master read selects warm calls. Only slow preparation needs a
+        # second read to avoid publishing a source superseded while it built.
+        if directory.is_dir():
+            return Source(commit, directory)
+        source = prepare(settings, commit)
         if current_commit(settings) == source.commit:
             return source
     raise RuntimeError("Local master changed repeatedly during source preparation")

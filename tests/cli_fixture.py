@@ -28,7 +28,7 @@ class Cli:
 
     def run(self, *arguments: str) -> subprocess.CompletedProcess[str]:
         return subprocess.run(
-            [sys.executable, str(ROOT / "scripts/hive.py"), *arguments],
+            [sys.executable, "-I", "-S", str(ROOT / "scripts/hive.py"), *arguments],
             env=self.environment,
             capture_output=True,
             text=True,
