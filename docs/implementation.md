@@ -30,7 +30,14 @@ Nothing in this tracking document reduces that scope.
   filer leaves deferred dependency intent that another process can repair.
   Settled work keeps its execution binding; paused historical corruption does
   not block unrelated ready work. Task CLI and complete workflow remain.
-- Local-master bootstrap, immutable source selection, maintenance write barrier.
+- Local-master bootstrap and immutable source selection are implemented for
+  the command entrypoint. Real Git/process tests keep a call alive across a
+  commit, verify delayed imports and assets remain consistent, ignore working
+  edits, reject broken new source, and race eight preparation clients. A shared
+  maintenance guard is acquired before source selection and inherited by the
+  selected application. The initial `source` diagnostic releases it without
+  contacting Beads. Task command dispatch and exceptional dependency/state
+  maintenance tooling remain; this is not the real CI-wait acceptance test.
 - Tollgate workspaces, blocking delivery, recovery, and thin MCP transport.
 - Native task registry, titles, recruitment, interruption and stop hooks.
 - All eight skills and progressive-disclosure instructions.
