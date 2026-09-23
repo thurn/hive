@@ -11,7 +11,12 @@ Nothing in this tracking document reduces that scope.
   typing boundary checks, GitHub and Tollgate CI. Implemented; local checks
   and cold review passed. Hosted CI and Tollgate publication are checked
   separately against the actual commit.
-- Typed lifecycle, ownership, admission, dependencies, and cooperative locks.
+- Typed lifecycle, ownership, admission, dependencies, and cooperative locks:
+  pure domain operations implemented, with process-level lock exclusion and
+  crash-release tests, protected pauses, retained delivery continuation, and
+  artifact completion. Negative Pyre fixtures reject interchangeable IDs.
+  Database transactions and native stopped-writer checks remain adapter work;
+  these tests do not establish end-to-end admission or recovery yet.
 - Server-only Beads adapter, configuration, CLI, real concurrent database tests.
 - Local-master bootstrap, immutable source selection, maintenance write barrier.
 - Tollgate workspaces, blocking delivery, recovery, and thin MCP transport.
