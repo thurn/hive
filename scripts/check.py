@@ -71,13 +71,14 @@ def main() -> int:
     deadline = time.monotonic() + 120
     if boundary_rules():
         return 1
-    for arguments in (
-        ["ruff", "check", "src", "tests", "scripts"],
-        ["black", "--check", "src", "tests", "scripts"],
-        ["pyre_check.client.pyre", "--noninteractive", "check"],
-        ["unittest", "discover", "-s", "tests", "-v"],
+    python = sys.executable
+    for command in (
+        [python, "-m", "ruff", "check", "src", "tests", "scripts"],
+        [python, "-m", "black", "--check", "src", "tests", "scripts"],
+        [str(Path(python).parent / "pyre"), "--noninteractive", "check"],
+        [python, "-m", "unittest", "discover", "-s", "tests", "-v"],
     ):
-        result = run([sys.executable, "-m", *arguments], deadline)
+        result = run(command, deadline)
         if result:
             return result
     return 0
