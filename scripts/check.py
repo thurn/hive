@@ -72,9 +72,9 @@ def main() -> int:
             os.environ.get("PATH", ""),
         )
     )
-    # Real database/CLI journeys exceed two minutes on hosted macOS runners.
+    # Real database/CLI journeys reach three minutes on hosted macOS runners.
     # Keep one bounded budget without dropping scenarios or internal timeouts.
-    deadline = time.monotonic() + 180
+    deadline = time.monotonic() + 300
     if boundary_rules():
         return 1
     python = sys.executable
