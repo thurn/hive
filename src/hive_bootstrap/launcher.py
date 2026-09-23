@@ -20,6 +20,7 @@ def main() -> int:
         source = select(settings)
         environment = dict(os.environ)
         environment.update(
+            HIVE_REPOSITORY_DIRECTORY=str(settings.repository),
             HIVE_SELECTED_COMMIT=source.commit,
             HIVE_SELECTED_DIRECTORY=str(source.directory),
             HIVE_BEADS_DIRECTORY=str(settings.beads),

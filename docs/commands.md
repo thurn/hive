@@ -150,3 +150,11 @@ results needed by this adapter. Its wait can finish promoted while Hive returns
 `UnresolvedOutcome`. Explicitly disabled local sync also needs authoritative
 provider policy evidence. See [the boundary evidence](tollgate-boundary.md).
 These are outstanding native acceptance requirements, not successful delivery.
+
+## Blocking tool transport
+
+`hive mcp` exposes `wait_for_delivery` over stdio for a host that can keep a long
+MCP call pending. It starts a fresh source-selecting CLI for each request;
+ordinary application updates do not restart the connection or existing waits.
+Cancellation stops only that request's local wait processes. See
+[MCP configuration and behavior](mcp.md) for deadlines, input, and validation.

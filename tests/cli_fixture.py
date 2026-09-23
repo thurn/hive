@@ -79,7 +79,8 @@ def cli_fixture(connection: BeadsConnection) -> Iterator[Cli]:
             ignore=shutil.ignore_patterns("__pycache__", "*.egg-info"),
         )
         (repository / "scripts").mkdir()
-        shutil.copyfile(ROOT / "scripts/entry.py", repository / "scripts/entry.py")
+        for script in ("entry.py", "hive.py"):
+            shutil.copyfile(ROOT / "scripts" / script, repository / "scripts" / script)
         shutil.copyfile(ROOT / "pyproject.toml", repository / "pyproject.toml")
         git(repository, "init", "-b", "master")
         git(repository, "config", "user.name", "Hive test")

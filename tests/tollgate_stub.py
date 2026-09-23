@@ -3,6 +3,7 @@
 import fcntl
 import json
 import os
+import signal
 import sys
 import time
 from pathlib import Path
@@ -17,7 +18,9 @@ def main() -> int:
         raise AssertionError("Missing non-launching structured provider boundary")
     args = args[2:]
     with (root / "calls.jsonl").open("a") as output:
-        output.write(json.dumps({"args": args, "cwd": os.getcwd()}) + "\n")
+        output.write(
+            json.dumps({"args": args, "cwd": os.getcwd(), "pid": os.getpid()}) + "\n"
+        )
     if any(key.startswith("GIT_") for key in os.environ):
         raise AssertionError("Ambient Git routing leaked into provider")
     plan = record(parse((root / "fixture.json").read_text()))
@@ -27,9 +30,18 @@ def main() -> int:
             with (Path(locks) / name).open("a") as guard:
                 fcntl.flock(guard, fcntl.LOCK_EX | fcntl.LOCK_NB)
     reply = record(plan.get(args[0]), "fixture command")
+    if reply.get("ignore_term") is True:
+        signal.signal(signal.SIGTERM, signal.SIG_IGN)
     entered = reply.get("entered")
     if isinstance(entered, str):
         Path(entered).touch()
+    release = reply.get("release")
+    if isinstance(release, str):
+        deadline = time.monotonic() + 15
+        while not Path(release).exists():
+            if time.monotonic() >= deadline:
+                raise AssertionError("Fixture wait was not released")
+            time.sleep(0.02)
     time.sleep(integer(reply.get("delay", 0), "delay"))
     print(string(reply.get("output"), "output"), flush=True)
     return integer(reply.get("exit", 0), "exit")

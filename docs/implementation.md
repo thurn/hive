@@ -54,7 +54,12 @@ Nothing in this tracking document reduces that scope.
   missing candidate identity in local-sync events; Hive correctly refuses to
   claim delivery. Disabled local-sync policy also lacks authoritative evidence.
   See `tollgate-boundary.md`. Provider capability resolution, real delivery
-  acceptance, recovery inspection, and thin MCP transport remain.
+  acceptance and recovery inspection remain. A per-session stdio MCP transport
+  now launches a fresh source-selecting CLI for each blocking wait. The real
+  transport/server fixture covers hot reload during a pending call, ordinary
+  and pre-start cancellation, repeated cancellation followed by EOF, and
+  draining native wait clients without canceling provider work. The native
+  Codex 30-minute call and deployed provider acceptance remain unproven.
 - Native task registry, titles, recruitment, interruption and stop hooks.
 - All eight skills and progressive-disclosure instructions.
 - Archivist eligibility, descendant checks, race repair, manual unarchive.

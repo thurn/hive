@@ -67,6 +67,7 @@ def parser() -> Parser:
         operation.add_argument("--project", required=True)
         if name == "wait":
             operation.add_argument("--timeout-seconds", type=int, default=3600)
+    groups.add_parser("mcp", help="serve blocking tools over stdio")
     groups.add_parser("source", help="show the selected local-master source")
     status = groups.add_parser("status", help="show work and malformed records")
     status.add_argument("--project")
@@ -165,6 +166,10 @@ def delivery(value: object) -> Delivery:
 
 def decode(data: dict[str, object]) -> c.Request:
     group = data.get("group")
+    if group == "mcp":
+        raise HiveError(
+            ErrorCode.INVALID_INPUT, "Start stdio MCP with hive mcp and no flags"
+        )
     if group == "source":
         return c.SourceRequest()
     if group == "status":
