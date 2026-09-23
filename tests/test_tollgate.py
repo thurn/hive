@@ -14,6 +14,48 @@ from hive.tollgate_model import CandidateState
 
 
 class TollgateTests(unittest.TestCase):
+    def test_settlement_requires_terminal_attempts_and_retained_source(self) -> None:
+        with provider_fixture() as fixture:
+            for candidate_state, remote, attempt_state, expected in (
+                ("running", "ready", "running", ErrorCode.RECOVERY_REQUIRED),
+                ("canceled", "ready", "running", ErrorCode.RECOVERY_REQUIRED),
+                ("canceled", "ready", "canceled", None),
+                ("failed", "ready", "failed", None),
+                ("externally-integrated", "ready", "canceled", None),
+                ("failed", "ready", "unknown", ErrorCode.INVALID_RECORD),
+                ("promoted", "pushing", "passed", ErrorCode.SYNCHRONIZATION_REQUIRED),
+                ("promoted", "abandoned", "passed", ErrorCode.SYNCHRONIZATION_REQUIRED),
+                ("promoted", "synchronized", "passed", None),
+            ):
+                with self.subTest(
+                    candidate=candidate_state, attempt=attempt_state, remote=remote
+                ):
+                    value = status(fixture.source, candidate_state, remote)
+                    value["attempts"] = [{"state": attempt_state}]
+                    fixture.configure(
+                        status=reply(value), history=reply([sync_event(1)])
+                    )
+                    if expected is None:
+                        fixture.provider.inspect_settled(CANDIDATE, fixture.source)
+                    else:
+                        with self.assertRaises(HiveError) as caught:
+                            fixture.provider.inspect_settled(CANDIDATE, fixture.source)
+                        self.assertEqual(caught.exception.code, expected)
+            value = status(fixture.source, "canceled")
+            value["buildset"] = {"state": "running"}
+            fixture.configure(status=reply(value))
+            with self.assertRaises(HiveError) as draining:
+                fixture.provider.inspect_settled(CANDIDATE, fixture.source)
+            self.assertEqual(draining.exception.code, ErrorCode.RECOVERY_REQUIRED)
+            with self.assertRaises(HiveError) as source:
+                fixture.provider.inspect_settled(CANDIDATE, SourceCommit("0" * 40))
+            self.assertEqual(source.exception.code, ErrorCode.INVALID_RECORD)
+            del value["attempts"]
+            fixture.configure(status=reply(value))
+            with self.assertRaises(HiveError) as missing:
+                fixture.provider.inspect_settled(CANDIDATE, fixture.source)
+            self.assertEqual(missing.exception.code, ErrorCode.INVALID_RECORD)
+
     def test_delivery_wait_consumes_changes_and_requires_all_sync(self) -> None:
         with provider_fixture() as fixture:
             (fixture.repository / ".tollgate/config.toml").write_text(

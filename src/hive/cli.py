@@ -8,12 +8,14 @@ from hive.cli_parser import parse_request
 from hive.command_handler import handle
 from hive.commands import (
     ApproveWork,
+    Change,
     CreateWorkspace,
     SubmitWork,
     WatchCollection,
     mutates,
 )
 from hive.delivery_commands import prepare_external
+from hive.delivery_settlement import prepare as prepare_settlement
 from hive.errors import HiveError
 from hive.launch_context import LaunchContext
 
@@ -22,7 +24,18 @@ def main() -> int:
     try:
         request, structured = parse_request(sys.argv[1:])
         context = LaunchContext.read()
-        if isinstance(request, (CreateWorkspace, SubmitWork, ApproveWork)):
+        effect = None
+        if isinstance(request, Change):
+            try:
+                context.check_mutations_allowed()
+                effect = prepare_settlement(request, context)
+            except BaseException:
+                context.release()
+                raise
+        if effect is not None:
+            context.release()
+            result = effect()
+        elif isinstance(request, (CreateWorkspace, SubmitWork, ApproveWork)):
             try:
                 context.check_mutations_allowed()
                 effect = prepare_external(request, context)

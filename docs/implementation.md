@@ -69,6 +69,14 @@ Nothing in this tracking document reduces that scope.
   and pre-start cancellation, repeated cancellation followed by EOF, and
   draining native wait clients without canceling provider work. The native
   Codex 30-minute call and deployed provider acceptance remain unproven.
+  Leaving a retained delivery phase now checks candidate and build-attempt
+  settlement outside both Hive locks. Pending delivery cannot return to editing,
+  complete, or release deferred capacity; a terminal cancelled item still
+  retains its slot while a native attempt drains. A guarded state comparison
+  preserves concurrent pauses and ownership changes. A source change during
+  inspection refuses the mutation until a fresh invocation. Real Beads/CLI
+  tests exercise these transitions and races; native stopped-writer recovery
+  and the installed provider's local-sync evidence remain separate gaps.
 - Native task enrollment and typed title intent/outcome commands are implemented
   in Beads infrastructure records. CLI/server tests race enrollment, preserve an
   enclosing role during inline filing, retain capacity independence, and repair
@@ -118,8 +126,8 @@ Nothing in this tracking document reduces that scope.
 ## Verification obligations
 
 Each code commit must pass `scripts/check` and Tollgate before promotion.
-The complete local/hosted check has a five-minute deadline. The current 71-test
-suite passed locally in 148 seconds, alongside lint, Black, and strict Pyre.
+The complete local/hosted check has a five-minute deadline. The current 74-test
+suite passed locally in 165 seconds, alongside lint, Black, and strict Pyre.
 Hosted macOS run 35832926989 reached the former three-minute deadline near the
 end of the suite with every completed scenario passing; Linux passed. The
 expanded allowance covers slower hosted database/CLI execution without removing

@@ -26,7 +26,11 @@ and child review activity. For a retained delivery candidate, attempt supported
 native Tollgate cancellation where applicable, then inspect the actual result.
 Cancellation acknowledgment may be a no-op for already terminal work; it does
 not prove that promotion was prevented. Use `task settle` only after your writers
-have stopped. Promotion already authorized may finish despite the stop. Report
+have stopped. For a retained delivery phase, the command also inspects native
+candidate and attempt state. Pending, unknown, or draining provider work keeps
+the slot occupied; observe it with a blocking wait before retrying settlement.
+An unavailable synchronization result remains unresolved, not permission to
+clear ownership. Promotion already authorized may finish despite the stop. Report
 what actually happened, retain the pause, and do not claim next
 work. Resolving `user-pause` requires the user's explicit resumption; approval
 and other outstanding conditions remain separate.
@@ -35,6 +39,13 @@ On a resumed turn, validate native identity before `task enter-turn`. That
 operation cannot reopen deferred work. After authorized resumption and settled
 ownership, use ordinary admission to continue the retained work. Already delivered
 source needs reconciliation and the completion checklist, not implementation again.
+
+For non-deferred work, re-entry in the same conversation preserves its candidate
+and occupied slot. While the candidate is still pending, inspect or reattach the
+wait; do not edit its source. Returning to implementation requires a settled
+failed/cancelled candidate. Already delivered work proceeds to completion.
+If source changes during the short provider inspection, the transition refuses
+without writing Beads; repeat the command so it selects current Hive code.
 
 If a previous turn left deferred ownership unsettled, the current CLI cannot
 transfer that deferred owner to a new turn. Keep it visible and use justiciar

@@ -1,7 +1,7 @@
 """Short guarded read/decide/write operations used by every worker."""
 
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from hive import transitions
 from hive.admission import admit, blockers, next_ready
@@ -11,7 +11,18 @@ from hive.configuration import Configuration, find_configuration
 from hive.errors import ErrorCode, HiveError
 from hive.identity import BeadId, ProjectId
 from hive.locking import Guards
-from hive.model import Bead, Delivery, Owner, PauseReason, Phase, Queued
+from hive.model import (
+    Bead,
+    Deferred,
+    Delivery,
+    Draining,
+    Owned,
+    Owner,
+    PauseReason,
+    Phase,
+    Queued,
+    WaitingForDelivery,
+)
 
 
 @dataclass(frozen=True)
@@ -161,9 +172,47 @@ class TaskService:
     def advance(
         self, identifier: BeadId, project: ProjectId, owner: Owner, phase: Phase
     ) -> Bead:
-        return self._change(
+        return self._local_change(
             identifier, project, lambda bead: transitions.advance(bead, owner, phase)
         )
+
+    def finish_observed_change(self, observed: Bead, changed: Bead) -> Bead:
+        """Apply a prepared lifecycle change only to the state actually inspected."""
+
+        def apply(current: Bead) -> Bead:
+            if current.state != observed.state:
+                raise HiveError(
+                    ErrorCode.STALE_OWNER,
+                    "Task state changed during provider inspection; inspect before retrying",
+                )
+            return replace(current, state=changed.state)
+
+        return self._change(observed.id, observed.project, apply)
+
+    def _local_change(
+        self, identifier: BeadId, project: ProjectId, apply: Callable[[Bead], Bead]
+    ) -> Bead:
+        """An uninspected route cannot race into releasing live delivery work."""
+
+        def local(bead: Bead) -> Bead:
+            state = bead.state
+            phase = (
+                state.phase
+                if isinstance(state, Owned)
+                else (
+                    state.work.phase
+                    if isinstance(state, Deferred) and isinstance(state.work, Draining)
+                    else None
+                )
+            )
+            if isinstance(phase, WaitingForDelivery):
+                raise HiveError(
+                    ErrorCode.RECOVERY_REQUIRED,
+                    "Retained delivery requires provider inspection before this transition",
+                )
+            return apply(bead)
+
+        return self._change(identifier, project, local)
 
     def defer(
         self,
@@ -202,7 +251,7 @@ class TaskService:
 
     def settle(self, identifier: BeadId, project: ProjectId, owner: Owner) -> Bead:
         """The owner calls after stopping writers; peer recovery is a separate path."""
-        return self._change(
+        return self._local_change(
             identifier, project, lambda bead: transitions.settle(bead, owner)
         )
 
@@ -214,7 +263,7 @@ class TaskService:
         summary: str,
         delivery: Delivery,
     ) -> Bead:
-        return self._change(
+        return self._local_change(
             identifier,
             project,
             lambda bead: transitions.complete(bead, owner, summary, delivery),

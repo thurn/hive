@@ -29,6 +29,22 @@ capability gap; source inspection alone did not establish installed support.
   identifying `item_id`, `tested_oid`, and `outcome.status`. Outcomes include
   `updated-checkout`, `updated-ref`, and `already-current`. Do not infer local
   synchronization merely from candidate promotion or a zero wait exit code.
+- Before a retained delivery phase can release ownership, complete, or return
+  to implementation, inspect its exact candidate and source through native
+  status. The candidate and every reported build attempt must be terminal.
+  Native cancellation can mark the item terminal while an attempt still drains;
+  such a snapshot keeps the bead occupied. A promoted candidate additionally
+  requires configured synchronization. A failed/cancelled candidate can settle
+  without pretending it delivered. Unknown/missing provider fields refuse the
+  transition. These checks do not establish that local agent writers stopped.
+  Native `externally-integrated` is also terminal once its attempts drain, so
+  it permits deferred settlement. It does not authorize reimplementation or
+  report delivery success; that adopted-base outcome needs reconciliation.
+- Provider inspection holds neither admission nor maintenance locks. Before
+  applying the prepared transition, reacquire maintenance, check selected source
+  still matches local master, and compare the observed bead state under admission.
+  Concurrent pause/owner/phase changes are not overwritten. Source changes ask
+  for a new command; no application code or state layout is mixed in one call.
 - `tg status ID --json` is candidate-specific and returns `item`, generation,
   buildset, attempts, and other evidence. Repository-wide status also contains
   active/history items and events. Historical event payloads have a bounded
@@ -88,3 +104,20 @@ provider acknowledgement of the exemption; that provider interface remains to
 be established. Full native delivery acceptance is incomplete until these
 provider capabilities are available and tested. Do not weaken the delivery
 contract merely to make the installed-provider smoke test green.
+
+## Native settlement check
+
+On September 23, a separate disposable registered project ran a deliberately
+failing check through the installed provider. Hive submitted source
+`c447f4db8131041b7411eea63d350dc579b5c191` as candidate
+`01a0cdd0-8a3f-73b0-816e-4bcf77e29d63`. Its first settlement inspection returned
+`RecoveryRequired` while the native candidate was `running`. After one blocking
+native wait returned failed CI, inspection accepted the settled `failed`
+candidate with remote synchronization disabled. The project was unregistered
+after the check; existing projects and databases were unchanged.
+
+This establishes pending-versus-failed settlement against the installed
+provider. The draining-cancellation race, changed-owner/phase comparisons, and
+source-change refusal are covered by subprocess/real-Beads tests. It does not
+close the local-sync evidence gap above or establish native agent-writer
+settlement, the complete assembled workflow, or long-wait acceptance.

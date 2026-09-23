@@ -88,6 +88,70 @@ class Tollgate:
     def inspect(self, candidate: CandidateId) -> Candidate:
         return decode_candidate(self.process.run(["status", candidate]), candidate)
 
+    def inspect_settled(
+        self, candidate: CandidateId, source: SourceCommit
+    ) -> Candidate:
+        """Terminal item state alone is insufficient while an attempt drains."""
+        raw = record(self.process.run(["status", candidate]), "candidate status")
+        retained = decode_candidate(raw, candidate)
+        if retained.source != source:
+            raise HiveError(ErrorCode.INVALID_RECORD, "Candidate source changed")
+        failures = {
+            CandidateState.FAILED,
+            CandidateState.MERGE_CONFLICT,
+            CandidateState.DEPENDENCY_FAILED,
+            CandidateState.CANCELED,
+            CandidateState.SUPERSEDED,
+            CandidateState.INFRASTRUCTURE_EXHAUSTED,
+        }
+        if retained.state not in failures | {
+            CandidateState.PROMOTED,
+            CandidateState.EXTERNALLY_INTEGRATED,
+        }:
+            raise HiveError(
+                ErrorCode.RECOVERY_REQUIRED,
+                f"{candidate}: {retained.state}; retain ownership and inspect or wait",
+            )
+        attempts = sequence(raw.get("attempts"), "candidate attempts")
+        if "buildset" not in raw:
+            raise HiveError(ErrorCode.INVALID_RECORD, "Missing current buildset")
+        if raw["buildset"] is not None:
+            attempts = [*attempts, raw["buildset"]]
+        for value in attempts:
+            state = string(
+                record(value, "candidate attempt").get("state"), "attempt state"
+            )
+            if state in {"pending", "preparing", "running"}:
+                raise HiveError(
+                    ErrorCode.RECOVERY_REQUIRED,
+                    f"{candidate}: a provider attempt is still {state}; retain ownership",
+                )
+            if state not in {
+                "passed",
+                "passed-with-warnings",
+                "failed",
+                "interrupted",
+                "canceled",
+                "invalidated",
+                "infrastructure-exhausted",
+            }:
+                raise HiveError(
+                    ErrorCode.INVALID_RECORD, "Unknown provider attempt state"
+                )
+        if retained.remote in {RemoteState.PUSHING, RemoteState.PUSH_BLOCKED}:
+            raise HiveError(
+                ErrorCode.SYNCHRONIZATION_REQUIRED,
+                f"{candidate}: remote state is {retained.remote}; retain ownership",
+            )
+        if retained.state == CandidateState.PROMOTED:
+            if retained.remote not in {RemoteState.DISABLED, RemoteState.SYNCHRONIZED}:
+                raise HiveError(
+                    ErrorCode.SYNCHRONIZATION_REQUIRED,
+                    f"{candidate}: remote state is {retained.remote}",
+                )
+            self.require_local_sync(candidate)
+        return retained
+
     def approve(self, candidate: CandidateId, source: SourceCommit) -> Approval:
         before = self.inspect(candidate)
         if before.source != source:

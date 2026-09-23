@@ -39,7 +39,9 @@ def status(
             "remote_state": remote,
             "promotion_authorized": authorized,
             "terminal_reason": None,
-        }
+        },
+        "attempts": [],
+        "buildset": None,
     }
 
 

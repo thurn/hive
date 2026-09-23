@@ -208,6 +208,11 @@ class DeliveryCliTests(unittest.TestCase):
                 if waiting.poll() is None:
                     waiting.kill()
                     waiting.communicate()
+            provider.configure(
+                locks=str(cli.state / "locks"),
+                status=reply(status(provider.source)),
+                history=reply([sync_event(1)]),
+            )
             cli.call(
                 "task",
                 "complete",
