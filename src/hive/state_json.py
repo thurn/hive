@@ -15,6 +15,7 @@ from hive.model import (
     Draining,
     Owned,
     Owner,
+    PauseCondition,
     PauseReason,
     Queued,
     Settled,
@@ -81,20 +82,26 @@ def decode_state(status: str, assignee: str, data: dict[str, object]) -> State:
             ErrorCode.INVALID_RECORD, "Unfinished work has a terminal outcome"
         )
     if status == "deferred":
-        details = record(pause, "pause")
-        try:
-            reason = PauseReason(string(details.get("reason"), "pause reason"))
-        except ValueError as error:
-            raise HiveError(ErrorCode.INVALID_RECORD, "Unknown pause reason") from error
-        note = string(details.get("note"), "pause note")
+        conditions: list[PauseCondition] = []
+        for raw in sequence(pause, "pause conditions"):
+            details = record(raw, "pause condition")
+            try:
+                reason = PauseReason(string(details.get("reason"), "pause reason"))
+            except ValueError as error:
+                raise HiveError(
+                    ErrorCode.INVALID_RECORD, "Unknown pause reason"
+                ) from error
+            conditions.append(
+                PauseCondition(reason, string(details.get("note"), "pause note"))
+            )
         if owner is not None:
             if phase is None:
                 raise HiveError(
                     ErrorCode.INVALID_RECORD, "Unsettled owner has no phase"
                 )
-            return Deferred(reason, note, Draining(owner, phase), pending)
+            return Deferred(tuple(conditions), Draining(owner, phase), pending)
         return Deferred(
-            reason, note, Unstarted() if phase is None else Settled(phase), pending
+            tuple(conditions), Unstarted() if phase is None else Settled(phase), pending
         )
     if pause is not None:
         raise HiveError(ErrorCode.INVALID_RECORD, "Runnable work retains a pause")
@@ -121,7 +128,7 @@ def encode_state(state: State) -> NativeState:
             },
         )
     if isinstance(state, Deferred):
-        data["pause"] = {"reason": state.reason, "note": state.note}
+        data["pause"] = [{"reason": c.reason, "note": c.note} for c in state.conditions]
         if state.pending_dependencies:
             data["pending_dependencies"] = list(state.pending_dependencies)
         work = state.work

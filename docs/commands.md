@@ -91,8 +91,16 @@ hive task resume hv-fg3 --project search --user-authorized
 Deferral retains ownership while writers settle. Only the owner calls `settle`
 after stopping its writers; this is not peer recovery. Use `--user-authorized`
 only when the user has actually resumed the work or approved the design.
-Resumption returns work to the queue with retained workspace and candidate
-identity; continuation must pass admission again.
+Each deferral reason is retained until explicitly resolved. Adding a user pause
+while design approval is pending preserves both. `resume --reason user-pause
+--user-authorized` resolves only the user pause; `resume --reason design-approval
+--user-authorized` resolves approval. Omit `--reason` only when exactly one
+condition remains. A successful resolution can still leave the bead deferred.
+The last resolution returns settled work to the queue with its workspace and
+candidate identity; continuation must pass admission again.
+
+Dependency edits reject owned work, including deferred work whose writers are
+settling. Checkpoint, defer, and settle before changing its prerequisites.
 
 Phase JSON is a discriminated object. Code phases are `implementing` with a
 workspace, `reviewing` with workspace and source commit, and

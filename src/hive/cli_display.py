@@ -9,8 +9,9 @@ def task_line(value: object) -> str:
     owner = state.get("owner")
     suffix = "" if owner is None else f" · owner {owner}"
     if "pause" in state:
-        pause = record(state["pause"])
-        suffix += f" · {pause['reason']}: {pause['note']}"
+        for raw in sequence(state["pause"], "pause conditions"):
+            pause = record(raw)
+            suffix += f" · {pause['reason']}: {pause['note']}"
     return f"[{task['id']}] P{task['priority']} {task['title']} · {state['status']}{suffix}"
 
 

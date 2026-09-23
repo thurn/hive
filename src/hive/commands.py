@@ -70,6 +70,7 @@ class Defer:
 
 @dataclass(frozen=True)
 class Resume:
+    reason: PauseReason | None
     user_authorized: bool
 
 

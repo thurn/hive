@@ -16,6 +16,7 @@ from hive.model import (
     Implementing,
     Owned,
     Owner,
+    PauseCondition,
     PauseReason,
     Phase,
     Preparing,
@@ -76,19 +77,16 @@ def advance(bead: Bead, owner: Owner, phase: Phase) -> Bead:
 def defer(bead: Bead, reason: PauseReason, note: str) -> Bead:
     """Revocation does not pretend that the previous owner's resources stopped."""
     state = bead.state
+    condition = PauseCondition(reason, note)
     if isinstance(state, Queued):
-        return replace(bead, state=Deferred(reason, note, state.work))
+        return replace(bead, state=Deferred((condition,), state.work))
     if isinstance(state, Owned):
         return replace(
-            bead, state=Deferred(reason, note, Draining(state.owner, state.phase))
+            bead, state=Deferred((condition,), Draining(state.owner, state.phase))
         )
     if isinstance(state, Deferred):
-        if (
-            state.reason in {PauseReason.USER, PauseReason.APPROVAL}
-            and reason != state.reason
-        ):
-            raise HiveError(ErrorCode.PAUSED, "Cannot replace a protected pause")
-        return replace(bead, state=replace(state, reason=reason, note=note))
+        conditions = tuple(c for c in state.conditions if c.reason != reason)
+        return replace(bead, state=replace(state, conditions=(*conditions, condition)))
     raise HiveError(ErrorCode.INVALID_INPUT, "Terminal work cannot be deferred")
 
 
@@ -102,17 +100,33 @@ def settle(bead: Bead, owner: Owner) -> Bead:
     return replace(bead, state=replace(state, work=Settled(state.work.phase)))
 
 
-def resume(bead: Bead, *, user_authorized: bool = False) -> Bead:
+def resume(
+    bead: Bead,
+    *,
+    reason: PauseReason | None = None,
+    user_authorized: bool = False,
+) -> Bead:
+    """Resolve one condition; only the last resolution reopens settled work."""
     state = bead.state
     if not isinstance(state, Deferred):
         raise HiveError(ErrorCode.INVALID_INPUT, "Only deferred work can resume")
     work = state.work
     if isinstance(work, Draining):
         raise HiveError(ErrorCode.RECOVERY_REQUIRED, "Resources have not settled")
-    if state.reason in {PauseReason.USER, PauseReason.APPROVAL} and not user_authorized:
+    reasons = {condition.reason for condition in state.conditions}
+    if reason is None:
+        if len(reasons) != 1:
+            raise HiveError(ErrorCode.PAUSED, "Select the pause reason to resolve")
+        reason = state.conditions[0].reason
+    if reason not in reasons:
+        raise HiveError(ErrorCode.INVALID_INPUT, "That pause condition is not present")
+    if reason in {PauseReason.USER, PauseReason.APPROVAL} and not user_authorized:
         raise HiveError(
             ErrorCode.PAUSED, "Explicit user resumption or approval is required"
         )
+    remaining = tuple(c for c in state.conditions if c.reason != reason)
+    if remaining:
+        return replace(bead, state=replace(state, conditions=remaining))
     missing = set(state.pending_dependencies).difference(bead.dependencies)
     if missing:
         raise HiveError(
@@ -127,13 +141,16 @@ def recover(bead: Bead, observed_owner: Owner, note: str) -> Bead:
     require_owner(bead, observed_owner)
     state = bead.state
     if isinstance(state, Deferred):
-        if state.reason == PauseReason.USER:
+        if any(c.reason == PauseReason.USER for c in state.conditions):
             raise HiveError(ErrorCode.PAUSED, "Recovery cannot override a user pause")
         if isinstance(state.work, Draining):
             return replace(bead, state=replace(state, work=Settled(state.work.phase)))
     if isinstance(state, Owned):
         return replace(
-            bead, state=Deferred(PauseReason.RECOVERY, note, Settled(state.phase))
+            bead,
+            state=Deferred(
+                (PauseCondition(PauseReason.RECOVERY, note),), Settled(state.phase)
+            ),
         )
     raise HiveError(ErrorCode.INVALID_INPUT, "No recoverable owner")
 

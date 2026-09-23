@@ -25,6 +25,7 @@ from hive.model import (
     Deferred,
     Delivery,
     Owner,
+    PauseCondition,
     PauseReason,
     Queued,
     Unstarted,
@@ -124,6 +125,7 @@ def parser() -> Parser:
             )
             command.add_argument("--note", required=True)
         elif name == "resume":
+            command.add_argument("--reason", choices=[r.value for r in PauseReason])
             command.add_argument("--user-authorized", action="store_true")
         elif name == "complete":
             command.add_argument("--summary", required=True)
@@ -235,8 +237,12 @@ def decode(data: dict[str, object]) -> c.Request:
             Queued()
             if reason is None
             else Deferred(
-                PauseReason(string(reason, "pause reason")),
-                string(data.get("note"), "pause note"),
+                (
+                    PauseCondition(
+                        PauseReason(string(reason, "pause reason")),
+                        string(data.get("note"), "pause note"),
+                    ),
+                ),
                 Unstarted(),
             )
         )
@@ -288,7 +294,14 @@ def decode(data: dict[str, object]) -> c.Request:
             string(data.get("note"), "pause note"),
         )
     elif action == "resume":
-        event = c.Resume(data.get("user_authorized") is True)
+        event = c.Resume(
+            (
+                None
+                if data.get("reason") is None
+                else PauseReason(string(data.get("reason"), "pause reason"))
+            ),
+            data.get("user_authorized") is True,
+        )
     elif action == "settle":
         event = c.Settle(owner(data))
     elif action == "complete":

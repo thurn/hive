@@ -16,7 +16,7 @@ from hive.beads_process import BeadsProcess
 from hive.beads_store import BeadsStore, NewTask
 from hive.errors import HiveError
 from hive.identity import BeadId, CodexTaskId, CodexTurnId, ProjectId
-from hive.model import Capacity, Deferred, Owner, PauseReason, Unstarted
+from hive.model import Capacity, Deferred, Owner, PauseCondition, PauseReason, Unstarted
 from hive.transitions import cancel, defer, resume, settle
 
 
@@ -69,7 +69,10 @@ class BeadsServerTests(unittest.TestCase):
                     "Second",
                     "Needs first",
                     "Fixed",
-                    state=Deferred(PauseReason.APPROVAL, "Pending design", Unstarted()),
+                    state=Deferred(
+                        (PauseCondition(PauseReason.APPROVAL, "Pending design"),),
+                        Unstarted(),
+                    ),
                 )
             )
             self.assertIsInstance(second.state, Deferred)

@@ -29,6 +29,7 @@ from hive.model import (
     Implementing,
     Owned,
     Owner,
+    PauseCondition,
     PauseReason,
     Preparing,
     Queued,
@@ -96,16 +97,44 @@ class BeadBoundaryTests(unittest.TestCase):
                 [
                     Owned(owner, phase),
                     Queued(Settled(phase)),
-                    Deferred(PauseReason.USER, "Stop", Draining(owner, phase)),
-                    Deferred(PauseReason.RECOVERY, "Checked", Settled(phase)),
+                    Deferred(
+                        (PauseCondition(PauseReason.USER, "Stop"),),
+                        Draining(owner, phase),
+                    ),
+                    Deferred(
+                        (PauseCondition(PauseReason.RECOVERY, "Checked"),),
+                        Settled(phase),
+                    ),
                 ]
             )
-        states.append(Deferred(PauseReason.APPROVAL, "Design pending", Unstarted()))
+        states.append(
+            Deferred(
+                (PauseCondition(PauseReason.APPROVAL, "Design pending"),), Unstarted()
+            )
+        )
         for state in states:
             with self.subTest(state=state):
                 decoded = decode_bead(native(state))
                 self.assertEqual(decoded.state, state)
                 self.assertEqual(decoded.dependencies, (BeadId("hv-czm"),))
+
+    def test_malformed_pause_collections_cannot_become_runnable(self) -> None:
+        condition = {"reason": "user-pause", "note": "Stop"}
+        invalid: tuple[object, ...] = (
+            [],
+            [condition, condition],
+            condition,
+            [{"reason": "unknown", "note": "Stop"}],
+            [{"reason": "user-pause", "note": " "}],
+        )
+        for value in invalid:
+            data = native(Queued())
+            data["status"] = "deferred"
+            data["metadata"] = {
+                "hive": {"project": "search", "kind": "code", "pause": value}
+            }
+            with self.subTest(value=value), self.assertRaises(HiveError):
+                decode_bead(data)
 
     def test_artifact_records_do_not_require_a_workspace(self) -> None:
         owner = Owner(CodexTaskId("task-1"), CodexTurnId("turn-1"))

@@ -215,10 +215,6 @@ class BeadsStore:
             raise HiveError(
                 ErrorCode.INVALID_INPUT, "New tasks cannot inherit existing execution"
             )
-        if isinstance(task.state, Deferred) and not task.state.note.strip():
-            raise HiveError(
-                ErrorCode.INVALID_INPUT, "Deferred creation requires a note"
-            )
         native = encode_state(task.state)
         metadata = {
             "hive": {**native.metadata, "project": task.project, "kind": task.kind}

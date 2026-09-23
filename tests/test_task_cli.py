@@ -159,12 +159,46 @@ class TaskCliTests(unittest.TestCase):
                 paused,
                 *SCOPE,
                 "--reason",
-                "checkpoint",
+                "user-pause",
                 "--note",
-                "Cannot downgrade",
+                "User stopped",
+            )
+            visible = cli.run("task", "show", paused)
+            self.assertEqual(visible.returncode, 0, visible.stderr)
+            self.assertIn("design-approval", visible.stdout)
+            self.assertIn("user-pause", visible.stdout)
+            cli.call(
+                "task", "resume", paused, *SCOPE, "--user-authorized", expected="Paused"
+            )
+            cli.call(
+                "task",
+                "resume",
+                paused,
+                *SCOPE,
+                "--reason",
+                "user-pause",
                 expected="Paused",
             )
-            cli.call("task", "resume", paused, *SCOPE, "--user-authorized")
+            cli.call(
+                "task",
+                "resume",
+                paused,
+                *SCOPE,
+                "--reason",
+                "user-pause",
+                "--user-authorized",
+            )
+            cli.call("task", "claim", paused, *SCOPE, *WORKER, expected="Paused")
+            cli.call("task", "resume", paused, *SCOPE, expected="Paused")
+            cli.call(
+                "task",
+                "resume",
+                paused,
+                *SCOPE,
+                "--reason",
+                "design-approval",
+                "--user-authorized",
+            )
             dependent = cli.add("Dependent")
             cli.call("task", "dependency", dependent, *SCOPE, "--prerequisite", paused)
             cli.call("task", "cancel", paused, *SCOPE, "--reason", "Dropped")

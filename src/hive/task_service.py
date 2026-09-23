@@ -138,12 +138,19 @@ class TaskService:
         )
 
     def resume(
-        self, identifier: BeadId, project: ProjectId, *, user_authorized: bool = False
+        self,
+        identifier: BeadId,
+        project: ProjectId,
+        *,
+        reason: PauseReason | None = None,
+        user_authorized: bool = False,
     ) -> Bead:
         return self._change(
             identifier,
             project,
-            lambda bead: transitions.resume(bead, user_authorized=user_authorized),
+            lambda bead: transitions.resume(
+                bead, reason=reason, user_authorized=user_authorized
+            ),
         )
 
     def settle(self, identifier: BeadId, project: ProjectId, owner: Owner) -> Bead:

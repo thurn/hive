@@ -7,7 +7,15 @@ from hive.configuration_store import ConfigurationStore
 from hive.errors import ErrorCode, HiveError
 from hive.identity import BeadId, ProjectId
 from hive.locking import Guards
-from hive.model import Bead, Deferred, PauseReason, Queued, Unstarted, owner_of
+from hive.model import (
+    Bead,
+    Deferred,
+    PauseCondition,
+    PauseReason,
+    Queued,
+    Unstarted,
+    owner_of,
+)
 from hive.transitions import resume
 
 
@@ -30,8 +38,11 @@ class Filing:
                 replace(original, pending_dependencies=prerequisites)
                 if isinstance(original, Deferred)
                 else Deferred(
-                    PauseReason.CHECKPOINT,
-                    "Attaching prerequisites",
+                    (
+                        PauseCondition(
+                            PauseReason.CHECKPOINT, "Attaching prerequisites"
+                        ),
+                    ),
                     Unstarted(),
                     prerequisites,
                 )
@@ -105,8 +116,7 @@ class Filing:
                 replace(original, pending_dependencies=pending)
                 if isinstance(original, Deferred)
                 else Deferred(
-                    PauseReason.CHECKPOINT,
-                    "Attaching prerequisite",
+                    (PauseCondition(PauseReason.CHECKPOINT, "Attaching prerequisite"),),
                     original.work,
                     pending,
                 )

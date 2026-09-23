@@ -14,7 +14,10 @@ Nothing in this tracking document reduces that scope.
 - Typed lifecycle, ownership, admission, dependencies, and cooperative locks:
   pure domain operations implemented, with process-level lock exclusion and
   crash-release tests, protected pauses, retained delivery continuation, and
-  artifact completion. Negative Pyre fixtures reject interchangeable IDs.
+  artifact completion. Deferred work retains independent release conditions;
+  resolving a user pause cannot discard pending design approval. Native JSON and
+  the CLI expose every condition, and ambiguous resumption is refused. Negative
+  Pyre fixtures reject interchangeable IDs.
   Native stopped-writer checks remain adapter work; pure recovery operations
   are not sufficient evidence for safe peer recovery.
 - Server-only Beads adapter, configuration, CLI, real concurrent database tests:
@@ -81,3 +84,8 @@ Do not alter Fulcrum workers or its database to make tests convenient.
 The <100ms p95 target is unproven until complete CLI operations meet it at eight
 concurrent clients with 1,000 unfinished beads, observation and backup active.
 Real 30-minute delivery wait and assembled agent lifecycle are also unproven.
+
+Pause metadata now contains a nonempty array of distinct reason/note objects.
+There is no legacy reader or automatic conversion. Hive production state has
+not been initialized; disposable test stores are recreated. Any manually created
+older Hive store requires explicit stopped maintenance before use.

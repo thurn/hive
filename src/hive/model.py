@@ -7,6 +7,7 @@ from datetime import datetime
 from enum import StrEnum
 from typing import assert_never
 
+from hive.errors import ErrorCode, HiveError
 from hive.identity import (
     BeadId,
     CandidateId,
@@ -106,11 +107,27 @@ type RetainedWork = Unstarted | Settled | Draining
 
 
 @dataclass(frozen=True)
-class Deferred:
+class PauseCondition:
     reason: PauseReason
     note: str
+
+    def __post_init__(self) -> None:
+        if not self.note.strip():
+            raise HiveError(ErrorCode.INVALID_RECORD, "A pause condition needs a note")
+
+
+@dataclass(frozen=True)
+class Deferred:
+    conditions: tuple[PauseCondition, ...]
     work: RetainedWork
     pending_dependencies: tuple[BeadId, ...] = ()
+
+    def __post_init__(self) -> None:
+        reasons = {condition.reason for condition in self.conditions}
+        if not reasons or len(reasons) != len(self.conditions):
+            raise HiveError(
+                ErrorCode.INVALID_RECORD, "Deferral needs distinct, nonempty conditions"
+            )
 
 
 @dataclass(frozen=True)

@@ -22,6 +22,7 @@ from hive.model import (
     Cancelled,
     Capacity,
     CodeDelivery,
+    Deferred,
     Done,
     Drafting,
     Implementing,
@@ -66,15 +67,31 @@ def owner(number: int) -> Owner:
 
 
 class LifecycleTests(unittest.TestCase):
-    def test_approval_cannot_be_removed_by_changing_pause_reason(self) -> None:
+    def test_each_pause_condition_requires_its_own_resolution(self) -> None:
         pending = defer(task("hv-plan"), PauseReason.APPROVAL, "Design pending")
-        for reason in PauseReason:
-            if reason != PauseReason.APPROVAL:
-                with self.assertRaises(HiveError):
-                    defer(pending, reason, "Different reason")
+        pending = defer(pending, PauseReason.USER, "Stop")
+        pending = defer(pending, PauseReason.CHECKPOINT, "Resources busy")
         with self.assertRaises(HiveError):
-            resume(pending)
-        self.assertIsInstance(resume(pending, user_authorized=True).state, Queued)
+            resume(pending, user_authorized=True)
+        for selected in (PauseReason.APPROVAL, PauseReason.USER):
+            with self.assertRaises(HiveError):
+                resume(pending, reason=selected)
+        pending = resume(pending, reason=PauseReason.CHECKPOINT)
+        self.assertIsInstance(pending.state, Deferred)
+        for first, last in (
+            (PauseReason.USER, PauseReason.APPROVAL),
+            (PauseReason.APPROVAL, PauseReason.USER),
+        ):
+            retained = resume(pending, reason=first, user_authorized=True)
+            with self.assertRaises(HiveError):
+                admit(retained, owner(1), retained.project, [], {}, Capacity())
+            with self.assertRaises(HiveError):
+                resume(retained, reason=last)
+            with self.assertRaises(HiveError):
+                resume(retained, reason=first, user_authorized=True)
+            self.assertIsInstance(
+                resume(retained, reason=last, user_authorized=True).state, Queued
+            )
 
     def test_paused_delivery_reclaims_the_same_candidate_and_workspace(self) -> None:
         phase = WaitingForDelivery(
