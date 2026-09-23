@@ -1,6 +1,10 @@
 # Acceptance evidence
 
-This records the isolated native acceptance scenarios in [scope reduction](scope-reduction-plan.md), section 13. No production Hive or Fulcrum state was changed. An eligible inactive disposable thread was unavailable for archival, and the Tollgate provider correction still requires explicit promotion approval.
+This records the isolated native acceptance scenarios in [scope reduction](scope-reduction-plan.md), section 13. No production Hive or Fulcrum state was changed. An eligible inactive disposable thread was unavailable for archival. The Tollgate provider correction was explicitly approved, promoted and installed after these journeys.
+
+## Tollgate completion status, 2026-09-23
+
+Provider candidate `01a0cead-dfd8-73a2-9b0f-6976155138f0` passed validation and was explicitly approved. Tollgate reported `promoted`, remote `synchronized` and cleanup `completed`, with certificate `01a0ceae-7bdd-7b82-8370-6ab766a232d6`. The certified release `d6f14f827772937d05eb6d9c1faf3876762fffef` was built in a detached worktree, code signed, installed and restarted. The installed app and CLI binaries matched the certified build. Native candidate status from the running app reported `local_master.status=synchronized`, `contains_tested=true`, `policy_enabled=true` and local master commit `d6f14f827772937d05eb6d9c1faf3876762fffef`. `tg --no-launch doctor` with Tollgate's repository ID returned `healthy=true` with all checks healthy.
 
 ## Manual backup and restore, 2026-09-23
 
