@@ -60,6 +60,15 @@ def parser() -> Parser:
         "usage", help="show observed usage and missing coverage"
     )
     usage.add_argument("--task", required=True)
+    telemetry.add_parser("status", help="show collector freshness and failures")
+    for name in ("sweep", "watch"):
+        operation = telemetry.add_parser(name)
+        operation.add_argument("--native-index", required=True)
+        operation.add_argument(
+            "--batch-size", type=int, choices=range(1, 65), default=32
+        )
+        if name == "watch":
+            operation.add_argument("--interval-seconds", type=int, default=5)
     session = groups.add_parser("session").add_subparsers(dest="action", required=True)
     listing = session.add_parser("list", help="show enrolled tasks and title drift")
     listing.add_argument("--project")
@@ -217,6 +226,25 @@ def decode(data: dict[str, object]) -> c.Request:
         )
     action = data.get("action")
     if group == "telemetry":
+        if action == "status":
+            return c.CollectionStatus()
+        if action in {"sweep", "watch"}:
+            index = (
+                Path(string(data.get("native_index"), "native index"))
+                .expanduser()
+                .resolve()
+            )
+            limit = integer(data.get("batch_size"), "batch size", minimum=1)
+            if action == "sweep":
+                return c.SweepCollection(index, limit)
+            interval = integer(
+                data.get("interval_seconds"), "collection interval", minimum=1
+            )
+            if interval > 3600:
+                raise HiveError(
+                    ErrorCode.INVALID_INPUT, "Collection interval exceeds one hour"
+                )
+            return c.WatchCollection(index, limit, interval)
         task = CodexTaskId(string(data.get("task"), "native task"))
         if action == "usage":
             return c.ReadUsage(task)

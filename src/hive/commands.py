@@ -199,6 +199,24 @@ class ReadUsage:
     task: CodexTaskId
 
 
+@dataclass(frozen=True)
+class SweepCollection:
+    index: Path
+    limit: int
+
+
+@dataclass(frozen=True)
+class WatchCollection:
+    index: Path
+    limit: int
+    interval: int
+
+
+@dataclass(frozen=True)
+class CollectionStatus:
+    pass
+
+
 type Request = (
     SourceRequest
     | ReadConfiguration
@@ -221,6 +239,9 @@ type Request = (
     | ListSessions
     | CollectTranscript
     | ReadUsage
+    | SweepCollection
+    | WatchCollection
+    | CollectionStatus
 )
 
 
@@ -238,5 +259,8 @@ def mutates(request: Request) -> bool:
             ListSessions,
             CollectTranscript,
             ReadUsage,
+            SweepCollection,
+            WatchCollection,
+            CollectionStatus,
         ),
     )

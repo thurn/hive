@@ -60,7 +60,16 @@ def transition(service: TaskService, request: c.Change) -> Bead:
 
 
 def handle(request: c.Request, context: LaunchContext) -> dict[str, object]:
-    if isinstance(request, (c.CollectTranscript, c.ReadUsage)):
+    if isinstance(
+        request,
+        (
+            c.CollectTranscript,
+            c.ReadUsage,
+            c.SweepCollection,
+            c.WatchCollection,
+            c.CollectionStatus,
+        ),
+    ):
         # Observation is independent of Beads and imports no collector on the
         # normal task path. The CLI has already released the maintenance guard.
         import sqlite3
@@ -68,6 +77,22 @@ def handle(request: c.Request, context: LaunchContext) -> dict[str, object]:
         from hive.usage_store import UsageStore
 
         try:
+            if isinstance(request, c.WatchCollection):
+                from hive.collection_transport import run
+
+                return run(
+                    context.state, request.index, request.limit, request.interval
+                )
+            if isinstance(request, c.SweepCollection):
+                from hive.collection import sweep
+
+                return sweep(context, request.index, request.limit)
+            if isinstance(request, c.CollectionStatus):
+                from hive.collection_registry import CollectionRegistry
+
+                return CollectionRegistry(
+                    UsageStore(context.state / "telemetry.sqlite3")
+                ).status()
             observations = UsageStore(context.state / "telemetry.sqlite3")
             return (
                 observations.collect(request.task, request.path, budget=request.budget)

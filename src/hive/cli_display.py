@@ -26,6 +26,21 @@ def session_line(value: object) -> str:
 
 def display(result: dict[str, object]) -> str:
     code = string(result.get("code"), "result code")
+    if code == "CollectorStopped":
+        return "Collector stopped."
+    if code == "CollectionBatch":
+        return (
+            f"Attempted {result['attempted']} enrolled tasks.\n"
+            f"Registry error: {result['registry_error']}; native index error: {result['native_index_error']}\n"
+            f"Results: {result['results']}"
+        )
+    if code == "CollectorStatus":
+        return (
+            f"Enrolled: {result['enrolled']}; never attempted: {result['never_attempted']}\n"
+            f"Registry refreshed: {result['registry_refreshed']}; error: {result['registry_error']}\n"
+            f"Latest attempt: {result['latest_attempt']}; oldest attempt: {result['oldest_attempt']}\n"
+            f"Recent failures: {result['recent_failures']}"
+        )
     if code == "TranscriptCollected":
         return (
             f"{result['task']}: read {result['read_bytes']} bytes; "
