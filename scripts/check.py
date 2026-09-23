@@ -72,18 +72,90 @@ def main() -> int:
             os.environ.get("PATH", ""),
         )
     )
-    # Real database/CLI journeys reach three minutes on hosted macOS runners.
-    # Keep one bounded budget without dropping scenarios or internal timeouts.
-    deadline = time.monotonic() + 300
+    fast = "--fast" in sys.argv[1:]
+    deadline = time.monotonic() + (30 if fast else 120)
     if boundary_rules():
         return 1
     python = sys.executable
-    for command in (
+    commands = [
         [python, "-m", "ruff", "check", "src", "tests", "scripts"],
         [python, "-m", "black", "--check", "src", "tests", "scripts"],
         [str(Path(python).parent / "pyre"), "--noninteractive", "check"],
-        [python, "-m", "unittest", "discover", "-s", "tests", "-v"],
-    ):
+        [
+            python,
+            "-m",
+            "unittest",
+            "discover",
+            "-s",
+            "tests",
+            "-p",
+            "test_usage.py",
+            "-v",
+        ],
+        [
+            python,
+            "-m",
+            "unittest",
+            "discover",
+            "-s",
+            "tests",
+            "-p",
+            "test_cost.py",
+            "-v",
+        ],
+        [
+            python,
+            "-m",
+            "unittest",
+            "discover",
+            "-s",
+            "tests",
+            "-p",
+            "test_links.py",
+            "-v",
+        ],
+    ]
+    commands.append(
+        [
+            python,
+            "-m",
+            "unittest",
+            "discover",
+            "-s",
+            "tests",
+            "-p",
+            "test_install_skills.py",
+            "-v",
+        ]
+    )
+    if not fast:
+        commands.extend(
+            (
+                [
+                    python,
+                    "-m",
+                    "unittest",
+                    "discover",
+                    "-s",
+                    "tests",
+                    "-p",
+                    "test_source_selection.py",
+                    "-v",
+                ],
+                [
+                    python,
+                    "-m",
+                    "unittest",
+                    "discover",
+                    "-s",
+                    "tests",
+                    "-p",
+                    "test_routing.py",
+                    "-v",
+                ],
+            )
+        )
+    for command in commands:
         result = run(command, deadline)
         if result:
             return result

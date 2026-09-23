@@ -11,6 +11,15 @@ class Settings:
     repository: Path
     state: Path
     beads: Path
+    projects: tuple["Project", ...]
+
+
+@dataclass(frozen=True)
+class Project:
+    id: str
+    repository: Path
+    invariants: Path
+    native_id: str | None
 
 
 def read_settings() -> Settings:
@@ -26,7 +35,12 @@ def read_settings() -> Settings:
         if not isinstance(data, dict):
             raise ValueError("Bootstrap settings must be a JSON object")
         for key, value in data.items():
-            if not isinstance(key, str) or key not in {"repository", "state", "beads"}:
+            if not isinstance(key, str) or key not in {
+                "repository",
+                "state",
+                "beads",
+                "projects",
+            }:
                 raise ValueError("Unknown bootstrap setting")
             values[key] = value
 
@@ -46,4 +60,36 @@ def read_settings() -> Settings:
         raise ValueError(
             "Local state and locks must be outside synchronized Beads data"
         )
-    return Settings(repository, state, beads)
+    projects_value = values.get("projects", [])
+    if not isinstance(projects_value, list):
+        raise ValueError("projects must be an array")
+    projects: list[Project] = []
+    for item in projects_value:
+        if not isinstance(item, dict) or set(item) - {
+            "id",
+            "repository",
+            "invariants",
+            "native_id",
+        }:
+            raise ValueError("Invalid project configuration")
+        identifier = item.get("id")
+        native_id = item.get("native_id")
+        if (
+            not isinstance(identifier, str)
+            or not identifier.strip()
+            or (
+                native_id is not None
+                and (not isinstance(native_id, str) or not native_id.strip())
+            )
+        ):
+            raise ValueError("Invalid project identity")
+        locations = []
+        for name in ("repository", "invariants"):
+            value = item.get(name)
+            if not isinstance(value, str) or not Path(value).is_absolute():
+                raise ValueError(f"Project {name} must be absolute")
+            locations.append(Path(value).resolve())
+        projects.append(Project(identifier, locations[0], locations[1], native_id))
+    if len({project.id for project in projects}) != len(projects):
+        raise ValueError("Duplicate project identity")
+    return Settings(repository, state, beads, tuple(projects))

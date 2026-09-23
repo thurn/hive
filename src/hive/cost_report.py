@@ -117,9 +117,7 @@ def report(
             "pricing_tier_assumption": tier,
             "observed_service_tier": None,
             "model_basis": "native turn context; live model overrides are not established",
-            "attributed_responses": 0,
-            "unattributed_responses": observed,
-            "coverage": "API-equivalent estimate, not billing. Configured model and assumed tier; bead/role at response start remain unknown. Excludes tool fees and regional uplifts.",
+            "coverage": "API-equivalent estimate, not billing. Configured model and assumed tier; thread association is not a token allocation. Excludes tool fees and regional uplifts.",
             "rate_groups": [
                 {**card.value(), "usd": dollars(subtotal), "responses": count}
                 for card, (count, subtotal) in groups.items()

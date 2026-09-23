@@ -4,9 +4,8 @@ import sqlite3
 from dataclasses import dataclass
 from datetime import datetime
 
-from hive.identity import CodexTaskId, CodexTurnId
+from hive.identity import CodexTaskId, CodexTurnId, Owner
 from hive.jsonvalue import record, string
-from hive.model import Owner
 from hive.pricing import ModelId
 from hive.usage import timestamp
 

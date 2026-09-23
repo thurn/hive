@@ -1,62 +1,9 @@
 # Enter a Hive role
 
-Use the canonical `~/hive/bin/hive` launcher. Examples below shorten it to
-`hive`; invoke the full path unless it is already on PATH. An explicitly supplied
-isolated Hive checkout/bootstrap configuration replaces that default for tests.
-Do not initialize storage or replace Fulcrum skill links during ordinary work.
+Read `~/.config/hive/bootstrap.json` (or `HIVE_BOOTSTRAP_CONFIG`) to identify the requested configured project, repository, invariants and optional native project. Read project instructions and relevant beads through `~/hive/bin/hive-bd`. Keep implementation in that project. If the binding is unclear, clarify before claiming; read-only scoping may continue.
 
-Read `hive config show --json` and identify the requested registered project,
-repository, invariant document, and native Codex project binding. Keep execution
-in that project. If the binding is missing or ambiguous, clarify before claiming;
-read-only scoping can continue. `hive status --project <project> --json` supplies
-existing work, owners, dependencies, capacity, and title drift. Unknown resource
-metrics are not evidence of spare capacity.
+Obtain the actual invoking Codex thread ID from native context (`CODEX_THREAD_ID` when present). Do not invent one, reuse another thread's ID, or use a turn ID. If identity is unavailable, remain read-only or file what can be filed with a visible missing association; do not claim. Inspect existing assignments and outstanding tools on a returning thread before acting.
 
-Obtain the current native task ID from the invoking context (`CODEX_THREAD_ID`
-when present) and inspect that task with the native `read_thread` tool. Before
-owned execution, use its actual active turn ID. Never invent a turn ID or infer
-activity from an emoji or timestamp. If native inspection cannot establish the
-invoking turn, do not claim or edit. Filing and read-only investigation can still
-proceed with a known task identity.
+Rename directly through native Codex title tools at meaningful role, bead, wait and completion transitions. Use ⚒️ executor, 📿 bead, 🛡️ warden, 🧵 weaver, 📖 sage, 🔮 vizier, 🔥 justiciar or 📁 archivist. A naming failure is visible and retryable but does not block delivery. Titles are UI, not observation membership.
 
-If the conversation already owns an in-progress bead, inspect its retained state
-and call `task enter-turn` with its recorded previous turn and the actual current
-turn before editing. A deferred bead needs its outstanding conditions resolved
-and writers settled; merely starting another turn is not user resumption.
-
-## Names are required UI
-
-Record role, subject, and current bead at meaningful transitions:
-
-```sh
-hive session enter --task <native-task> --project <project> \
-  --role executor --bead <bead> --subject 'Search indexing' --stage implementing \
-  --json
-```
-
-Use the returned exact title with native `set_thread_title`. If renaming fails,
-retry once, report drift, and continue. Record `session named --task <task>
---title <returned-title> --applied` after native success, or `--error <detail>`
-after failure. Never report success just because enrollment succeeded. A stale
-result returns `Busy`; inspect the current registry intent and repair that name.
-Title failures do not block bead delivery.
-
-Rename on role/bead changes, review, meaningful waits, pause, recovery, and
-completion. The parent uses 🛡️ while its cold warden runs and returns to ⚒️
-afterward. Omit `--bead` when leaving completed work for unrelated investigation.
-Do not rename after every command. `$bead` in a reply uses `--inline-bead` and
-preserves the enclosing role and title.
-
-Enrollment and naming are the managed-UI exception for read-only specialists;
-they do not authorize edits to the investigated project. Registration is not an
-execution claim, and a review child shares its parent bead's slot.
-
-## Scope and authority
-
-Normal filed beads authorize their described implementation and ordinary
-Tollgate promotion. Explicit user limits take precedence. Unapproved designs
-and explicit user pauses stay deferred. Admission still controls every claim.
-A specialist that chooses implementation reads the
-[Hive executor skill](../executor/SKILL.md) and enters through the same admission
-path. Do not import Fulcrum's coordinator,
-proof, handoff, or approval machinery.
+Hive's [scope contract](../../docs/scope-reduction-plan.md) governs. Explicit user pauses and unapproved designs remain deferred until explicit resumption or approval. Readiness and resource judgment belong to the agent. Native claiming excludes a competing owner, but cannot force noncooperating agents to respect scope or pauses.

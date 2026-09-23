@@ -1,11 +1,8 @@
-"""Validated identities and the inherited maintenance guard for one invocation."""
+"""One invocation's selected source and inherited maintenance guard."""
 
 from __future__ import annotations
 
 import os
-import subprocess
-from collections.abc import Iterator
-from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -39,55 +36,8 @@ class LaunchContext:
             )
         except (KeyError, ValueError, OSError) as error:
             raise HiveError(
-                ErrorCode.INVALID_INPUT,
-                "Enter Hive through its source-selecting launcher",
+                ErrorCode.INVALID_INPUT, "Enter through the Hive launcher"
             ) from error
 
-    def check_mutations_allowed(self) -> None:
-        if (self.state / "locks/maintenance.stop").exists():
-            raise HiveError(ErrorCode.PAUSED, "State maintenance has stopped mutations")
-
     def release(self) -> None:
-        """Read and provider-wait commands release before any long external call."""
         os.close(self.guard)
-
-    @contextmanager
-    def reenter_mutation(self) -> Iterator[None]:
-        """Refuse stale code after an unlocked provider observation.
-
-        Maintenance may have converted state while the provider was queried.
-        Reacquire its guard before checking master or reading Beads again.
-        A changed source requires a new invocation, not a mixed-code mutation.
-        """
-        from hive.locking import Guards
-
-        with Guards(self.state / "locks").mutation():
-            try:
-                current = subprocess.run(
-                    [
-                        "git",
-                        "-C",
-                        str(self.repository),
-                        "rev-parse",
-                        "--verify",
-                        "refs/heads/master^{commit}",
-                    ],
-                    env={
-                        k: v for k, v in os.environ.items() if not k.startswith("GIT_")
-                    },
-                    capture_output=True,
-                    text=True,
-                    check=True,
-                    timeout=10,
-                ).stdout.strip()
-            except (OSError, subprocess.SubprocessError) as error:
-                raise HiveError(
-                    ErrorCode.RECOVERY_REQUIRED,
-                    f"Cannot recheck selected source before mutation: {error}",
-                ) from error
-            if current != self.commit:
-                raise HiveError(
-                    ErrorCode.RECOVERY_REQUIRED,
-                    "Hive source changed during provider inspection; repeat this command",
-                )
-            yield

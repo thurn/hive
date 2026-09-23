@@ -1,40 +1,15 @@
-# File useful work
+# File and maintain native beads
 
-Clarify material scope before treating a request as implementation-ready. Search
-current project work for duplicates and prerequisites. Reuse an existing bead
-when it already captures the intent; refer to it in the outcome rather than
-creating another issue for the same observation.
-
-Split independently deliverable changes and link real dependencies. Cross-project
-prerequisites are visible, but do not expand the executor's project authority.
-Use P0–P4, normally P2, and explain unusual urgency in the description. Do not
-invent a dependency merely to represent transient CPU pressure or speculative
-file overlap.
+Use the configured `~/hive/bin/hive-bd`, always naming bead IDs explicitly. Search for duplicates. Record a useful description, acceptance criteria, priority, intended project, and `hive_origin_thread` with the actual filing thread when available. An ordinary ready filing may include `hive_project` in flat metadata:
 
 ```sh
-hive task add --project <project> --title 'Repair stale results' \
-  --description 'Deleted documents remain after refresh.' \
-  --acceptance 'After refresh, queries cannot return deleted documents.' \
-  --priority 1 --depends-on <prerequisite> --json
+hive-bd --actor "$CODEX_THREAD_ID" create --title 'Scoped work' --description '...' --acceptance '...' --priority 2 --metadata '{"hive_project":"example","hive_origin_thread":"<actual-thread-id>"}' --json
 ```
 
-Omit `--depends-on` when unnecessary; repeat it for several prerequisites. Use
-`--kind artifact` only for external reports that do not change project files.
-Repository documentation is project-file work. Include design/document links
-and concrete acceptance in descriptions. File unclear large work as a planning
-bead, not a falsely implementation-ready feature.
+For prerequisites or missing approval, initially omit `hive_project`, describe the intended project and required edges, create the bead, attach edges with `bd dep add`, and inspect them. For approval hold, use native `status=deferred` without an expiring deferral date. Add `hive_project` only after edges/hold are correct, using `update <id> --set-metadata hive_project=example`. Do not select unfinished filing missing that project key, even when its ID is supplied.
 
-Implementation awaiting design approval uses `--defer-reason design-approval
---note <what-needs-approval>`. An additional user stop is another condition;
-resolving one never resolves the other. File follow-up findings by default even
-at capacity; filing neither claims a slot nor starts implementation.
+`bd create --deps` and `--claim --metadata` can involve separate native writes. On uncertain replies, inspect the bead before continuing. Use native `bd dep add` and `bd dep remove` for edits, never changing another active executor's prerequisites without coordination. A new prerequisite for your own work requires checkpointing, deferral, and settlement of outstanding effects before release.
 
-Native dependency edits reject work that still has an owner. If your owned bead
-discovers an unstarted prerequisite, checkpoint and defer it with your current
-`--owner` and `--turn`, settle its writers,
-then file/link the prerequisite before reopening the parent. Use the
-[interruption and repair guidance](repair.md) for a crash or uncertain outcome.
+Before claiming, inspect native status, edges and prerequisite `hive_resolution`. Open, deferred, cancelled or ambiguous prerequisites mean wait or repair. `bd ready` is a candidate list, not proof a cancelled prerequisite was completed. Never use implicit last-touched issue commands.
 
-A successful filing returns native `hv-` IDs. Use those IDs as returned, including
-longer allocations; do not invent identifiers or claim unacknowledged creation.
-If `uncertain` is true, inspect existing records before retrying creation.
+For completion, settle writers and delivery, set `hive_resolution=completed` with a concise native outcome note, then `bd close <id>`. Cancellation uses `hive_resolution=cancelled`, closes explicitly, and triggers dependent inspection. Native close retains the assignee for observation. Repair/reopen must clear historical assignee and resolution only after affected workers are coordinated.

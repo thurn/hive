@@ -1,84 +1,60 @@
 # Hive
 
-Decentralized agent workflows using a shared server-mode Beads database and
-Tollgate delivery. Workers own progress; there is no central dispatcher.
+Hive is a small local companion to [Beads](https://github.com/steveyegge/beads) and Tollgate. Agents file, claim and close work with native Beads commands, and deliver code with native Tollgate commands. Hive selects committed local `master` for each call and observes Codex threads referenced by beads. The [scope reduction plan](docs/scope-reduction-plan.md) is the product contract; [implementation status](docs/implementation.md) records evidence and remaining acceptance.
 
-Implementation is in progress. The source of requirements is
-[the Hive design](https://github.com/thurn/fulcrum/blob/master/hive-design.md).
-[Implementation status](docs/implementation.md) records completed work and
-remaining acceptance evidence without treating partial scaffolding as delivery.
+## Configure
 
-## Source-selected command
-
-`~/hive/bin/hive source --json` reports the local-master commit used for the
-invocation. This diagnostic works without a task server. The task commands use
-the explicitly configured server-mode Beads database; see
-[command usage](docs/commands.md) and [task names](docs/task-ui.md).
-
-The launcher uses Python 3.12 and reads `~/.config/hive/bootstrap.json` when
-present. Defaults select `~/hive`, `~/.local/state/hive`, and `~/brain/hive`
-for source, local state, and explicit Beads routing respectively. These paths
-do not initialize storage or adopt the existing Fulcrum database. An explicit
-`HIVE_BOOTSTRAP_CONFIG` path selects an isolated configuration for tests.
+Use Python 3.12, Beads 1.2.2 in server mode, Dolt 2.2.0, and a configured Tollgate repository. Create `~/.config/hive/bootstrap.json` (or set `HIVE_BOOTSTRAP_CONFIG` for an isolated setup):
 
 ```json
 {
   "repository": "/Users/dthurn/hive",
   "state": "/Users/dthurn/.local/state/hive",
-  "beads": "/Users/dthurn/brain/hive"
+  "beads": "/Users/dthurn/brain/hive",
+  "projects": [
+    {
+      "id": "example",
+      "repository": "/absolute/project/path",
+      "invariants": "/absolute/project/path/AGENTS.md",
+      "native_id": "optional-codex-project-id"
+    }
+  ]
 }
 ```
 
-All workers on a host must use the same configuration and local state directory.
-The launcher checks local `master` on every call, prepares a snapshot on a cache
-miss, and starts isolated application imports from that snapshot. Existing
-operations retain their code and assets. Preparation failure is visible; it
-never falls back to older code. Ordinary code commits need no installation or
-restart. Runtime dependency changes require explicit environment maintenance;
-the current runtime has no third-party dependencies.
+Defaults without a file are `~/hive`, `~/.local/state/hive`, and `~/brain/hive`, with no registered projects. The Beads directory must already contain explicit server-mode `.beads/metadata.json`. Hive never initializes it, starts a replacement server, or falls back to another database. Change project/routing settings only during stopped maintenance with participating writers settled.
 
-The canonical launcher starts one isolated, standard-library-only Python
-interpreter (`-I -S`). It selects committed source before importing application
-policy, replaces the bootstrap import path, and hands the maintenance guard to
-the selected entrypoint in that same process. Ambient `PYTHONPATH`, installed
-development packages, and editable-package hooks cannot supply missing modules.
-Direct Python invocation of the launcher first reenters this isolation mode.
+`bin/hive-bd` selects the configured store and forwards native `bd` arguments and streams. For example:
 
-The bootstrap itself contains only source selection and guard transfer. It
-must not import task policy or manage workers. Prepared snapshots are retained
-so an active invocation cannot lose delayed imports or assets; automatic source
-cache pruning is not currently provided.
+```sh
+~/hive/bin/hive-bd --actor "$CODEX_THREAD_ID" list --all --json
+~/hive/bin/hive-bd --actor "$CODEX_THREAD_ID" update hv-123 --claim --json
+```
 
-## Role skills
+The actor for a claim must be the actual invoking Codex thread ID. Inspect scope, status, dependencies, outcome, and rough workload first. Native ownership excludes a competing actor, but readiness and approval checks are agent responsibilities. See [role instructions](skills/executor/SKILL.md) and [operations](docs/operations.md).
 
-The eight roles are authored in `skills/` with shared instructions loaded only
-when needed. During development use their explicit source paths; do not rebind
-Fulcrum's unqualified skill names while its assignments are live. Installation,
-native role acceptance, and remaining backend capabilities are tracked in the
-[implementation status](docs/implementation.md). The archivist currently reports
-its missing observation/exemption boundary instead of archiving unsafely.
+## Observe
 
-## Development
+```sh
+~/hive/bin/hive source --json
+~/hive/bin/hive telemetry links --json
+~/hive/bin/hive telemetry sweep --native-index "$HOME/.codex/state_5.sqlite" --json
+~/hive/bin/hive telemetry status --json
+~/hive/bin/hive cost --task <thread-id> --json
+```
 
-Use Python 3.12. Install the pinned development environment, then run all checks:
+The linked worklist comes from `hive_origin_thread` metadata and native assignees on open and closed beads. Cost is one API-equivalent total per thread, with associated beads and explicit gaps. An unlinked conversation is outside default collection and archival. `telemetry collect --task ID --transcript PATH` remains available for an operator-supplied thread. `telemetry watch` runs opt-in as a resident timer, launching a new source-selected batch each time. [Operations](docs/operations.md) covers reset and service setup.
+
+## Install role skills
+
+Run `~/hive/scripts/install-skills`. It links the eight skills and shared instructions from the stable Hive checkout into `${CODEX_HOME:-$HOME/.codex}/skills`. It refuses conflicting names and does not change Fulcrum's live setup. Use `--source` and `--dest` for a disposable trial. Review [cutover](docs/operations.md) before making production bindings.
+
+## Develop
 
 ```sh
 scripts/prepare-check
+scripts/check-fast
 scripts/check
 ```
 
-The same entrypoint runs Ruff lint, Black formatting checks, strict Pyre,
-boundary rules forbidding unchecked typing escape hatches, unit tests, and real
-Beads/Dolt server tests in Tollgate and GitHub CI. Preparation reuses matching
-Beads 1.2.2 and Dolt 2.2.0 binaries or downloads them into the ignored test-tool
-directory. Tests start temporary servers and never use the production database.
-Checks do not rewrite source files. Formatting is explicit:
-
-```sh
-.venv/bin/python -m black src tests scripts
-```
-
-Regenerate `requirements-dev.lock` from `pyproject.toml` with `uv pip compile
-pyproject.toml --extra dev --no-header --no-annotate -o requirements-dev.lock`,
-then run `scripts/prepare-check` again. Keep the editable package and dependencies
-in sync after dependency changes.
+The fast gate checks style, strict typing, boundaries, and retained accounting/link behavior. The full gate adds source selection and native routing integration. Tollgate runs the full gate against the actual integration candidate before promotion. New source commits are selected on the next call; existing calls retain their snapshot. Dependency or state maintenance is explicit.

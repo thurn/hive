@@ -6,15 +6,14 @@ from pathlib import Path
 
 from hive.beads_connection import BeadsConnection
 from hive.beads_process import BeadsProcess
-from hive.beads_store import BeadsStore
 from hive.collection_registry import CollectionRegistry
 from hive.errors import ErrorCode, HiveError
 from hive.identity import CodexTaskId
 from hive.jsonvalue import string
 from hive.launch_context import LaunchContext
-from hive.locking import Guards, file_lock
+from hive.locking import file_lock
 from hive.native_transcripts import NativeTranscripts
-from hive.session_store import SessionStore
+from hive.thread_links import read
 from hive.usage_store import UsageStore
 
 
@@ -26,21 +25,16 @@ def sweep(context: LaunchContext, index: Path, limit: int) -> dict[str, object]:
     usage = UsageStore(context.state / "telemetry.sqlite3")
     registry = CollectionRegistry(usage)
     with file_lock(context.state / "collection.lock", timeout=0):
-        tasks: tuple[CodexTaskId, ...] | None = None
+        links = None
+        gaps = None
         registry_error: str | None = None
         try:
-            store = BeadsStore(
-                BeadsProcess(
-                    BeadsConnection.read(context.beads), "hive-observer", timeout=2
-                )
-            )
-            tasks = tuple(
-                s.task
-                for s in SessionStore(store, Guards(context.state / "locks")).list()
+            links, gaps = read(
+                BeadsProcess(BeadsConnection.read(context.beads), timeout=2)
             )
         except (HiveError, OSError) as error:
             registry_error = str(error)
-        registry.refresh(tasks, registry_error)
+        registry.refresh(links, gaps, registry_error)
         selected = registry.next(limit)
         paths: dict[CodexTaskId, Path] = {}
         native_error: str | None = None

@@ -11,7 +11,7 @@ from pathlib import Path
 
 from hive.errors import ErrorCode, HiveError
 from hive.jsonvalue import parse, record
-from hive.locking import Guards, file_lock
+from hive.locking import file_lock
 
 ROOT: Path = Path(__file__).resolve().parents[1]
 
@@ -238,9 +238,7 @@ class SourceSelectionTests(unittest.TestCase):
                         process.kill()
                     process.communicate(timeout=5)
             self.assertEqual(len(list((root / "local-state/sources").iterdir())), 1)
-            guards = Guards(root / "local-state/locks")
-            guards.stop_mutations("Fixture conversion")
-            with guards.maintenance():
+            with file_lock(root / "local-state/locks/maintenance.lock"):
                 failed = call(environment)
                 self.assertNotEqual(failed.returncode, 0)
                 self.assertEqual(record(parse(failed.stderr))["code"], "Busy")

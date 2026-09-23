@@ -10,12 +10,10 @@ import unittest
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
-from cli_fixture import ROOT, cli_fixture
-from server_fixture import private_server
-
 from hive.identity import CodexTaskId
 from hive.usage_store import UsageStore
 
+ROOT: Path = Path(__file__).resolve().parents[1]
 TASK: CodexTaskId = CodexTaskId("native-task")
 
 
@@ -81,74 +79,6 @@ class UsageTests(unittest.TestCase):
             )
             self.assertEqual(store.collect(TASK, path)["read_bytes"], 0)
             self.assertEqual(store.report(TASK)["known_tokens"], report["known_tokens"])
-
-    def test_fresh_cli_resumes_after_partial_writes_moves_and_provider_outage(
-        self,
-    ) -> None:
-        with private_server() as (connection, _), cli_fixture(connection) as cli:
-            path = connection.directory / "transcript.jsonl"
-            original = response("response-1", counters())
-            path.write_bytes(header() + original[:-8])
-            # Collection and reporting remain usable even when Beads is down.
-            metadata = connection.directory / ".beads/metadata.json"
-            saved = metadata.read_text()
-            metadata.write_text("{}")
-            args = ("telemetry", "usage", "--task", TASK)
-            self.assertIsNone(cli.call(*args)["known_tokens"])
-            first = cli.call(
-                "telemetry", "collect", "--task", TASK, "--transcript", str(path)
-            )
-            self.assertTrue(first["incomplete_tail"])
-            self.assertIsNone(cli.call(*args)["known_tokens"])
-            with path.open("ab") as stream:
-                stream.write(original[-8:] + original + response("missing"))
-                stream.write(
-                    line(
-                        "event_msg",
-                        {
-                            "type": "token_count",
-                            "info": {"total_token_usage": counters(9000)},
-                        },
-                    )
-                )
-            cli.call("telemetry", "collect", "--task", TASK, "--transcript", str(path))
-            report = cli.call(*args)
-            self.assertEqual(report["observed_responses"], 2)
-            self.assertEqual(report["responses_missing_usage"], 1)
-            self.assertEqual(
-                report["known_tokens"],
-                {k: v for k, v in counters().items() if k != "total_tokens"},
-            )
-            self.assertIsNone(report["api_equivalent_usd"])
-            archive = path.with_name("archived.jsonl")
-            path.rename(archive)
-            missing = cli.call(
-                "telemetry", "collect", "--task", TASK, "--transcript", str(path)
-            )
-            self.assertIsInstance(missing["error"], str)
-            self.assertIsNone(missing["remaining_bytes"])
-            self.assertEqual(cli.call(*args)["observed_responses"], 2)
-            with archive.open("ab") as stream:
-                stream.write(response("missing", counters(0)) + b"{broken json}\n")
-            moved = cli.call(
-                "telemetry", "collect", "--task", TASK, "--transcript", str(archive)
-            )
-            self.assertIsNone(moved["error"])
-            report = cli.call(*args)
-            self.assertEqual(report["responses_missing_usage"], 0)
-            self.assertEqual(report["parse_gaps"], 1)
-            self.assertEqual(report["remaining_bytes"], 0)
-            self.assertIsNone(report["source_error"])
-            again = cli.call(
-                "telemetry", "collect", "--task", TASK, "--transcript", str(archive)
-            )
-            self.assertEqual(again["read_bytes"], 0)
-            # Observer corruption cannot block ordinary task filing or reads.
-            metadata.write_text(saved)
-            (cli.state / "telemetry.sqlite3").write_bytes(b"corrupt derived data")
-            cli.call(*args, expected="ProviderUnavailable")
-            bead = cli.add("Independent task")
-            self.assertEqual(cli.call("task", "show", bead)["code"], "Task")
 
     def test_bounded_chunks_skip_oversized_records_and_surface_conflicting_usage(
         self,

@@ -1,0 +1,17 @@
+# Acceptance evidence
+
+Pending the isolated native acceptance scenarios in [scope reduction](scope-reduction-plan.md), section 13. No production Hive or Fulcrum state has been changed for this branch. Record exact native commands, versions, candidate/commit IDs, elapsed times and limitations here when exercised.
+
+## Manual backup and restore, 2026-09-23
+
+Two disposable Beads 1.2.2 server-mode stores on Dolt 2.2.0 were used. `bd backup init <isolated path> --json`, `bd backup sync --json`, then `bd backup restore <isolated path> --force --json` in the second initialized store succeeded. The round trip took 6.08 seconds. Native `list --all --limit 0 --json` agreed for two beads on title, description, acceptance criteria, priority, flat metadata, historical assignee, status and the dependency edge. Native `comments <id> --json` agreed for the recorded note. The first bead carried `hive_resolution=completed` and a closed historical assignee. The disposable IDs were `hv-bf1` and `hv-6h8`. No production store was touched.
+
+## Native dependent executor journey, 2026-09-23
+
+In a disposable registered repository with a local bare remote, isolated Beads server and actual Codex thread `01a0ce84-c2c9-7d23-a621-b3bd114675f0`, the native `bd` commands filed `hv-hy3` and dependent `hv-xxo`. Both stored that thread as `hive_origin_thread`; the second initially had no `hive_project` and was explicitly corrected before work. `bd ready --json` showed only `hv-hy3`. Native `bd --actor <actual-thread-id> update ID --claim` set the assignee on each bead in order. Each change was made in a Tollgate-created worktree, cold-reviewed by a fresh subagent, committed with a Conventional Commit and submitted with `tg candidate HEAD --json`. `tg approve ID --wait --json` returned terminal `promoted`, `remote_state=synchronized`, `cleanup_state=completed` for candidates `01a0ce9b-6968-72e1-a1a4-4eeec469a428` and `01a0ce9d-5670-7013-8a7c-75a0badef7e7`. Tested commits were `f9d7362afde790962be5378ec3b6b719ca6a03e0` and `8579238cec0fdf1a0ac55ab929b8a676afba2374`. The first was closed with `hive_resolution=completed` before `bd ready` exposed the second; the second was closed the same way after delivery. `git rev-parse master refs/remotes/origin/master` and `git ls-remote origin refs/heads/master` all returned the second tested commit. The native journey took about 3 minutes 15 seconds from filing to second delivery, including agent review and model/tool time; individual native commands completed in less than a second. Beads 1.2.2, Tollgate 0.1.0 and Dolt 2.2.0 were used. The setup was disposable and no production task or remote was touched.
+
+This used one real executor thread, so it did not establish the two-distinct-thread competing-claim condition. Native claim atomicity is exercised by Beads, but that particular acceptance condition remains open. A third candidate (`01a0ce9f-1063-72e0-b51f-85b74a1f8ec8`) is running a real native wait configured for 30 minutes; its outcome and source-update evidence are pending. The observation comparison and archival activity check are also pending.
+
+## Local gate budgets, 2026-09-23
+
+Three consecutive quiescent runs after the routing fix passed. Wall times from `/usr/bin/time -p` were 9.30, 9.89 and 8.86 seconds for `scripts/check-fast` (30-second budget), and 17.07, 17.10 and 17.35 seconds for `scripts/check` (120-second budget). The full gate includes native Beads server tests; hosted CI is asynchronous.

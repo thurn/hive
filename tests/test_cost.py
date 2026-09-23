@@ -5,16 +5,12 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from cli_fixture import cli_fixture
-from server_fixture import private_server
-from test_source_selection import commit
 from test_usage import TASK, counters, header, line, response
 
 from hive.cost_report import report
 from hive.errors import HiveError
 from hive.identity import ModelId
 from hive.identity import PricingTier as Tier
-from hive.jsonvalue import parse, record, sequence, string
 from hive.pricing import dollars, quote
 from hive.usage import Tokens
 from hive.usage_store import UsageStore
@@ -108,63 +104,6 @@ class CostTests(unittest.TestCase):
             again = report(store, TASK, Tier.STANDARD)
             self.assertEqual(again["observed_responses"], 5)
             self.assertEqual(again["conflicting_model_context"], 1)
-
-    def test_fresh_cost_cli_preserves_rate_evidence_across_live_catalog_edits(
-        self,
-    ) -> None:
-        with private_server() as (connection, _), cli_fixture(connection) as cli:
-            path = connection.directory / "transcript.jsonl"
-            path.write_bytes(header() + context() + response("first", counters()))
-            collect = (
-                "telemetry",
-                "collect",
-                "--task",
-                TASK,
-                "--transcript",
-                str(path),
-            )
-            cli.call(*collect)
-            # Simulate an earlier collector that retained usage without context.
-            with sqlite3.connect(cli.state / "telemetry.sqlite3") as db:
-                db.execute("DELETE FROM turn_models")
-            args = ("cost", "--task", TASK)
-            self.assertIsNone(cli.call(*args)["observed_estimate_usd"])
-            cli.call(*collect, "--from-start")
-            before = cli.call(*args)
-            self.assertEqual(before["observed_estimate_usd"], "0.001000000000")
-            configuration = record(
-                parse(Path(cli.environment["HIVE_BOOTSTRAP_CONFIG"]).read_text())
-            )
-            repository = Path(string(configuration["repository"], "repository"))
-            pricing = repository / "src/hive/pricing.py"
-            pricing.write_text(
-                pricing.read_text()
-                .replace("Rates(10_000_000,", "Rates(20_000_000,")
-                .replace('"2026-09-23",', '"2026-09-24",')
-            )
-            commit(repository, "test: change observed price schedule")
-            self.assertEqual(cli.call(*args), before)
-            with path.open("ab") as stream:
-                stream.write(response("second", counters()))
-            cli.call(*collect)
-            after = cli.call(*args)
-            self.assertEqual(after["observed_estimate_usd"], "0.003000000000")
-            self.assertEqual(len(sequence(after["rate_groups"], "rate groups")), 2)
-            self.assertEqual(after["unattributed_responses"], 2)
-            self.assertEqual(
-                cli.call(*args, "--tier", "fast")["observed_estimate_usd"],
-                "0.008000000000",
-            )
-            # Neither provider outage nor collection gaps should masquerade as a
-            # billing total. Retained estimates remain usable with source health.
-            path.unlink()
-            cli.call(*collect)
-            metadata = connection.directory / ".beads/metadata.json"
-            metadata.write_text("{}")
-            unavailable = cli.call(*args)
-            self.assertEqual(unavailable["observed_estimate_usd"], "0.003000000000")
-            self.assertIsNotNone(unavailable["source_error"])
-            self.assertIsNone(unavailable["remaining_bytes"])
 
     def test_large_totals_stay_exact_and_context_rolls_back_with_cursor(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

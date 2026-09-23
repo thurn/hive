@@ -1,5 +1,6 @@
 """Native identities stay distinct without inventing tokens or fingerprints."""
 
+from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
 from typing import NewType
@@ -23,3 +24,9 @@ class PricingTier(StrEnum):
     FAST = "fast"
     BATCH = "batch"
     FLEX = "flex"
+
+
+@dataclass(frozen=True)
+class Owner:
+    task: CodexTaskId
+    turn: CodexTurnId

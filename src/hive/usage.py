@@ -4,9 +4,8 @@ from dataclasses import dataclass
 from datetime import datetime
 
 from hive.errors import ErrorCode, HiveError
-from hive.identity import CodexTaskId, CodexTurnId, ResponseId
+from hive.identity import CodexTaskId, CodexTurnId, Owner, ResponseId
 from hive.jsonvalue import integer, record, string
-from hive.model import Owner
 
 
 @dataclass(frozen=True)
