@@ -10,3 +10,4 @@ fi
   --requirement "$repo_root/requirements-dev.lock"
 "$check_venv/bin/python" -m pip install --disable-pip-version-check \
   --no-build-isolation --no-deps --editable "$repo_root"
+"$check_venv/bin/python" "$repo_root/scripts/prepare_server_tools.py"

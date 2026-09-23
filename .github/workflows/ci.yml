@@ -20,5 +20,9 @@ jobs:
           python-version: '3.12'
           cache: pip
           cache-dependency-path: requirements-dev.lock
+      - uses: actions/cache@v4
+        with:
+          path: .test-tools
+          key: test-tools-${{ runner.os }}-${{ runner.arch }}-beads-1.2.2-dolt-2.2.0
       - run: scripts/prepare-check
       - run: scripts/check

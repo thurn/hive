@@ -20,7 +20,11 @@ Nothing in this tracking document reduces that scope.
 - Server-only Beads adapter, configuration, CLI, real concurrent database tests:
   native lifecycle/dependency JSON boundaries implemented and validated against
   observed server output. See `beads-boundary.md` for atomicity findings.
-  Process transport, compound operations, and concurrent database tests remain.
+  Explicit server transport and native create/read/update primitives are now
+  covered by disposable-server tests, including routing isolation, outage,
+  retained lifecycle, dependency hydration, and uncertain responses. CI prepares
+  pinned test binaries on Linux and macOS. Compound operations, configuration
+  records, task CLI, and concurrent admission database tests remain.
 - Local-master bootstrap, immutable source selection, maintenance write barrier.
 - Tollgate workspaces, blocking delivery, recovery, and thin MCP transport.
 - Native task registry, titles, recruitment, interruption and stop hooks.

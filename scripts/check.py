@@ -66,7 +66,11 @@ def run(command: list[str], deadline: float) -> int:
 def main() -> int:
     os.environ["PYTHONPATH"] = str(ROOT / "src")
     os.environ["PATH"] = os.pathsep.join(
-        (str(Path(sys.executable).parent), os.environ.get("PATH", ""))
+        (
+            str(Path(sys.executable).parent),
+            str(ROOT / ".test-tools/bin"),
+            os.environ.get("PATH", ""),
+        )
     )
     deadline = time.monotonic() + 120
     if boundary_rules():

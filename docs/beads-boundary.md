@@ -10,6 +10,8 @@ are not evidence that Hive's full workflow or latency target is implemented.
   embeds prerequisite issue details. Hive's list decoder accepts the former
   shape explicitly, checks complete hydration, and rejects unsupported edge
   types rather than quietly treating them as nonblocking.
+  Adding `--skip-labels` changes the result to an `issues`/`meta` envelope.
+  The process adapter explicitly uses that form and checks its issue count.
 - `bd update --claim --metadata ...` is not one atomic lifecycle change.
   The CLI calls `ClaimIssue` and then `UpdateIssue` separately. Hive needs to
   update native status, assignee, and the phase/turn metadata together under
@@ -41,6 +43,12 @@ phases, mismatched code/artifact states, and native status/ownership conflicts.
 Malformed active records must remain visible to the admission service, not
 be filtered out and silently removed from its capacity count.
 
-Still required: the process adapter, guarded compound task operations,
-interrupted-write and concurrent-claim integration tests, and end-to-end
-measurements. These observations do not justify direct Dolt access by themselves.
+The process adapter now fixes the server endpoint and database explicitly,
+discards ambient routing variables, disables server auto-start, and preserves
+uncertainty after failed writes. Its real-server tests also check preservation
+of non-Hive metadata and resumption after deferred creation. They do not yet
+prove concurrent compound admission or recovery of interrupted graph changes.
+
+Still required: guarded compound task operations, interrupted-write and
+concurrent-claim integration tests, and end-to-end measurements. These
+observations do not justify direct Dolt access by themselves.

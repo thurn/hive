@@ -18,8 +18,11 @@ scripts/check
 ```
 
 The same entrypoint runs Ruff lint, Black formatting checks, strict Pyre,
-boundary rules forbidding unchecked typing escape hatches, and unit tests in
-Tollgate and GitHub CI. Checks do not rewrite source files. Formatting is explicit:
+boundary rules forbidding unchecked typing escape hatches, unit tests, and real
+Beads/Dolt server tests in Tollgate and GitHub CI. Preparation reuses matching
+Beads 1.2.2 and Dolt 2.2.0 binaries or downloads them into the ignored test-tool
+directory. Tests start temporary servers and never use the production database.
+Checks do not rewrite source files. Formatting is explicit:
 
 ```sh
 .venv/bin/python -m black src tests scripts
