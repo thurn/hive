@@ -26,6 +26,30 @@ def session_line(value: object) -> str:
 
 def display(result: dict[str, object]) -> str:
     code = string(result.get("code"), "result code")
+    if code == "TranscriptCollected":
+        return (
+            f"{result['task']}: read {result['read_bytes']} bytes; "
+            f"{result['remaining_bytes']} bytes remain; incomplete tail: {result['incomplete_tail']}"
+            + (
+                ""
+                if result["error"] is None
+                else f"\nSource unavailable: {result['error']}"
+            )
+        )
+    if code == "ObservedUsage":
+        known = result["known_tokens"]
+        return (
+            f"{result['task']}: {result['observed_responses']} observed responses; "
+            f"{result['responses_missing_usage']} missing usage; {result['parse_gaps']} parse gaps\n"
+            f"Known tokens: {'unknown' if known is None else known}\n"
+            f"API-equivalent cost: unknown. {result['coverage']}\n"
+            f"Last scan: {result['last_scan']}; remaining bytes: {result['remaining_bytes']}"
+            + (
+                ""
+                if result["source_error"] is None
+                else f"\nSource unavailable: {result['source_error']}"
+            )
+        )
     if code == "Session":
         result_session = record(result.get("session"))
         suffix = (

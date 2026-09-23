@@ -47,6 +47,19 @@ def parser() -> Parser:
         "--json", action="store_true", help="structured output; accepted anywhere"
     )
     groups = root.add_subparsers(dest="group", required=True)
+    telemetry = groups.add_parser("telemetry").add_subparsers(
+        dest="action", required=True
+    )
+    collect = telemetry.add_parser(
+        "collect", help="ingest one bounded native transcript chunk"
+    )
+    collect.add_argument("--task", required=True)
+    collect.add_argument("--transcript", required=True)
+    collect.add_argument("--max-bytes", type=int, default=1_048_576)
+    usage = telemetry.add_parser(
+        "usage", help="show observed usage and missing coverage"
+    )
+    usage.add_argument("--task", required=True)
     session = groups.add_parser("session").add_subparsers(dest="action", required=True)
     listing = session.add_parser("list", help="show enrolled tasks and title drift")
     listing.add_argument("--project")
@@ -203,6 +216,15 @@ def decode(data: dict[str, object]) -> c.Request:
             None if project is None else ProjectId(string(project, "project"))
         )
     action = data.get("action")
+    if group == "telemetry":
+        task = CodexTaskId(string(data.get("task"), "native task"))
+        if action == "usage":
+            return c.ReadUsage(task)
+        return c.CollectTranscript(
+            task,
+            Path(string(data.get("transcript"), "transcript")).expanduser().resolve(),
+            integer(data.get("max_bytes"), "byte budget", minimum=1),
+        )
     if group == "session":
         if action == "list":
             project = data.get("project")

@@ -60,6 +60,24 @@ def transition(service: TaskService, request: c.Change) -> Bead:
 
 
 def handle(request: c.Request, context: LaunchContext) -> dict[str, object]:
+    if isinstance(request, (c.CollectTranscript, c.ReadUsage)):
+        # Observation is independent of Beads and imports no collector on the
+        # normal task path. The CLI has already released the maintenance guard.
+        import sqlite3
+
+        from hive.usage_store import UsageStore
+
+        try:
+            observations = UsageStore(context.state / "telemetry.sqlite3")
+            return (
+                observations.collect(request.task, request.path, budget=request.budget)
+                if isinstance(request, c.CollectTranscript)
+                else observations.report(request.task)
+            )
+        except (OSError, sqlite3.Error) as error:
+            raise HiveError(
+                ErrorCode.PROVIDER_UNAVAILABLE, f"Telemetry unavailable: {error}"
+            ) from error
     if isinstance(request, c.SourceRequest):
         return {
             "code": "SourceSelected",

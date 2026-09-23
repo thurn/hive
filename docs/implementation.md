@@ -95,7 +95,13 @@ Nothing in this tracking document reduces that scope.
   deadline acceptance, and ended-turn pruning remain; these are not established
   by protocol fixtures or the pure guard's cleanup operation.
 - Archivist eligibility, descendant checks, race repair, manual unarchive.
-- Incremental telemetry, traces, token pricing, coverage, and retention.
+- Incremental native usage ingestion now records bounded transcript progress
+  and per-response usage in one derived SQLite transaction. Fresh command and
+  independent-process tests cover restarts, archive moves, partial records,
+  missing data, conflicting responses, bounded oversized-record skipping, and
+  collector/database failures without affecting task execution. See
+  `usage-collection.md`. Background collection, native response-start attribution,
+  model/tier coverage, trace spans, token pricing, and retention remain required.
 - Consistent issue backup, timers, safe restore and Fulcrum cutover tooling.
 - Assembled Codex/Beads/Tollgate demonstration, long wait, hot reload, failure QA.
 - Full normal-load performance matrix and requirement-by-requirement audit.
@@ -103,8 +109,8 @@ Nothing in this tracking document reduces that scope.
 ## Verification obligations
 
 Each code commit must pass `scripts/check` and Tollgate before promotion.
-The complete local/hosted check has a five-minute deadline. The current 58-test
-suite passed locally in 120 seconds, alongside lint, Black, and strict Pyre.
+The complete local/hosted check has a five-minute deadline. The current 64-test
+suite passed locally in 126 seconds, alongside lint, Black, and strict Pyre.
 Hosted macOS run 35832926989 reached the former three-minute deadline near the
 end of the suite with every completed scenario passing; Linux passed. The
 expanded allowance covers slower hosted database/CLI execution without removing

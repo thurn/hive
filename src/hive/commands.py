@@ -1,6 +1,7 @@
 """Immutable command requests shared by CLI and future native adapters."""
 
 from dataclasses import dataclass
+from pathlib import Path
 
 from hive.beads_store import NewTask
 from hive.configuration import Project
@@ -186,6 +187,18 @@ class ListSessions:
     project: ProjectId | None
 
 
+@dataclass(frozen=True)
+class CollectTranscript:
+    task: CodexTaskId
+    path: Path
+    budget: int
+
+
+@dataclass(frozen=True)
+class ReadUsage:
+    task: CodexTaskId
+
+
 type Request = (
     SourceRequest
     | ReadConfiguration
@@ -206,6 +219,8 @@ type Request = (
     | EnterSession
     | RecordName
     | ListSessions
+    | CollectTranscript
+    | ReadUsage
 )
 
 
@@ -221,5 +236,7 @@ def mutates(request: Request) -> bool:
             WaitDelivery,
             InspectDelivery,
             ListSessions,
+            CollectTranscript,
+            ReadUsage,
         ),
     )
