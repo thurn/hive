@@ -10,7 +10,7 @@ import tempfile
 import unittest
 import warnings
 from concurrent.futures import ThreadPoolExecutor
-from contextlib import redirect_stderr
+from contextlib import closing, redirect_stderr
 from pathlib import Path
 
 from cli_fixture import ROOT, SCOPE, WORKER, Cli, cli_fixture
@@ -110,29 +110,51 @@ class HookTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             path: Path = Path(temporary) / "reminders.sqlite3"
             script: str = (
-                "import sys; from pathlib import Path; "
+                "import sys, sqlite3; from pathlib import Path; "
                 "from hive.reminders import ReminderGuard; "
                 "from hive.model import Owner; "
-                "from hive.identity import CodexTaskId,CodexTurnId; "
-                "print(ReminderGuard(Path(sys.argv[1])).reserve("
+                "from hive.identity import CodexTaskId,CodexTurnId\n"
+                "try:\n"
+                " print(ReminderGuard(Path(sys.argv[1])).reserve("
                 "Owner(CodexTaskId('task-1'),CodexTurnId('turn-1')),"
-                "already_continued=False))"
+                "already_continued=False))\n"
+                "except sqlite3.OperationalError as error:\n"
+                " if error.sqlite_errorcode not in "
+                "(sqlite3.SQLITE_BUSY, sqlite3.SQLITE_LOCKED): raise\n"
+                " print('Busy')\n"
             )
 
             def reserve(_: int) -> str:
-                return subprocess.run(
+                result = subprocess.run(
                     [sys.executable, "-c", script, str(path)],
                     env={**os.environ, "PYTHONPATH": str(ROOT / "src")},
                     capture_output=True,
                     text=True,
-                    check=True,
                     timeout=10,
-                ).stdout.strip()
+                )
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertIn(result.stdout.strip(), {"True", "False", "Busy"})
+                return result.stdout.strip()
 
+            # Preserve the original race at concurrent first use, before any
+            # process has created the database or its table.
             with ThreadPoolExecutor(max_workers=8) as pool:
                 self.assertEqual(list(pool.map(reserve, range(8))).count("True"), 1)
             self.assertEqual(reserve(0), "False")
+
+            path = Path(temporary) / "contended-reminders.sqlite3"
             guard = ReminderGuard(path)
+            with guard.connect():
+                pass
+            # The 50ms deadline deliberately permits unavailable observations.
+            # Hold a real write transaction to exercise that outcome reliably.
+            with closing(sqlite3.connect(path)) as blocked:
+                blocked.execute("BEGIN IMMEDIATE")
+                with ThreadPoolExecutor(max_workers=8) as pool:
+                    self.assertEqual(list(pool.map(reserve, range(8))), ["Busy"] * 8)
+            with ThreadPoolExecutor(max_workers=8) as pool:
+                self.assertEqual(list(pool.map(reserve, range(8))).count("True"), 1)
+            self.assertEqual(reserve(0), "False")
             guard.completed(OWNER, BeadId("hv-first"))
             self.assertTrue(guard.reserve(OWNER, already_continued=True))
             guard.completed(OWNER, BeadId("hv-first"))
@@ -257,6 +279,13 @@ class HookTests(unittest.TestCase):
             bead = BeadId(cli.add("First artifact"))
             next_bead = BeadId(cli.add("Next artifact"))
             guard = cli.state / "locks/reminders.sqlite3"
+            with ReminderGuard(guard).connect():
+                pass
+            with closing(sqlite3.connect(guard)) as blocked:
+                blocked.execute("BEGIN IMMEDIATE")
+                unavailable = hook(cli)
+                self.assertNotIn("decision", unavailable)
+                self.assertIn("systemMessage", unavailable)
             guard.write_bytes(b"not a database")
             self.assertNotIn("decision", hook(cli))
             store = BeadsStore(BeadsProcess(connection, "observation-test"))

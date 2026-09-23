@@ -32,6 +32,13 @@ allow stopping without consuming the reminder. Unknown data or a damaged guard
 also allows stopping, with a diagnostic. The hook does not attempt automatic
 recovery or wake stopped executors later.
 
+The reminder database has a 50ms busy deadline. Concurrent callbacks may reach
+that deadline; unavailable guard state permits stopping with a diagnostic and
+must not request continuation. Tests hold a real SQLite write transaction to
+exercise this path, then verify that competing processes emit exactly one
+reminder after contention clears. Unexpected child-process failures retain
+their stderr rather than being reported only as an exit code.
+
 Completion observations are written under the existing admission exclusion
 after the acknowledged Beads transition. This preserves their order without a
 second work ledger. If the observation cannot be saved, the task operation still

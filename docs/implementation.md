@@ -133,7 +133,7 @@ Nothing in this tracking document reduces that scope.
 
 Each code commit must pass `scripts/check` and Tollgate before promotion.
 The complete local/hosted check has a five-minute deadline. The current 79-test
-suite passed locally in 168 seconds, alongside lint, Black, and strict Pyre.
+suite passed locally in 167 seconds, alongside lint, Black, and strict Pyre.
 Hosted macOS run 35832926989 reached the former three-minute deadline near the
 end of the suite with every completed scenario passing; Linux passed. The
 expanded allowance covers slower hosted database/CLI execution without removing
@@ -141,6 +141,15 @@ scenarios. Per-operation timeouts, assertions, and the ten-minute CI job limit
 remain unchanged. This check budget is separate from task latency acceptance.
 Meaningful integration tests must use disposable databases and projects.
 Do not alter Fulcrum workers or its database to make tests convenient.
+
+Hosted run 35853756739 initially passed macOS but failed Linux in the existing
+concurrent reminder test. Its child stderr was not included, so the original
+exception cannot be established from that run. A rerun of the same commit
+passed both platforms. An unforced local 100-round
+probe did not reproduce it. The test now respects the guard's intentional busy
+deadline, deterministically exercises contention and hook diagnostics, and
+preserves unexpected child stderr. No runtime deadline or exclusion assertion
+was relaxed; unavailable observations cannot emit reminders.
 
 The <100ms p95 target is unproven until complete CLI operations meet it at eight
 concurrent clients with 1,000 unfinished beads, observation and backup active.
