@@ -47,6 +47,13 @@ def display(result: dict[str, object]) -> str:
         return "\n".join(lines)
     if code == "Updated":
         return f"[{result['id']}] Priority set to P{result['priority']}"
+    if code == "WorkspaceCreated":
+        return f"[{result['bead']}] Workspace: {result['workspace']}\nBranch: {result['branch']}"
+    if code in {"Submitted", "Authorized"}:
+        return f"{code}: {result['candidate']}\nSource: {result['source']}"
+    if code in {"Candidate", "Delivered"}:
+        suffix = "" if result.get("reason") is None else f"\n{result['reason']}"
+        return f"{result['candidate']}: {result['state']} · remote {result['remote']}{suffix}"
     if code == "Task":
         task = record(result.get("task"))
         state = record(task.get("state"))

@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 from hive.beads_store import NewTask
 from hive.configuration import Project
-from hive.identity import BeadId, ProjectId
+from hive.identity import BeadId, CandidateId, ProjectId
 from hive.model import Capacity, Delivery, Owner, PauseReason, Phase
 
 
@@ -121,6 +121,43 @@ class Prioritize:
     priority: int
 
 
+@dataclass(frozen=True)
+class CreateWorkspace:
+    bead: BeadId
+    project: ProjectId
+    owner: Owner
+
+
+@dataclass(frozen=True)
+class SubmitWork:
+    bead: BeadId
+    project: ProjectId
+    owner: Owner
+
+
+@dataclass(frozen=True)
+class ApproveWork:
+    bead: BeadId
+    project: ProjectId
+    owner: Owner
+
+
+type ExternalRequest = CreateWorkspace | SubmitWork | ApproveWork
+
+
+@dataclass(frozen=True)
+class WaitDelivery:
+    candidate: CandidateId
+    project: ProjectId
+    timeout: int = 3600
+
+
+@dataclass(frozen=True)
+class InspectDelivery:
+    candidate: CandidateId
+    project: ProjectId
+
+
 type Request = (
     SourceRequest
     | Initialize
@@ -134,8 +171,13 @@ type Request = (
     | Change
     | Dependency
     | Prioritize
+    | ExternalRequest
+    | WaitDelivery
+    | InspectDelivery
 )
 
 
 def mutates(request: Request) -> bool:
-    return not isinstance(request, (SourceRequest, Status, Ready, Show))
+    return not isinstance(
+        request, (SourceRequest, Status, Ready, Show, WaitDelivery, InspectDelivery)
+    )

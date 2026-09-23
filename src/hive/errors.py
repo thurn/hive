@@ -16,6 +16,12 @@ class ErrorCode(StrEnum):
     ALREADY_OWNED = "AlreadyOwned"
     STALE_OWNER = "StaleOwner"
     RECOVERY_REQUIRED = "RecoveryRequired"
+    DELIVERY_TIMEOUT = "DeliveryTimeout"
+    VALIDATION_FAILED = "ValidationFailed"
+    MERGE_CONFLICT = "MergeConflict"
+    CANCELLED = "Cancelled"
+    SYNCHRONIZATION_REQUIRED = "SynchronizationRequired"
+    UNRESOLVED_OUTCOME = "UnresolvedOutcome"
 
 
 class HiveError(Exception):

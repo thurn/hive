@@ -6,7 +6,7 @@ result; failures have a `code`, a `detail`, and an `uncertain` flag on stderr.
 Successful JSON goes to stdout. A failed command exits nonzero.
 
 The current commands operate on Beads and local ownership. Native task naming,
-recruitment, stopped-writer recovery, Tollgate integration, skills, and cost
+recruitment, stopped-writer recovery, skills, and cost
 collection are still under implementation. These commands do not replace those
 required parts of the full workflow.
 
@@ -112,3 +112,41 @@ writers. It records the executor's observed result; it does not create a second
 Tollgate certification system. Artifact delivery uses
 `{"kind":"artifact","location":"/work/research.md"}` instead. Cancellation
 requires settled ownership and a reason. Terminal outcomes are immutable.
+
+## Tollgate workspace and delivery
+
+Provider mutations require the current owner/turn and appropriate phase. They
+check ownership under the admission lock, then release both locks before
+calling Tollgate. An acknowledgment does not update Beads implicitly: record
+the returned workspace or candidate using a fresh `task advance` command.
+This keeps long provider effects outside Beads transactions and source changes.
+
+```sh
+hive workspace create hv-fg3 --project search --owner task-id --turn turn-id
+# Record the returned workspace as implementing, then implement and cold-review.
+# Record reviewing with the committed source and workspace before submission.
+hive delivery submit hv-fg3 --project search --owner task-id --turn turn-id
+# Record waiting-for-delivery with that source, workspace, and candidate.
+hive delivery approve hv-fg3 --project search --owner task-id --turn turn-id
+hive delivery wait candidate-id --project search --timeout-seconds 3600
+hive delivery inspect candidate-id --project search
+```
+
+A wait retains one native foreground client. Intermediate native status changes
+do not return to the model for polling. Timeout kills the wait client only;
+it does not cancel the candidate or clear bead ownership. Inspect the retained
+candidate before attaching another wait. A failed CI check, conflict,
+cancellation, provider outage, unresolved outcome, and incomplete synchronization
+are distinct failures. Promotion alone is not delivery.
+
+A lost workspace/submission acknowledgment leaves the earlier lifecycle phase
+intact. Inspect native worktree/candidate inventory before retrying; automated
+recovery inspection remains under implementation. No external command retries
+mutations blindly. Complete the bead only after actual delivery and the skill's
+completion checklist; then attempt the next project-scoped claim.
+
+The installed Tollgate app currently lacks candidate-correlated local-sync
+results needed by this adapter. Its wait can finish promoted while Hive returns
+`UnresolvedOutcome`. Explicitly disabled local sync also needs authoritative
+provider policy evidence. See [the boundary evidence](tollgate-boundary.md).
+These are outstanding native acceptance requirements, not successful delivery.

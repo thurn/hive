@@ -8,12 +8,16 @@ from hive.beads_process import BeadsProcess
 from hive.beads_store import BeadsStore
 from hive.configuration import Configuration, configuration_metadata
 from hive.configuration_store import ConfigurationStore
+from hive.delivery_commands import candidate_value
+from hive.errors import ErrorCode, HiveError
 from hive.filing import Filing
 from hive.launch_context import LaunchContext
 from hive.locking import Guards
 from hive.model import Bead
 from hive.task_service import TaskService
 from hive.task_status import read_status, status_value, task_value
+from hive.tollgate import Tollgate
+from hive.tollgate_process import TollgateProcess
 
 
 def configuration_result(value: Configuration) -> dict[str, object]:
@@ -56,6 +60,20 @@ def handle(request: c.Request, context: LaunchContext) -> dict[str, object]:
     guards = Guards(context.state / "locks")
     configuration = ConfigurationStore(store, guards)
     service = TaskService(store, guards)
+    if isinstance(request, (c.CreateWorkspace, c.SubmitWork, c.ApproveWork)):
+        raise HiveError(
+            ErrorCode.INVALID_INPUT,
+            "Provider effects require unlocked external dispatch",
+        )
+    if isinstance(request, (c.WaitDelivery, c.InspectDelivery)):
+        project = configuration.read().project(request.project)
+        provider = Tollgate(TollgateProcess(project.repository))
+        if isinstance(request, c.WaitDelivery):
+            return candidate_value(
+                provider.wait(request.candidate, timeout=request.timeout),
+                delivered=True,
+            )
+        return candidate_value(provider.inspect(request.candidate))
     if isinstance(request, c.Initialize):
         return configuration_result(configuration.initialize())
     if isinstance(request, c.Register):

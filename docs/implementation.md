@@ -45,7 +45,16 @@ Nothing in this tracking document reduces that scope.
   contacting Beads. Task mutations retain that inherited guard through their
   guarded operation; read commands release it first. Exceptional dependency
   and state maintenance tooling remain; this is not the real CI-wait test.
-- Tollgate workspaces, blocking delivery, recovery, and thin MCP transport.
+- Tollgate workspace creation, reviewed-source submission, exact candidate
+  approval, inspection, and foreground blocking waits are implemented. Owner
+  checks precede external effects; neither Hive lock spans provider calls.
+  Subprocess tests and a real-Beads CLI journey cover failure/uncertainty,
+  synchronization, stale owners, retained capacity, next claims, and a source
+  update during a pending short wait. The real installed-provider smoke exposed
+  missing candidate identity in local-sync events; Hive correctly refuses to
+  claim delivery. Disabled local-sync policy also lacks authoritative evidence.
+  See `tollgate-boundary.md`. Provider capability resolution, real delivery
+  acceptance, recovery inspection, and thin MCP transport remain.
 - Native task registry, titles, recruitment, interruption and stop hooks.
 - All eight skills and progressive-disclosure instructions.
 - Archivist eligibility, descendant checks, race repair, manual unarchive.

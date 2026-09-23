@@ -44,6 +44,29 @@ def parser() -> Parser:
         "--json", action="store_true", help="structured output; accepted anywhere"
     )
     groups = root.add_subparsers(dest="group", required=True)
+    workspace = groups.add_parser("workspace").add_subparsers(
+        dest="action", required=True
+    )
+    create = workspace.add_parser(
+        "create", help="create the owned bead's Tollgate worktree"
+    )
+    create.add_argument("bead")
+    for field in ("project", "owner", "turn"):
+        create.add_argument(f"--{field}", required=True)
+    delivery = groups.add_parser("delivery").add_subparsers(
+        dest="action", required=True
+    )
+    for name in ("submit", "approve"):
+        operation = delivery.add_parser(name)
+        operation.add_argument("bead")
+        for field in ("project", "owner", "turn"):
+            operation.add_argument(f"--{field}", required=True)
+    for name in ("wait", "inspect"):
+        operation = delivery.add_parser(name)
+        operation.add_argument("candidate")
+        operation.add_argument("--project", required=True)
+        if name == "wait":
+            operation.add_argument("--timeout-seconds", type=int, default=3600)
     groups.add_parser("source", help="show the selected local-master source")
     status = groups.add_parser("status", help="show work and malformed records")
     status.add_argument("--project")
@@ -150,6 +173,24 @@ def decode(data: dict[str, object]) -> c.Request:
             None if project is None else ProjectId(string(project, "project"))
         )
     action = data.get("action")
+    if group in {"workspace", "delivery"}:
+        project = ProjectId(string(data.get("project"), "project"))
+        if action == "wait":
+            return c.WaitDelivery(
+                CandidateId(string(data.get("candidate"), "candidate")),
+                project,
+                integer(data.get("timeout_seconds"), "wait timeout", minimum=1),
+            )
+        if action == "inspect":
+            return c.InspectDelivery(
+                CandidateId(string(data.get("candidate"), "candidate")), project
+            )
+        identifier = bead_id(data.get("bead"))
+        if group == "workspace":
+            return c.CreateWorkspace(identifier, project, owner(data))
+        if action == "submit":
+            return c.SubmitWork(identifier, project, owner(data))
+        return c.ApproveWork(identifier, project, owner(data))
     if group == "config":
         if action == "initialize":
             return c.Initialize()
