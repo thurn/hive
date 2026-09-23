@@ -1,123 +1,133 @@
 # Tollgate delivery boundary
 
-The native CLI and local source were inspected on September 22, 2026. Local
-source at `/Users/dthurn/tollgate` commit
-`5322745efc719e87564aa30b5bab97ce184d5261` has a richer synchronization event than
-the installed app actually emits. The real smoke test below establishes that
-capability gap; source inspection alone did not establish installed support.
+Hive uses the installed native provider's outcomes and current Git state. It
+neither reconstructs CI certificates nor requires historical events to prove a
+branch's present contents. Native interfaces were inspected and exercised on
+September 22–23, 2026, in disposable registered projects.
+
+## Native operations
+
+The adapter preserves the distinction between submitted source, tested
+integration, promotion, and configured synchronization:
 
 - `tg worktree create NAME --json` creates from promoted release and returns
-  `path`, `branch`, and `new_oid`. Tollgate can remove a clean source worktree
-  after promotion. Provider waits must run from the durable project repository.
+  `path`, `branch`, and `new_oid`. Tollgate may remove a clean source worktree
+  after promotion. Waits run from the durable project repository.
 - `tg candidate HEAD --json` records source without authorizing promotion. It
-  returns `item_id`, `source_oid`, and current state. A conflict can still
-  produce a retained candidate; submission success is not delivery success.
-- `tg approve ID --wait --json` authorizes that exact candidate. `tg wait ID
-  --json` attaches to its delivery wait. A validation-only candidate wait can
-  finish at `ready`; a delivery wait must not treat that as delivered.
-- Wait output is newline-delimited JSON emitted only on provider state changes.
-  Each record has `item`, `repository_execution_state`, and `block_reasons`.
-  The native command waits internally and reconnects after transport loss.
-  Hive should retain one subprocess and consume its final result without
-  returning intermediate statuses to the model for polling.
-- A terminal `promoted` candidate can have remote state `abandoned`; this does
-  not satisfy configured synchronization. Success requires synchronized remote
-  state or an explicitly disabled remote.
-- Local checkout synchronization has a separate result. The provider can
-  return a promoted candidate after recording `user-master.sync-needs-attention`.
-  In the inspected source, `tg history --json` exposes synchronization events
-  identifying `item_id`, `tested_oid`, and `outcome.status`. Outcomes include
-  `updated-checkout`, `updated-ref`, and `already-current`. Do not infer local
-  synchronization merely from candidate promotion or a zero wait exit code.
-- Before a retained delivery phase can release ownership, complete, or return
-  to implementation, inspect its exact candidate and source through native
-  status. The candidate and every reported build attempt must be terminal.
-  Native cancellation can mark the item terminal while an attempt still drains;
-  such a snapshot keeps the bead occupied. A promoted candidate additionally
-  requires configured synchronization. A failed/cancelled candidate can settle
-  without pretending it delivered. Unknown/missing provider fields refuse the
-  transition. These checks do not establish that local agent writers stopped.
-  Native `externally-integrated` is also terminal once its attempts drain, so
-  it permits deferred settlement. It does not authorize reimplementation or
-  report delivery success; that adopted-base outcome needs reconciliation.
-- Provider inspection holds neither admission nor maintenance locks. Before
-  applying the prepared transition, reacquire maintenance, check selected source
-  still matches local master, and compare the observed bead state under admission.
-  Concurrent pause/owner/phase changes are not overwritten. Source changes ask
-  for a new command; no application code or state layout is mixed in one call.
-- `tg status ID --json` is candidate-specific and returns `item`, generation,
-  buildset, attempts, and other evidence. Repository-wide status also contains
-  active/history items and events. Historical event payloads have a bounded
-  snapshot budget and can be marked truncated. Missing evidence must remain
-  distinguishable from a successful synchronization.
+  returns `item_id`, `source_oid`, and state. A conflict can produce a retained
+  candidate; submission success is not delivery success.
+- `tg approve ID --wait --json` authorizes that candidate. `tg wait ID --json`
+  attaches to its wait. Validation-only readiness is not delivery.
+- Wait output is newline-delimited JSON emitted on provider state changes.
+  Hive retains one blocking subprocess; intermediate states do not return to
+  the model for polling. Timeout stops this client, not provider work.
+- `tg status ID --json` resolves candidate IDs globally. Hive compares its
+  `item.repository_id` with the selected project's `tg status` repository ID
+  before accepting inspection, settlement, approval, or successful delivery.
+  Two repositories containing the same source commit are still distinct.
+  Native selection can fall back to its only registration or a registered
+  parent. Its returned repository path must also match the selected project
+  root after canonical path resolution; an unrelated matching ID is not enough.
 
-Primary local references:
+Primary local references are `/Users/dthurn/tollgate/README.md`, the CLI's
+`apps/tg/src/main.rs`, service `crates/tollgate-service/src/lib.rs`, and domain
+`crates/tollgate-domain/src/state.rs`.
 
-- `/Users/dthurn/tollgate/README.md`
-- `/Users/dthurn/tollgate/apps/tg/src/main.rs`: `wait_for_item_until`, `History`
-- `/Users/dthurn/tollgate/crates/tollgate-service/src/lib.rs`:
-  `ItemWaitStatus`, `complete_user_master_sync`, `RepositorySnapshot`
-- `/Users/dthurn/tollgate/crates/tollgate-domain/src/state.rs`: candidate and
-  remote states
+## Synchronization postconditions
 
-Required validation includes timeout without candidate cancellation, failed CI,
-conflict, failed remote and local synchronization, lost submission responses,
-and a real pending wait across a Hive source update. These adapter checks still
-do not replace the full real Codex/Beads/Tollgate assembled workflow or the
-30-minute wait required by the design.
+A successful wait must report `promoted` with remote state `synchronized` or
+`disabled`. `abandoned`, `pushing`, and blocked synchronization are not success.
+A fresh candidate snapshot must still identify the same source and promotion.
+Its current generation must belong to that candidate.
 
-## Current adapter evidence and provider gap
+The native generation's `tested_oid` identifies the integrated commit, which
+can differ from the submitted source. Hive checks whether that commit is an
+ancestor of `refs/heads/master` in the selected repository. Later commits on
+master are allowed. A rewound branch or a master containing only submitted
+source does not satisfy the check. Ambient Git routing and replacement-object
+settings cannot substitute another repository or commit ancestry.
 
-Portable CI exercises real subprocesses with native-shaped protocol fixtures,
-plus a real Beads server and source-selecting CLI. The journey checks exact
-owner/turn admission, workspace creation, reviewed-source submission, approval,
-blocking delivery, next claiming, and lock release before every provider call.
-A pending subprocess survives a committed Hive source update while the next
-command selects that update. This is a short fixture wait, not the required
-30-minute real Codex acceptance.
+The installed provider synchronizes this local master ref. Its accepted
+integration branch is `release`; finding the tested commit only there does not
+prove local-master synchronization. A dirty checkout can leave master behind
+even when the remote push has succeeded.
 
-A disposable real Tollgate project was also initialized with a voting file
-check. Hive created its native worktree, submitted source
-`2cb34a3fa63815e8c291abfa4e4f530e714f907a`, authorized candidate
-`01a0cce5-b900-7440-8084-d81a5fae9844`, and waited for promotion. The native source
-worktree was removed and local master contained the delivered file. The remote
-was disabled for this disposable test. The test repository was unregistered
-afterward; Fulcrum and Hive's production registrations were untouched.
+An explicit disabled-sync policy is the other valid outcome. Local config text
+alone is insufficient: `tg config explain` must return `sync_user_master=false`
+and a native configuration identity matching both the candidate generation and
+the selected repository's active configuration. Hive compares these existing
+native identities without computing or storing its own hashes. Missing or
+mismatched policy evidence leaves the outcome unresolved.
 
-**Hive did not report this smoke test as delivered.** The installed app emitted:
+Historical synchronization events are diagnostic only. The installed app emits
+flat events without candidate identity; Hive does not correlate them by timing,
+adjacency, or the last successful event. No alternate event schemas or version
+fallbacks are required by the current implementation.
 
-```json
-{"kind":"user-master.synchronized",
- "payload":{"path":"<disposable-project>","status":"updated-checkout"}}
-```
+## Settlement and concurrency
 
-That event omits candidate identity. Hive returns `UnresolvedOutcome`, retaining
-the candidate for inspection. It must not correlate by timing, adjacency, or an
-unrelated later success. The adapter requires the explicit `item_id`/`outcome`
-contract observed in current Tollgate source. Missing or truncated native
-history is also unresolved.
+Leaving a retained delivery phase requires inspection of its exact candidate
+and source. The candidate and all reported build attempts must be terminal.
+Cancellation can mark an item terminal while an attempt drains; that state
+retains the bead's occupied slot. Promotion additionally requires configured
+synchronization. Failed or cancelled work can settle without claiming delivery.
+Unknown or missing provider fields refuse settlement.
 
-A local `.tollgate/config.toml` edit is not evidence of the policy applied to a
-candidate. Consequently, Hive does not skip synchronization verification based
-on that file. Projects that disable local synchronization need an authoritative
-provider acknowledgement of the exemption; that provider interface remains to
-be established. Full native delivery acceptance is incomplete until these
-provider capabilities are available and tested. Do not weaken the delivery
-contract merely to make the installed-provider smoke test green.
+`externally-integrated` is terminal once its attempts drain, allowing deferred
+settlement. It does not authorize reimplementation or report delivery success;
+the adopted-base result needs reconciliation. These provider checks do not
+establish that local agent writers have stopped.
 
-## Native settlement check
+Inspection holds neither Hive lock. Before applying an observed transition,
+reacquire maintenance, verify the selected source still matches local master,
+and compare the observed lifecycle state under admission. Concurrent pause,
+owner, and phase changes cannot be overwritten. A source change requires a
+fresh invocation rather than mixing application code in a running call.
 
-On September 23, a separate disposable registered project ran a deliberately
-failing check through the installed provider. Hive submitted source
+## Evidence and remaining acceptance
+
+Portable CI exercises real subprocesses with native-shaped replies, real Git
+repositories, and a real Beads server. The CLI journey includes exact owner/turn
+admission, isolated workspaces, reviewed-source submission, approval, delivery,
+next claiming, and lock release before provider calls. A short pending wait
+survives a source update. Targeted checks cover integrated-versus-source commit
+identity, later and rewound master, applied-policy mismatch, and foreign
+candidates sharing the selected project's commit. Native fallback and parent
+registrations cannot authorize candidates for the selected project.
+
+The initial native smoke candidate `01a0cce5-b900-7440-8084-d81a5fae9844`
+promoted source `2cb34a3fa63815e8c291abfa4e4f530e714f907a`, but the earlier
+history-based adapter refused it because the emitted event lacked candidate
+identity. That result motivated observing the actual branch postcondition; it
+is not evidence that the current adapter remains blocked by history format.
+
+A separate native failed-CI probe submitted source
 `c447f4db8131041b7411eea63d350dc579b5c191` as candidate
-`01a0cdd0-8a3f-73b0-816e-4bcf77e29d63`. Its first settlement inspection returned
-`RecoveryRequired` while the native candidate was `running`. After one blocking
-native wait returned failed CI, inspection accepted the settled `failed`
-candidate with remote synchronization disabled. The project was unregistered
-after the check; existing projects and databases were unchanged.
+`01a0cdd0-8a3f-73b0-816e-4bcf77e29d63`. Settlement returned `RecoveryRequired`
+while running, then accepted the failed candidate after one blocking wait.
 
-This establishes pending-versus-failed settlement against the installed
-provider. The draining-cancellation race, changed-owner/phase comparisons, and
-source-change refusal are covered by subprocess/real-Beads tests. It does not
-close the local-sync evidence gap above or establish native agent-writer
-settlement, the complete assembled workflow, or long-wait acceptance.
+Native synchronization probes used a disposable project and local bare remote:
+
+- Candidate `01a0cdde-1a6e-7363-a23d-16096f2b3403` promoted source
+  `aa70339b1cba1226df741dddb691df04ca4b6f00`. With local sync enabled and remote
+  disabled, Hive accepted the actual master inclusion.
+- Candidate `01a0cdde-2710-7560-8027-8fc382083f3f` promoted source
+  `e7834aa487801fa7d71783cbcdbafcf6cccda2d9`. Master did not contain it; Hive
+  accepted the native applied disabled-sync policy instead.
+- Candidate `01a0cde2-0b55-78c3-8b27-ca4d0db76331` promoted source
+  `209ca6722617093a30876f5d5647d2025e8c11e8` with remote synchronization enabled.
+  The deliberately dirty main checkout prevented local synchronization. Hive
+  refused delivery despite remote success, then accepted it after explicit
+  local fast-forward to the already certified release.
+
+The remote-enabled probe first encountered a remote baseline mismatch because
+prior promotions had remote synchronization disabled. Only the disposable bare
+remote was aligned with its already-certified release before continuing the
+same candidate. After restoring the dirty file, native reconcile and pull did
+not repair master; explicit local repair was necessary. These observations
+prove detection and recognition of repair, not automatic repair by Hive.
+
+This is native adapter evidence, not the complete Codex/Beads/Tollgate assembled
+workflow. The real 30-minute Codex wait, native stopped-writer recovery, deployed
+role/hook behavior, and full failure QA remain outstanding. The disposable probe registrations were removed. No production Hive or Fulcrum
+task database was created or changed for these probes.

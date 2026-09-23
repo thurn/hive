@@ -7,7 +7,8 @@ from pathlib import Path
 
 from hive.errors import ErrorCode, HiveError
 from hive.identity import CandidateId, SourceCommit, WorktreePath
-from hive.jsonvalue import integer, parse, record, sequence, string
+from hive.jsonvalue import parse, record, sequence, string
+from hive.local_sync import candidate_configuration, require_local_sync
 from hive.tollgate_model import (
     Approval,
     Candidate,
@@ -86,7 +87,10 @@ class Tollgate:
             )
 
     def inspect(self, candidate: CandidateId) -> Candidate:
-        return decode_candidate(self.process.run(["status", candidate]), candidate)
+        raw = self.process.run(["status", candidate])
+        retained = decode_candidate(raw, candidate)
+        candidate_configuration(self.process, raw)
+        return retained
 
     def inspect_settled(
         self, candidate: CandidateId, source: SourceCommit
@@ -94,6 +98,7 @@ class Tollgate:
         """Terminal item state alone is insufficient while an attempt drains."""
         raw = record(self.process.run(["status", candidate]), "candidate status")
         retained = decode_candidate(raw, candidate)
+        applied = candidate_configuration(self.process, raw)
         if retained.source != source:
             raise HiveError(ErrorCode.INVALID_RECORD, "Candidate source changed")
         failures = {
@@ -149,7 +154,7 @@ class Tollgate:
                     ErrorCode.SYNCHRONIZATION_REQUIRED,
                     f"{candidate}: remote state is {retained.remote}",
                 )
-            self.require_local_sync(candidate)
+            require_local_sync(self.process, retained, raw, applied)
         return retained
 
     def approve(self, candidate: CandidateId, source: SourceCommit) -> Approval:
@@ -222,7 +227,9 @@ class Tollgate:
                     f"{candidate}: provider exited after reporting promotion; inspect status",
                     uncertain=True,
                 )
-            self.require_local_sync(candidate)
+            raw = self.process.run(["status", candidate])
+            applied = candidate_configuration(self.process, raw)
+            require_local_sync(self.process, retained, raw, applied)
             return retained
         failures = {
             CandidateState.FAILED: ErrorCode.VALIDATION_FAILED,
@@ -239,49 +246,3 @@ class Tollgate:
             f"{candidate}: {retained.reason or retained.state}",
             uncertain=code == ErrorCode.UNRESOLVED_OUTCOME,
         )
-
-    def require_local_sync(self, candidate: CandidateId) -> None:
-        # A checkout's configuration can differ from the provider's applied
-        # policy. Only an explicit provider outcome establishes synchronization.
-        events = sequence(self.process.run(["history"]), "Tollgate history")
-        sync_events = [
-            record(raw, "Tollgate event")
-            for raw in events
-            if record(raw, "Tollgate event").get("kind")
-            in {"user-master.synchronized", "user-master.sync-needs-attention"}
-        ]
-        # Inspect newest first: a newer truncated event could supersede a known
-        # success, even though its candidate identity is no longer retained.
-        sync_events.sort(
-            key=lambda event: integer(event.get("sequence"), "event sequence"),
-            reverse=True,
-        )
-        latest: dict[str, object] | None = None
-        for event in sync_events:
-            payload = record(event.get("payload"), "synchronization event")
-            if payload.get("snapshot_truncated") is True:
-                break
-            if payload.get("item_id") == candidate:
-                latest = event
-                break
-        if latest is None:
-            raise HiveError(
-                ErrorCode.UNRESOLVED_OUTCOME,
-                f"{candidate}: no complete local synchronization result; inspect Tollgate",
-                uncertain=True,
-            )
-        outcome = record(
-            record(latest.get("payload")).get("outcome"), "local synchronization"
-        )
-        state = string(outcome.get("status"), "local synchronization status")
-        if state == "needs-attention":
-            raise HiveError(
-                ErrorCode.SYNCHRONIZATION_REQUIRED,
-                f"{candidate}: {string(outcome.get('reason'), 'synchronization reason')}",
-            )
-        if state not in {"updated-checkout", "updated-ref", "already-current"}:
-            raise HiveError(
-                ErrorCode.UNRESOLVED_OUTCOME,
-                f"{candidate}: unknown local synchronization outcome {state}",
-                uncertain=True,
-            )

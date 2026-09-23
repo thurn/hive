@@ -34,6 +34,8 @@ def status(
     return {
         "item": {
             "id": CANDIDATE,
+            "repository_id": "project-1",
+            "current_generation_id": "generation-1",
             "source_oid": oid(source),
             "state": state,
             "remote_state": remote,
@@ -42,18 +44,11 @@ def status(
         },
         "attempts": [],
         "buildset": None,
-    }
-
-
-def sync_event(
-    sequence: int, outcome: str = "updated-checkout", candidate: str = CANDIDATE
-) -> dict[str, object]:
-    return {
-        "sequence": sequence,
-        "kind": "user-master.synchronized",
-        "payload": {
-            "item_id": candidate,
-            "outcome": {"status": outcome, "reason": "Checkout has user edits"},
+        "generation": {
+            "id": "generation-1",
+            "item_id": CANDIDATE,
+            "tested_oid": oid(source),
+            "configuration_digest": "native-policy-1",
         },
     }
 
@@ -71,6 +66,18 @@ class ProviderFixture:
     provider: Tollgate
 
     def configure(self, **commands: object) -> None:
+        commands.setdefault(
+            "repository",
+            reply(
+                {
+                    "state": {
+                        "id": "project-1",
+                        "path": str(self.repository),
+                        "active_configuration_digest": "native-policy-1",
+                    }
+                }
+            ),
+        )
         (self.root / "fixture.json").write_text(json.dumps(commands))
 
     def calls(self) -> list[dict[str, object]]:

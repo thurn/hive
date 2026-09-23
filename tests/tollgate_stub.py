@@ -29,7 +29,9 @@ def main() -> int:
         for name in ("admission.lock", "maintenance.lock"):
             with (Path(locks) / name).open("a") as guard:
                 fcntl.flock(guard, fcntl.LOCK_EX | fcntl.LOCK_NB)
-    reply = record(plan.get(args[0]), "fixture command")
+    reply = record(
+        plan.get("repository" if args == ["status"] else args[0]), "fixture command"
+    )
     if reply.get("ignore_term") is True:
         signal.signal(signal.SIGTERM, signal.SIG_IGN)
     entered = reply.get("entered")

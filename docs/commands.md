@@ -163,11 +163,14 @@ recovery inspection remains under implementation. No external command retries
 mutations blindly. Complete the bead only after actual delivery and the skill's
 completion checklist; then attempt the next project-scoped claim.
 
-The installed Tollgate app currently lacks candidate-correlated local-sync
-results needed by this adapter. Its wait can finish promoted while Hive returns
-`UnresolvedOutcome`. Explicitly disabled local sync also needs authoritative
-provider policy evidence. See [the boundary evidence](tollgate-boundary.md).
-These are outstanding native acceptance requirements, not successful delivery.
+Delivery checks that the candidate belongs to the selected project and that its
+native promoted generation's tested commit is included in local `master`.
+Remote synchronization must also be complete or explicitly disabled. A local
+sync opt-out is accepted only when native configuration identities establish
+that it was applied to that candidate. A dirty or rewound checkout can require
+local repair even after the remote push succeeds. See
+[the boundary evidence](tollgate-boundary.md). Real Codex assembled-flow and
+30-minute wait acceptance remain outstanding.
 
 ## Blocking tool transport
 

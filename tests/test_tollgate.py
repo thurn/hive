@@ -5,7 +5,7 @@ import os
 import unittest
 from unittest.mock import patch
 
-from tollgate_fixture import CANDIDATE, oid, provider_fixture, reply, status, sync_event
+from tollgate_fixture import CANDIDATE, oid, provider_fixture, reply, status
 
 from hive.errors import ErrorCode, HiveError
 from hive.identity import SourceCommit, WorktreePath
@@ -32,9 +32,7 @@ class TollgateTests(unittest.TestCase):
                 ):
                     value = status(fixture.source, candidate_state, remote)
                     value["attempts"] = [{"state": attempt_state}]
-                    fixture.configure(
-                        status=reply(value), history=reply([sync_event(1)])
-                    )
+                    fixture.configure(status=reply(value))
                     if expected is None:
                         fixture.provider.inspect_settled(CANDIDATE, fixture.source)
                     else:
@@ -56,78 +54,24 @@ class TollgateTests(unittest.TestCase):
                 fixture.provider.inspect_settled(CANDIDATE, fixture.source)
             self.assertEqual(missing.exception.code, ErrorCode.INVALID_RECORD)
 
-    def test_delivery_wait_consumes_changes_and_requires_all_sync(self) -> None:
+    def test_delivery_wait_consumes_changes_and_checks_current_master(self) -> None:
         with provider_fixture() as fixture:
-            (fixture.repository / ".tollgate/config.toml").write_text(
-                "sync_user_master = false\n"
-            )
             stream = "\n".join(
                 json.dumps(status(fixture.source, phase))
                 for phase in ("running", "promoting", "promoted")
             )
-            fixture.configure(wait={"output": stream}, history=reply([sync_event(1)]))
+            fixture.configure(
+                wait={"output": stream}, status=reply(status(fixture.source))
+            )
             result = fixture.provider.wait(CANDIDATE)
             self.assertEqual(result.state, CandidateState.PROMOTED)
             self.assertEqual(
                 [call["args"] for call in fixture.calls()],
-                [["wait", CANDIDATE], ["history"]],
+                [["wait", CANDIDATE], ["status", CANDIDATE], ["status"]],
             )
             self.assertTrue(
                 all(call["cwd"] == str(fixture.repository) for call in fixture.calls())
             )
-            for history, expected in [
-                (
-                    [sync_event(1), sync_event(2, "needs-attention")],
-                    ErrorCode.SYNCHRONIZATION_REQUIRED,
-                ),
-                ([sync_event(2), sync_event(1, "needs-attention")], None),
-                ([], ErrorCode.UNRESOLVED_OUTCOME),
-                (
-                    [
-                        {
-                            "sequence": 1,
-                            "kind": "user-master.synchronized",
-                            "payload": {
-                                "path": str(fixture.repository),
-                                "status": "updated-checkout",
-                            },
-                        }
-                    ],
-                    ErrorCode.UNRESOLVED_OUTCOME,
-                ),
-                (
-                    [
-                        sync_event(1),
-                        {
-                            "sequence": 2,
-                            "kind": "user-master.synchronized",
-                            "payload": {"snapshot_truncated": True},
-                        },
-                    ],
-                    ErrorCode.UNRESOLVED_OUTCOME,
-                ),
-                (
-                    [
-                        {
-                            "sequence": 1,
-                            "kind": "user-master.synchronized",
-                            "payload": {"snapshot_truncated": True},
-                        },
-                        sync_event(2),
-                    ],
-                    None,
-                ),
-            ]:
-                with self.subTest(history=history):
-                    fixture.configure(
-                        wait=reply(status(fixture.source)), history=reply(history)
-                    )
-                    if expected is None:
-                        fixture.provider.wait(CANDIDATE)
-                    else:
-                        with self.assertRaises(HiveError) as caught:
-                            fixture.provider.wait(CANDIDATE)
-                        self.assertEqual(caught.exception.code, expected)
 
     def test_failure_timeout_and_unknown_output_never_report_delivery(self) -> None:
         with provider_fixture() as fixture:

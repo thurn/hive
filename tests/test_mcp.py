@@ -10,7 +10,7 @@ from cli_fixture import SCOPE, cli_fixture
 from mcp_fixture import assert_stopped, await_file, mcp_client
 from server_fixture import private_server
 from test_source_selection import commit
-from tollgate_fixture import CANDIDATE, provider_fixture, reply, status, sync_event
+from tollgate_fixture import CANDIDATE, provider_fixture, reply, status
 
 from hive.jsonvalue import integer, parse, record, sequence, string
 from hive.locking import Guards
@@ -100,7 +100,7 @@ class McpTests(unittest.TestCase):
                         "release": str(release),
                         "entered": str(entered),
                     },
-                    history=reply([sync_event(1)]),
+                    status=reply(status(provider.source)),
                 )
                 client.wait(4, CANDIDATE)
                 await_file(entered)
@@ -130,7 +130,8 @@ class McpTests(unittest.TestCase):
                     "Delivered",
                 )
                 provider.configure(
-                    wait=reply(status(provider.source)), history=reply([sync_event(1)])
+                    wait=reply(status(provider.source)),
+                    status=reply(status(provider.source)),
                 )
                 client.wait(6, CANDIDATE)
                 second = record(client.receive()["result"])

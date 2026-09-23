@@ -12,7 +12,7 @@ from pathlib import Path
 from cli_fixture import ROOT, SCOPE, WORKER, cli_fixture
 from server_fixture import private_server
 from test_source_selection import commit
-from tollgate_fixture import CANDIDATE, oid, provider_fixture, reply, status, sync_event
+from tollgate_fixture import CANDIDATE, oid, provider_fixture, reply, status
 
 from hive.jsonvalue import parse, record, string
 from hive.locking import Guards
@@ -158,7 +158,7 @@ class DeliveryCliTests(unittest.TestCase):
                     "delay": 3,
                     "entered": str(entered),
                 },
-                history=reply([sync_event(1)]),
+                status=reply(status(provider.source)),
             )
             waiting = subprocess.Popen(
                 [
@@ -211,7 +211,6 @@ class DeliveryCliTests(unittest.TestCase):
             provider.configure(
                 locks=str(cli.state / "locks"),
                 status=reply(status(provider.source)),
-                history=reply([sync_event(1)]),
             )
             cli.call(
                 "task",

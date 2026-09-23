@@ -41,7 +41,11 @@ Nothing in this tracking document reduces that scope.
   Real CLI/server journeys cover protected pauses, stale turns, artifact
   completion, follow-on claims, maintenance, provider outage, malformed status,
   and compare-and-swap configuration edits. Native recovery and the complete
-  Codex/Tollgate workflow remain unimplemented.
+  Codex/Tollgate workflow remain unimplemented. The replacement design also
+  requires a durable marker for uncertain admission-relevant server writes;
+  existing kernel-lock crash tests do not establish that guarantee. Fencing all
+  competing transitions and reconciling a request that outlives its client
+  remain required.
 - Local-master bootstrap and immutable source selection are implemented for
   the command entrypoint. Real Git/process tests keep a call alive across a
   commit, verify delayed imports and assets remain consistent, ignore working
@@ -59,16 +63,18 @@ Nothing in this tracking document reduces that scope.
   checks precede external effects; neither Hive lock spans provider calls.
   Subprocess tests and a real-Beads CLI journey cover failure/uncertainty,
   synchronization, stale owners, retained capacity, next claims, and a source
-  update during a pending short wait. The real installed-provider smoke exposed
-  missing candidate identity in local-sync events; Hive correctly refuses to
-  claim delivery. Disabled local-sync policy also lacks authoritative evidence.
-  See `tollgate-boundary.md`. Provider capability resolution, real delivery
-  acceptance and recovery inspection remain. A per-session stdio MCP transport
+  update during a pending short wait. Native delivery now checks the selected
+  repository and actual inclusion of the promoted tested commit in local master,
+  with an opt-out tied to the provider's applied candidate configuration. Real
+  disposable native probes cover enabled/disabled sync and a dirty checkout
+  despite successful remote synchronization; explicit local repair is recognized.
+  See `tollgate-boundary.md`. Full assembled delivery acceptance and native
+  recovery inspection remain. A per-session stdio MCP transport
   now launches a fresh source-selecting CLI for each blocking wait. The real
   transport/server fixture covers hot reload during a pending call, ordinary
   and pre-start cancellation, repeated cancellation followed by EOF, and
   draining native wait clients without canceling provider work. The native
-  Codex 30-minute call and deployed provider acceptance remain unproven.
+  Codex 30-minute call and full assembled acceptance remain unproven.
   Leaving a retained delivery phase now checks candidate and build-attempt
   settlement outside both Hive locks. Pending delivery cannot return to editing,
   complete, or release deferred capacity; a terminal cancelled item still
@@ -76,7 +82,7 @@ Nothing in this tracking document reduces that scope.
   preserves concurrent pauses and ownership changes. A source change during
   inspection refuses the mutation until a fresh invocation. Real Beads/CLI
   tests exercise these transitions and races; native stopped-writer recovery
-  and the installed provider's local-sync evidence remain separate gaps.
+  remains a separate gap.
 - Native task enrollment and typed title intent/outcome commands are implemented
   in Beads infrastructure records. CLI/server tests race enrollment, preserve an
   enclosing role during inline filing, retain capacity independence, and repair
@@ -126,8 +132,8 @@ Nothing in this tracking document reduces that scope.
 ## Verification obligations
 
 Each code commit must pass `scripts/check` and Tollgate before promotion.
-The complete local/hosted check has a five-minute deadline. The current 74-test
-suite passed locally in 165 seconds, alongside lint, Black, and strict Pyre.
+The complete local/hosted check has a five-minute deadline. The current 79-test
+suite passed locally in 168 seconds, alongside lint, Black, and strict Pyre.
 Hosted macOS run 35832926989 reached the former three-minute deadline near the
 end of the suite with every completed scenario passing; Linux passed. The
 expanded allowance covers slower hosted database/CLI execution without removing
