@@ -77,6 +77,7 @@ def interrupt(
         )
     # The hook entrypoint already owns the shared maintenance guard.
     with file_lock(guards.directory / "admission.lock", timeout=0.1):
+        guards.write_barrier.require_clear()
         records = store.active_records()
         session = next(
             (s for s in sessions(records) if s.task == event.owner.task), None
@@ -117,7 +118,8 @@ def handle(event: HookEvent, context: LaunchContext) -> dict[str, object]:
         except (OSError, ValueError, sqlite3.Error) as error:
             report_failure(f"Hive could not retain the native interruption: {error}")
     store = BeadsStore(
-        BeadsProcess(BeadsConnection.read(context.beads), "hive-hook", timeout=0.5)
+        BeadsProcess(BeadsConnection.read(context.beads), "hive-hook", timeout=0.5),
+        guards.write_barrier,
     )
     if isinstance(event, Interrupt):
         return interrupt(event, store, guards, reminder)

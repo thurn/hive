@@ -128,6 +128,12 @@ def parser() -> Parser:
     groups.add_parser("mcp", help="serve blocking tools over stdio")
     groups.add_parser("hook", help="handle one native Stop/Interrupt event on stdin")
     groups.add_parser("source", help="show the selected local-master source")
+    recovery = groups.add_parser("recovery").add_subparsers(
+        dest="action", required=True
+    )
+    recovery.add_parser(
+        "inspect-write", help="read the durable pending Beads write without Beads"
+    )
     status = groups.add_parser("status", help="show work and malformed records")
     status.add_argument("--project")
     config = groups.add_parser("config").add_subparsers(dest="action", required=True)
@@ -240,6 +246,8 @@ def decode(data: dict[str, object]) -> c.Request:
         )
     if group == "source":
         return c.SourceRequest()
+    if group == "recovery" and data.get("action") == "inspect-write":
+        return c.InspectPendingWrite()
     if group == "status":
         project = data.get("project")
         return c.Status(

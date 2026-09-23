@@ -1,6 +1,7 @@
 """Administrative changes share admission exclusion with worker decisions."""
 
 import json
+import uuid
 from dataclasses import dataclass
 
 from hive.bead_json import decode_bead
@@ -16,6 +17,7 @@ from hive.errors import ErrorCode, HiveError
 from hive.jsonvalue import record, sequence, string
 from hive.locking import Guards
 from hive.model import Capacity
+from hive.write_barrier import DatabaseChange, RecordChange
 
 
 @dataclass(frozen=True)
@@ -43,30 +45,67 @@ class ConfigurationStore:
             current = string(types.get("value"), "custom types", empty=True)
             values = tuple(part for part in current.split(",") if part)
             if "role" not in values:
-                self.store.process.run(
-                    ["config", "set", "types.custom", ",".join((*values, "role"))],
-                    mutation=True,
+                role_types = ",".join((*values, "role"))
+                self.guards.write_barrier.perform(
+                    DatabaseChange(
+                        "register native role type",
+                        (("value", role_types),),
+                    ),
+                    lambda: self._set_role_type(role_types),
                 )
-            metadata = configuration_metadata(projects, Capacity())
-            result = self.store.process.run(
-                [
-                    "create",
-                    "--type",
-                    "role",
-                    "--no-history",
-                    "--title",
-                    "Hive configuration",
-                    "--description",
-                    "Project registration and global admission limits",
-                    "--metadata",
-                    json.dumps(metadata),
-                ],
-                mutation=True,
+            nonce = uuid.uuid4().hex
+            initial = configuration_metadata(projects, Capacity())
+            metadata: dict[str, object] = {
+                "hive_config": {
+                    **record(initial["hive_config"]),
+                    "write_nonce": nonce,
+                }
+            }
+            return self.guards.write_barrier.perform(
+                DatabaseChange("create Hive configuration", (("write_nonce", nonce),)),
+                lambda: self._create_configuration(metadata),
             )
-            try:
-                return decode_configuration(result)
-            except HiveError as error:
-                raise HiveError(error.code, error.detail, uncertain=True) from error
+
+    def _set_role_type(self, value: str) -> None:
+        result = self.store.process.run(
+            ["config", "set", "types.custom", value], mutation=True
+        )
+        try:
+            response = record(result, "role type update")
+            if response.get("key") != "types.custom" or response.get("value") != value:
+                raise HiveError(
+                    ErrorCode.INVALID_RECORD, "Role type update was not acknowledged"
+                )
+        except HiveError as error:
+            raise HiveError(error.code, error.detail, uncertain=True) from error
+
+    def _create_configuration(self, metadata: dict[str, object]) -> Configuration:
+        result = self.store.process.run(
+            [
+                "create",
+                "--type",
+                "role",
+                "--no-history",
+                "--title",
+                "Hive configuration",
+                "--description",
+                "Project registration and global admission limits",
+                "--metadata",
+                json.dumps(metadata),
+            ],
+            mutation=True,
+        )
+        try:
+            configuration = decode_configuration(result)
+            observed = record(record(result).get("metadata"))
+            if record(observed.get("hive_config")) != record(metadata["hive_config"]):
+                raise HiveError(
+                    ErrorCode.INVALID_RECORD,
+                    "Configuration creation was not acknowledged",
+                )
+            return configuration
+        except HiveError as error:
+            raise HiveError(error.code, error.detail, uncertain=True) from error
 
     def replace(
         self,
@@ -109,16 +148,28 @@ class ConfigurationStore:
                     "metadata": metadata,
                 }
             )
-            value = self.store.process.run(
-                ["update", old.id, "--metadata", json.dumps(metadata)], mutation=True
+            self.guards.write_barrier.perform(
+                RecordChange(
+                    old.id,
+                    "replace configuration",
+                    (("metadata", json.dumps(metadata, sort_keys=True)),),
+                ),
+                lambda: self._replace_configuration(old, metadata, expected),
             )
-            try:
-                results = sequence(value, "updated configuration")
-                if len(results) != 1 or decode_configuration(results[0]) != expected:
-                    raise HiveError(
-                        ErrorCode.INVALID_RECORD,
-                        "Configuration update was not acknowledged",
-                    )
-            except HiveError as error:
-                raise HiveError(error.code, error.detail, uncertain=True) from error
             return expected
+
+    def _replace_configuration(
+        self, old: Configuration, metadata: dict[str, object], expected: Configuration
+    ) -> None:
+        value = self.store.process.run(
+            ["update", old.id, "--metadata", json.dumps(metadata)], mutation=True
+        )
+        try:
+            results = sequence(value, "updated configuration")
+            if len(results) != 1 or decode_configuration(results[0]) != expected:
+                raise HiveError(
+                    ErrorCode.INVALID_RECORD,
+                    "Configuration update was not acknowledged",
+                )
+        except HiveError as error:
+            raise HiveError(error.code, error.detail, uncertain=True) from error

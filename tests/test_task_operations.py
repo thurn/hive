@@ -34,7 +34,6 @@ from hive.model import (
     Owned,
     Owner,
     PauseReason,
-    Queued,
     Reviewing,
     ReviewingArtifact,
     WorkKind,
@@ -59,8 +58,8 @@ def owner(name: str) -> Owner:
 def setup(
     connection: BeadsConnection,
 ) -> tuple[BeadsStore, Guards, TaskService, Filing]:
-    store = BeadsStore(BeadsProcess(connection, "fixture"))
     guards = Guards(connection.directory.parent / "guards")
+    store = BeadsStore(BeadsProcess(connection, "fixture"), guards.write_barrier)
     ConfigurationStore(store, guards).initialize((project(connection.directory),))
     return store, guards, TaskService(store, guards), Filing(store, guards)
 
@@ -273,7 +272,7 @@ class TaskOperationTests(unittest.TestCase):
 
     def test_dependency_completion_cancellation_and_cycle_rejection(self) -> None:
         with private_server() as (connection, _):
-            store, _, service, filing = setup(connection)
+            store, guards, service, filing = setup(connection)
             prerequisite = filing.file(
                 NewTask(
                     ProjectId("search"),
@@ -312,16 +311,18 @@ class TaskOperationTests(unittest.TestCase):
             with self.assertRaises(HiveError):
                 filing.dependency(a.id, a.project, b.id)
             self.assertIsInstance(store.get(a.id).state, Deferred)
-            with self.assertRaises(HiveError):
-                service.resume(a.id, a.project)
-            filing.dependency(a.id, a.project, b.id, remove=True)
-            service.resume(a.id, a.project)
-            service.cancel(a.id, a.project, "Cancelled")
-            with self.assertRaises(HiveError) as caught:
-                service.claim(b.project, owner("blocked-cancelled"), b.id)
-            self.assertEqual(caught.exception.code, ErrorCode.DEPENDENCY_BLOCKED)
+            self.assertEqual(guards.write_barrier.inspect()["blocked"], True)
+            for operation in (
+                lambda: service.resume(a.id, a.project),
+                lambda: filing.dependency(a.id, a.project, b.id, remove=True),
+                lambda: service.cancel(a.id, a.project, "Cancelled"),
+                lambda: service.claim(b.project, owner("blocked-cancelled"), b.id),
+            ):
+                with self.assertRaises(HiveError) as caught:
+                    operation()
+                self.assertEqual(caught.exception.code, ErrorCode.RECOVERY_REQUIRED)
 
-    def test_crash_between_creation_and_dependency_attachment_is_repairable(
+    def test_crash_between_creation_and_dependency_attachment_requires_recovery(
         self,
     ) -> None:
         with private_server() as (connection, _):
@@ -347,8 +348,9 @@ from hive.beads_store import BeadsStore,NewTask
 from hive.filing import Filing
 from hive.identity import BeadId,ProjectId
 from hive.locking import Guards
-store=BeadsStore(BeadsProcess(BeadsConnection.read(Path(sys.argv[1])),'crashing',sys.argv[3]))
-Filing(store,Guards(Path(sys.argv[2]))).file(NewTask(ProjectId('search'),'Interrupted','Needs prerequisite','Done'),(BeadId(sys.argv[4]),))
+guards=Guards(Path(sys.argv[2]))
+store=BeadsStore(BeadsProcess(BeadsConnection.read(Path(sys.argv[1])),'crashing',sys.argv[3]),guards.write_barrier)
+Filing(store,guards).file(NewTask(ProjectId('search'),'Interrupted','Needs prerequisite','Done'),(BeadId(sys.argv[4]),))
 """
             result = subprocess.run(
                 [
@@ -369,12 +371,21 @@ Filing(store,Guards(Path(sys.argv[2]))).file(NewTask(ProjectId('search'),'Interr
                 bead for bead in store.tasks() if bead.title == "Interrupted"
             )
             self.assertIsInstance(interrupted.state, Deferred)
-            with self.assertRaises(HiveError):
+            with self.assertRaises(HiveError) as caught:
                 service.resume(interrupted.id, interrupted.project)
-            filing.dependency(interrupted.id, interrupted.project, first.id)
-            restored = service.resume(interrupted.id, interrupted.project)
-            self.assertIsInstance(restored.state, Queued)
-            self.assertEqual(restored.dependencies, (first.id,))
+            self.assertEqual(caught.exception.code, ErrorCode.RECOVERY_REQUIRED)
+            self.assertEqual(
+                guards.write_barrier.inspect()["write"],
+                {
+                    "scope": "record",
+                    "bead": interrupted.id,
+                    "change": "attach prerequisites",
+                    "details": {"prerequisites": f'["{first.id}"]'},
+                },
+            )
+            with self.assertRaises(HiveError) as caught:
+                filing.dependency(interrupted.id, interrupted.project, first.id)
+            self.assertEqual(caught.exception.code, ErrorCode.RECOVERY_REQUIRED)
 
     def test_closed_owner_corruption_cannot_disappear_from_admission(self) -> None:
         with private_server() as (connection, _):

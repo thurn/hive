@@ -119,8 +119,13 @@ def handle(request: c.Request, context: LaunchContext) -> dict[str, object]:
             "commit": context.commit,
             "directory": str(context.source),
         }
-    store = BeadsStore(BeadsProcess(BeadsConnection.read(context.beads), "hive"))
+    if isinstance(request, c.InspectPendingWrite):
+        return Guards(context.state / "locks").write_barrier.inspect()
     guards = Guards(context.state / "locks")
+    store = BeadsStore(
+        BeadsProcess(BeadsConnection.read(context.beads), "hive"),
+        guards.write_barrier,
+    )
     configuration = ConfigurationStore(store, guards)
     service = TaskService(store, guards)
     if isinstance(request, (c.EnterSession, c.RecordName, c.ListSessions)):

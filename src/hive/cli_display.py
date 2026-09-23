@@ -26,6 +26,12 @@ def session_line(value: object) -> str:
 
 def display(result: dict[str, object]) -> str:
     code = string(result.get("code"), "result code")
+    if code == "WriteInspection":
+        return (
+            "No pending Beads write."
+            if result.get("blocked") is False
+            else f"Pending Beads write: {result.get('write')}\nInspection problem: {result.get('problem')}"
+        )
     if code == "ApiEquivalentCost":
         estimate = result["observed_estimate_usd"]
         subset = result["priced_subset_usd"]

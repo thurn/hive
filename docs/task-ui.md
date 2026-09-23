@@ -57,4 +57,5 @@ across projects.
 Concurrent enrollment is serialized with the short local admission lock and
 recovers a lost reply by finding the same native task ID. A failure after a
 native Beads write reports uncertainty; inspect the registry before retrying.
-The registry adds no separate reservation or deduplication token.
+An uncertain create carries a one-use write nonce to locate its native record.
+The registry adds no ownership reservation or task deduplication authority.

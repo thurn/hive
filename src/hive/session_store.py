@@ -1,13 +1,14 @@
 """Durable enrollment; native title RPCs happen outside these short guards."""
 
 import json
+import uuid
 from dataclasses import dataclass, replace
 
 from hive.beads_store import BeadsStore
 from hive.configuration import find_configuration
 from hive.errors import ErrorCode, HiveError
 from hive.identity import CodexTaskId, ProjectId
-from hive.jsonvalue import sequence
+from hive.jsonvalue import record, sequence
 from hive.locking import Guards
 from hive.session import (
     AppliedName,
@@ -20,6 +21,7 @@ from hive.session import (
     metadata,
     sessions,
 )
+from hive.write_barrier import DatabaseChange, RecordChange
 
 
 @dataclass(frozen=True)
@@ -66,35 +68,55 @@ class SessionStore:
                 return self._save(replace(old, focus=focus, naming=PendingName()))
             # The same lock excludes duplicate enrollment. After a lost response,
             # a repeated entry finds the permanent native record by task identity.
-            result = self.store.process.run(
-                [
-                    "create",
-                    "--type",
-                    "role",
-                    "--no-history",
-                    "--title",
-                    f"Hive conversation {task}",
-                    "--description",
-                    "Enrollment and task title; not bead ownership",
-                    "--metadata",
-                    json.dumps(metadata(task, project, focus, PendingName())),
-                ],
-                mutation=True,
+            nonce = uuid.uuid4().hex
+            return self.guards.write_barrier.perform(
+                DatabaseChange(
+                    "enroll native conversation",
+                    (("write_nonce", nonce), ("task", task), ("project", project)),
+                ),
+                lambda: self._create(task, project, focus, nonce),
             )
-            try:
-                created = decode(result)
-                if (created.task, created.project, created.focus, created.naming) != (
-                    task,
-                    project,
-                    focus,
-                    PendingName(),
-                ):
-                    raise HiveError(
-                        ErrorCode.INVALID_RECORD, "Enrollment was not acknowledged"
-                    )
-                return created
-            except HiveError as error:
-                raise HiveError(error.code, error.detail, uncertain=True) from error
+
+    def _create(
+        self, task: CodexTaskId, project: ProjectId, focus: Focus, nonce: str
+    ) -> Session:
+        initial = metadata(task, project, focus, PendingName())
+        tagged = {
+            "hive_session": {
+                **record(initial["hive_session"]),
+                "write_nonce": nonce,
+            }
+        }
+        result = self.store.process.run(
+            [
+                "create",
+                "--type",
+                "role",
+                "--no-history",
+                "--title",
+                f"Hive conversation {task}",
+                "--description",
+                "Enrollment and task title; not bead ownership",
+                "--metadata",
+                json.dumps(tagged),
+            ],
+            mutation=True,
+        )
+        try:
+            created = decode(result)
+            observed = record(record(result).get("metadata"))
+            if (created.task, created.project, created.focus, created.naming) != (
+                task,
+                project,
+                focus,
+                PendingName(),
+            ) or record(observed.get("hive_session")) != record(tagged["hive_session"]):
+                raise HiveError(
+                    ErrorCode.INVALID_RECORD, "Enrollment was not acknowledged"
+                )
+            return created
+        except HiveError as error:
+            raise HiveError(error.code, error.detail, uncertain=True) from error
 
     def record_name(
         self, task: CodexTaskId, title: str, naming: AppliedName | FailedName
@@ -117,6 +139,19 @@ class SessionStore:
             return self._save(replace(old, naming=naming))
 
     def _save(self, session: Session) -> Session:
+        intended = metadata(
+            session.task, session.project, session.focus, session.naming
+        )
+        return self.guards.write_barrier.perform(
+            RecordChange(
+                session.id,
+                "update conversation title intent",
+                (("metadata", json.dumps(intended, sort_keys=True)),),
+            ),
+            lambda: self._save_record(session),
+        )
+
+    def _save_record(self, session: Session) -> Session:
         result = self.store.process.run(
             [
                 "update",

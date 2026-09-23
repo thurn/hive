@@ -16,10 +16,12 @@ from hive.task_service import TaskService
 
 def main() -> None:
     owner = Owner(CodexTaskId(sys.argv[3]), CodexTurnId("claim-turn"))
+    guards = Guards(Path(sys.argv[2]))
     store = BeadsStore(
-        BeadsProcess(BeadsConnection.read(Path(sys.argv[1])), owner.task)
+        BeadsProcess(BeadsConnection.read(Path(sys.argv[1])), owner.task),
+        guards.write_barrier,
     )
-    service = TaskService(store, Guards(Path(sys.argv[2])))
+    service = TaskService(store, guards)
     print("ready", flush=True)
     sys.stdin.readline()
     try:

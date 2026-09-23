@@ -43,10 +43,11 @@ def prepare(
         return None
     if isinstance(event, c.Complete) and isinstance(event.delivery, ArtifactDelivery):
         return None
-    store: BeadsStore = BeadsStore(
-        BeadsProcess(BeadsConnection.read(context.beads), "hive")
-    )
     guards: Guards = Guards(context.state / "locks")
+    store: BeadsStore = BeadsStore(
+        BeadsProcess(BeadsConnection.read(context.beads), "hive"),
+        guards.write_barrier,
+    )
     with guards.admission():
         bead: Bead = store.get(request.bead)
         if bead.project != request.project:

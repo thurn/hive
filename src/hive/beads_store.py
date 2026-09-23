@@ -1,7 +1,10 @@
 """Native persistence primitives; compound callers must hold Hive's guards."""
 
 import json
+import uuid
+from collections.abc import Callable
 from dataclasses import dataclass
+from typing import TypeVar
 
 from hive.bead_json import decode_bead, encode_lifecycle
 from hive.beads_process import BeadsProcess
@@ -10,6 +13,9 @@ from hive.identity import BeadId, ProjectId
 from hive.jsonvalue import integer, record, sequence
 from hive.model import Bead, Deferred, Queued, Unstarted, WorkKind
 from hive.state_json import encode_state
+from hive.write_barrier import DatabaseChange, Intent, RecordChange, WriteBarrier
+
+T = TypeVar("T")
 
 
 @dataclass(frozen=True)
@@ -26,8 +32,20 @@ class NewTask:
 @dataclass(frozen=True)
 class BeadsStore:
     process: BeadsProcess
+    barrier: WriteBarrier | None = None
+
+    def _write(self, intent: Intent, operation: Callable[[], T]) -> T:
+        if self.barrier is None:
+            return operation()
+        return self.barrier.perform(intent, operation)
 
     def set_priority(self, identifier: BeadId, priority: int) -> None:
+        self._write(
+            RecordChange(identifier, "set priority", (("priority", str(priority)),)),
+            lambda: self._set_priority(identifier, priority),
+        )
+
+    def _set_priority(self, identifier: BeadId, priority: int) -> None:
         value = self.process.run(
             ["update", identifier, "--priority", str(priority)], mutation=True
         )
@@ -50,6 +68,18 @@ class BeadsStore:
     ) -> None:
         if not prerequisites:
             return
+        self._write(
+            RecordChange(
+                dependent,
+                "attach prerequisites",
+                (("prerequisites", json.dumps(prerequisites)),),
+            ),
+            lambda: self._add_dependencies(dependent, prerequisites),
+        )
+
+    def _add_dependencies(
+        self, dependent: BeadId, prerequisites: tuple[BeadId, ...]
+    ) -> None:
         payload = "".join(
             json.dumps({"from": dependent, "to": prerequisite, "type": "blocks"}) + "\n"
             for prerequisite in prerequisites
@@ -99,6 +129,18 @@ class BeadsStore:
         return tuple(record(value, "issue") for value in values)
 
     def dependency(
+        self, dependent: BeadId, prerequisite: BeadId, *, remove: bool = False
+    ) -> None:
+        self._write(
+            RecordChange(
+                dependent,
+                "remove prerequisite" if remove else "add prerequisite",
+                (("prerequisite", prerequisite),),
+            ),
+            lambda: self._dependency(dependent, prerequisite, remove=remove),
+        )
+
+    def _dependency(
         self, dependent: BeadId, prerequisite: BeadId, *, remove: bool = False
     ) -> None:
         operation = "remove" if remove else "add"
@@ -162,6 +204,30 @@ class BeadsStore:
         return values[0]
 
     def save_lifecycle(self, bead: Bead) -> None:
+        native = encode_lifecycle(bead)
+        self._write(
+            RecordChange(
+                bead.id,
+                "save lifecycle",
+                (
+                    (
+                        "state",
+                        json.dumps(
+                            {
+                                "status": native.status,
+                                "assignee": native.assignee,
+                                "hive": native.metadata["hive"],
+                            },
+                            sort_keys=True,
+                            separators=(",", ":"),
+                        ),
+                    ),
+                ),
+            ),
+            lambda: self._save_lifecycle(bead),
+        )
+
+    def _save_lifecycle(self, bead: Bead) -> None:
         """One native update for status, assignee and the complete Hive subtree.
 
         The owner/readiness check and this call run under admission exclusion.
@@ -201,6 +267,20 @@ class BeadsStore:
             raise HiveError(error.code, error.detail, uncertain=True) from error
 
     def create(self, task: NewTask) -> Bead:
+        nonce = uuid.uuid4().hex
+        return self._write(
+            DatabaseChange(
+                "create task",
+                (
+                    ("write_nonce", nonce),
+                    ("project", task.project),
+                    ("title", task.title),
+                ),
+            ),
+            lambda: self._create(task, nonce),
+        )
+
+    def _create(self, task: NewTask, nonce: str) -> Bead:
         if (
             not task.title.strip()
             or not task.project.strip()
@@ -217,7 +297,12 @@ class BeadsStore:
             )
         native = encode_state(task.state)
         metadata = {
-            "hive": {**native.metadata, "project": task.project, "kind": task.kind}
+            "hive": {
+                **native.metadata,
+                "project": task.project,
+                "kind": task.kind,
+                "write_nonce": nonce,
+            }
         }
         arguments = [
             "create",
@@ -243,6 +328,21 @@ class BeadsStore:
             created = record(value, "created issue")
             # Native create returns no hydrated dependency envelope. There were
             # no dependency arguments; edges are deliberately added separately.
-            return decode_bead({**created, "dependency_count": 0, "dependencies": []})
+            bead = decode_bead({**created, "dependency_count": 0, "dependencies": []})
+            hive = record(record(created.get("metadata")).get("hive"))
+            if (
+                hive.get("write_nonce") != nonce
+                or bead.project != task.project
+                or bead.title != task.title
+                or bead.description != task.description
+                or bead.acceptance != task.acceptance
+                or bead.priority != task.priority
+                or bead.kind != task.kind
+                or bead.state != task.state
+            ):
+                raise HiveError(
+                    ErrorCode.INVALID_RECORD, "Task creation was not acknowledged"
+                )
+            return bead
         except HiveError as error:
             raise HiveError(error.code, error.detail, uncertain=True) from error

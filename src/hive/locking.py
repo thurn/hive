@@ -11,6 +11,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from hive.errors import ErrorCode, HiveError
+from hive.write_barrier import WriteBarrier
 
 
 @contextmanager
@@ -53,6 +54,10 @@ class Guards:
     def stop(self) -> Path:
         return self.directory / "maintenance.stop"
 
+    @property
+    def write_barrier(self) -> WriteBarrier:
+        return WriteBarrier(self.directory / "beads-write.pending")
+
     @contextmanager
     def mutation(self) -> Iterator[None]:
         with file_lock(self.directory / "maintenance.lock", shared=True):
@@ -65,6 +70,7 @@ class Guards:
     @contextmanager
     def admission(self) -> Iterator[None]:
         with file_lock(self.directory / "admission.lock"):
+            self.write_barrier.require_clear()
             yield
 
     def stop_mutations(self, reason: str) -> None:

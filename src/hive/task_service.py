@@ -141,7 +141,7 @@ class TaskService:
     def prioritize(self, identifier: BeadId, project: ProjectId, priority: int) -> None:
         if isinstance(priority, bool) or not 0 <= priority <= 4:
             raise HiveError(ErrorCode.INVALID_INPUT, "Priority must be P0 through P4")
-        with self.guards.mutation():
+        with self.guards.mutation(), self.guards.admission():
             bead = self.store.get(identifier)
             if bead.project != project:
                 raise HiveError(

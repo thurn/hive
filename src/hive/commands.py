@@ -21,6 +21,11 @@ class ReadConfiguration:
 
 
 @dataclass(frozen=True)
+class InspectPendingWrite:
+    pass
+
+
+@dataclass(frozen=True)
 class Initialize:
     pass
 
@@ -227,6 +232,7 @@ class CollectionStatus:
 type Request = (
     SourceRequest
     | ReadConfiguration
+    | InspectPendingWrite
     | Initialize
     | Register
     | SetCapacity
@@ -259,6 +265,7 @@ def mutates(request: Request) -> bool:
         (
             SourceRequest,
             ReadConfiguration,
+            InspectPendingWrite,
             Status,
             Ready,
             Show,

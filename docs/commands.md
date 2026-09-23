@@ -5,6 +5,12 @@ Commands return concise text by default. Add `--json` anywhere for a structured
 result; failures have a `code`, a `detail`, and an `uncertain` flag on stderr.
 Successful JSON goes to stdout. A failed command exits nonzero.
 
+`hive recovery inspect-write --json` reads a pending Beads write marker without
+contacting Beads. An unresolved marker closes admission to every competing
+mutation. It must not be removed merely because the old client ended or the
+bead appears unchanged: an outstanding server request can still commit.
+Controlled reconciliation and marker clearing are not yet implemented.
+
 The current commands operate on Beads and local ownership. Native role acceptance,
 recruitment integration, stopped-writer recovery, and cost collection are still
 under implementation. These commands do not replace those

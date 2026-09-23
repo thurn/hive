@@ -33,7 +33,8 @@ Nothing in this tracking document reduces that scope.
   transitions, project registration, and capacity changes are implemented.
   Independent processes race real database claims, keep review within eight
   slots, and exercise cross-project dependencies and project ceilings. A killed
-  filer leaves deferred dependency intent that another process can repair.
+  filer leaves deferred dependency intent and a durable write stop; recovery
+  must clear that stop before another process repairs the edges.
   Settled work keeps its execution binding; paused historical corruption does
   not block unrelated ready work. Source-selected task commands now expose
   filing, direct/next claims, ready/show/status reads, lifecycle changes,
@@ -41,11 +42,16 @@ Nothing in this tracking document reduces that scope.
   Real CLI/server journeys cover protected pauses, stale turns, artifact
   completion, follow-on claims, maintenance, provider outage, malformed status,
   and compare-and-swap configuration edits. Native recovery and the complete
-  Codex/Tollgate workflow remain unimplemented. The replacement design also
-  requires a durable marker for uncertain admission-relevant server writes;
-  existing kernel-lock crash tests do not establish that guarantee. Fencing all
-  competing transitions and reconciling a request that outlives its client
-  remain required.
+  Codex/Tollgate workflow remain unimplemented. A durable marker now fences
+  admission-relevant writes before Beads requests, including lifecycle,
+  dependency, configuration, session, and priority changes. A dead client
+  leaves the marker, and competing mutations refuse entry even when a simulated
+  independent effect commits later. A real-server lost-create-response test
+  locates the native record by the marker's nonce. Read-only marker inspection
+  works during a Beads outage. The interrupted filing and cycle tests retain
+  that stop rather than assuming rollback. Clearing an unresolved marker still requires
+  controlled server quiescence and affected-state reconciliation; the recovery
+  command and native acceptance remain outstanding.
 - Local-master bootstrap and immutable source selection are implemented for
   the command entrypoint. Real Git/process tests keep a call alive across a
   commit, verify delayed imports and assets remain consistent, ignore working
@@ -132,8 +138,8 @@ Nothing in this tracking document reduces that scope.
 ## Verification obligations
 
 Each code commit must pass `scripts/check` and Tollgate before promotion.
-The complete local/hosted check has a five-minute deadline. The current 79-test
-suite passed locally in 167 seconds, alongside lint, Black, and strict Pyre.
+The complete local/hosted check has a five-minute deadline. The current 83-test
+suite passed locally in 193 seconds, alongside lint, Black, and strict Pyre.
 Hosted macOS run 35832926989 reached the former three-minute deadline near the
 end of the suite with every completed scenario passing; Linux passed. The
 expanded allowance covers slower hosted database/CLI execution without removing

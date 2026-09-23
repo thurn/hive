@@ -11,13 +11,61 @@ from hive.beads_process import BeadsProcess
 from hive.beads_store import BeadsStore
 from hive.configuration_store import ConfigurationStore
 from hive.errors import ErrorCode, HiveError
+from hive.identity import BeadId
 from hive.jsonvalue import record, sequence
 from hive.locking import Guards
 from hive.model import Capacity, Queued
 from hive.task_status import decode_status
+from hive.write_barrier import RecordChange
 
 
 class TaskCliTests(unittest.TestCase):
+    def test_pending_write_blocks_mutations_but_allows_offline_inspection(self) -> None:
+        with private_server() as (connection, server), cli_fixture(connection) as cli:
+            identifier = cli.add("Inspect despite uncertainty")
+            guards = Guards(cli.state / "locks")
+
+            def lost_reply() -> None:
+                raise HiveError(
+                    ErrorCode.PROVIDER_UNAVAILABLE, "response lost", uncertain=True
+                )
+
+            with guards.admission(), self.assertRaises(HiveError):
+                guards.write_barrier.perform(
+                    RecordChange(BeadId(identifier), "claim"), lost_reply
+                )
+            self.assertEqual(cli.call("task", "show", identifier)["code"], "Task")
+            self.assertEqual(
+                cli.call(
+                    "task",
+                    "claim",
+                    identifier,
+                    *SCOPE,
+                    *WORKER,
+                    expected="RecoveryRequired",
+                )["code"],
+                "RecoveryRequired",
+            )
+            cli.call(
+                "task",
+                "defer",
+                identifier,
+                *SCOPE,
+                "--reason",
+                "checkpoint",
+                "--note",
+                "test",
+                expected="RecoveryRequired",
+            )
+            cli.call(
+                "config", "capacity", "--global-limit", "2", expected="RecoveryRequired"
+            )
+            server.terminate()
+            server.wait(timeout=5)
+            inspection = cli.call("recovery", "inspect-write")
+            self.assertEqual(inspection["code"], "WriteInspection")
+            self.assertEqual(record(inspection["write"])["bead"], identifier)
+
     def test_corrupt_boundary_records_do_not_hide_healthy_work(self) -> None:
         healthy = native(Queued())
         corrupt = {**healthy, "id": "hv-bad", "metadata": []}
