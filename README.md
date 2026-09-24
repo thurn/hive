@@ -47,7 +47,7 @@ The linked worklist comes from `hive_origin_thread` metadata and native assignee
 
 ## Install role skills
 
-Run `~/hive/scripts/install-skills`. It links the eight skills and shared instructions from the stable Hive checkout into `${CODEX_HOME:-$HOME/.codex}/skills`, or with `--agent claude` into `${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills`. It refuses conflicting names and does not change Fulcrum's live setup. Use `--source` and `--dest` for a disposable trial. Review [cutover](docs/operations.md) before making production bindings.
+Run `~/hive/scripts/install-skills`. It links the nine skills and shared instructions from the stable Hive checkout into `${CODEX_HOME:-$HOME/.codex}/skills`, or with `--agent claude` into `${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills`. It refuses conflicting names and does not change Fulcrum's live setup. Use `--source` and `--dest` for a disposable trial. Review [cutover](docs/operations.md) before making production bindings.
 
 ## Develop
 

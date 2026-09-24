@@ -14,6 +14,7 @@ ROLES = (
     "warden",
     "weaver",
     "sage",
+    "mason",
     "vizier",
     "justiciar",
     "archivist",

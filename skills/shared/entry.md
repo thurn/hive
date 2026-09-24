@@ -6,7 +6,7 @@ Obtain the actual invoking thread ID from your own host's native context: `CODEX
 
 Rename your own thread directly with the host's native title tool: `set_thread_title` in Codex, or `set_session_title` with session `self` in a top-level Claude Code desktop app session. Plain Claude Code CLI sessions have no agent rename tool; report that and continue. A naming failure is visible and retryable but does not block delivery. Titles are UI, not observation membership.
 
-Title a thread `<emoji> [<bead-id>] <summary>`, where the emoji is the role's (⚒️ executor, 📿 bead, 🛡️ warden, 🧵 weaver, 📖 sage, 🔮 vizier, 🔥 justiciar or 📁 archivist) and the summary is a short imperative phrase for the bead's work, usually its shortened bead title:
+Title a thread `<emoji> [<bead-id>] <summary>`, where the emoji is the role's (⚒️ executor, 📿 bead, 🛡️ warden, 🧵 weaver, 📖 sage, 🧱 mason, 🔮 vizier, 🔥 justiciar or 📁 archivist) and the summary is a short imperative phrase for the bead's work, usually its shortened bead title:
 
 - On claiming or starting work on a bead: `⚒️ [hv-4up] Remove hive-bd wrapper`.
 - After that bead closes as completed: `✅ [hv-4up] Remove hive-bd wrapper`.

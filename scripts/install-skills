@@ -6,7 +6,7 @@ import os
 from pathlib import Path
 
 AGENTS = {"codex": ("CODEX_HOME", ".codex"), "claude": ("CLAUDE_CONFIG_DIR", ".claude")}
-ROLES = ("executor", "bead", "warden", "weaver", "sage", "vizier", "justiciar", "archivist", "shared")
+ROLES = ("executor", "bead", "warden", "weaver", "sage", "mason", "vizier", "justiciar", "archivist", "shared")
 
 
 def main() -> int:
