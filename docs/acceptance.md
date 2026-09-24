@@ -1,6 +1,6 @@
 # Acceptance evidence
 
-This records the isolated native acceptance scenarios in [scope reduction](scope-reduction-plan.md), section 13. No production Hive or Fulcrum state was changed. An eligible inactive disposable thread was unavailable for archival. The Tollgate provider correction was explicitly approved, promoted and installed after these journeys.
+This records isolated native acceptance scenarios for Beads, Tollgate, source selection, and bead-linked observation. No production Hive or Fulcrum state was changed. An eligible inactive disposable thread was unavailable for archival. The Tollgate provider correction was explicitly approved, promoted and installed after these journeys.
 
 ## Tollgate completion status, 2026-09-23
 

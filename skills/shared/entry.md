@@ -6,4 +6,4 @@ Obtain the actual invoking Codex thread ID from native context (`CODEX_THREAD_ID
 
 Rename directly through native Codex title tools at meaningful role, bead, wait and completion transitions. Use ⚒️ executor, 📿 bead, 🛡️ warden, 🧵 weaver, 📖 sage, 🔮 vizier, 🔥 justiciar or 📁 archivist. A naming failure is visible and retryable but does not block delivery. Titles are UI, not observation membership.
 
-Hive's [scope contract](../../docs/scope-reduction-plan.md) governs. Explicit user pauses and unapproved designs remain deferred until explicit resumption or approval. Readiness and resource judgment belong to the agent. Native claiming excludes a competing owner, but cannot force noncooperating agents to respect scope or pauses.
+Explicit user pauses and unapproved designs remain deferred until explicit resumption or approval. Readiness and resource judgment belong to the agent. Native claiming excludes a competing owner, but cannot force noncooperating agents to respect scope or pauses.

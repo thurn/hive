@@ -1,6 +1,6 @@
 # Implementation and acceptance status
 
-The authoritative product contract is [scope reduction](scope-reduction-plan.md). The former Fulcrum design and Hive admission/session/delivery assertions are historical. Their deletion retires those requirements; it does not count as implementing them.
+The former Fulcrum design and Hive admission/session/delivery assertions are historical. Their deletion retires those requirements; it does not count as implementing them.
 
 ## Implemented in this branch
 

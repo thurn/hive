@@ -1,6 +1,6 @@
 # Working on Hive
 
-Implement [the scope reduction plan](docs/scope-reduction-plan.md). Hive supplies source selection, explicit Beads routing, bead-linked observation, and thread-level costs. Agents run the workflow; Beads owns tasks and atomic claiming; Tollgate owns delivery. Do not restore the retired coordination, session, delivery-policy, or hook subsystems.
+Hive supplies source selection, explicit Beads routing, bead-linked observation, and thread-level costs. Agents run the workflow; Beads owns tasks and atomic claiming; Tollgate owns delivery. Do not restore the retired coordination, session, delivery-policy, or hook subsystems.
 
 Use an isolated Tollgate-created worktree. Every implementation commit uses Conventional Commits and passes `scripts/check` in Tollgate before promotion. During implementation use `scripts/check-fast` and relevant focused tests. Obtain a fresh cold-review subagent for each implementation diff, with scope, diff, invariants and checks but no author conversation. Do not delegate implementation unless requested.
 

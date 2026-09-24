@@ -1,7 +1,5 @@
 # Hive invariants
 
-[Scope reduction](scope-reduction-plan.md) is authoritative.
-
 - Beads is the sole task and ownership store. Claims use `bd --actor <actual-thread-id> update <id> --claim` after agent inspection. Readiness, approval and workload checks are cooperative, not atomic with claiming.
 - Tollgate owns worktrees, candidate delivery, testing, promotion and synchronization.
 - Hive's source selector uses committed local `master` on every call. One running call keeps its imports and assets from that selected commit. A resident observer retains only timer and connection continuity.

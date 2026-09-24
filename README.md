@@ -1,6 +1,6 @@
 # Hive
 
-Hive is a small local companion to [Beads](https://github.com/steveyegge/beads) and Tollgate. Agents file, claim and close work with native Beads commands, and deliver code with native Tollgate commands. Hive selects committed local `master` for each call and observes Codex threads referenced by beads. The [scope reduction plan](docs/scope-reduction-plan.md) is the product contract; [implementation status](docs/implementation.md) records evidence and remaining acceptance.
+Hive is a small local companion to [Beads](https://github.com/steveyegge/beads) and Tollgate. Agents file, claim and close work with native Beads commands, and deliver code with native Tollgate commands. Hive selects committed local `master` for each call and observes Codex threads referenced by beads. [Implementation status](docs/implementation.md) records evidence and remaining acceptance.
 
 ## Configure
 
