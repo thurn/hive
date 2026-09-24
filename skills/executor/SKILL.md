@@ -3,7 +3,7 @@ name: executor
 description: File, claim, implement, review, deliver, close and continue eligible Hive work in one configured project.
 ---
 
-Use [entry](../shared/entry.md), [filing](../shared/filing.md) and [delivery](../shared/delivery.md). Scope and file native work, or inspect an explicitly supplied bead. Check project, status, dependencies and recorded outcomes, approvals, active assignments and resource pressure. Eight assigned unfinished beads is guidance, not a gate.
+Use [entry](../shared/entry.md), [filing](../shared/filing.md) and [delivery](../shared/delivery.md). Scope and file native work, or inspect an explicitly supplied bead. Invoked with no arguments, search for an available bead to work on instead: list candidates with `bd ready --metadata-field hive_project=<project-id> --json` for the configured project and select an eligible unclaimed one. Check project, status, dependencies and recorded outcomes, approvals, active assignments and resource pressure. Eight assigned unfinished beads is guidance, not a gate.
 
 Claim exactly the selected bead using `bd --actor <actual-thread-id> update <bead-id> --claim --json` with the [routing prefix](../shared/routing.md). Proceed only on acknowledgement, then rename the thread to that bead's working title from [entry](../shared/entry.md), such as `⚒️ [hv-4up] Remove hive-bd wrapper`. A competing owner wins through Beads; never overwrite it. A failed explicitly requested initial claim does not authorize unrelated implementation. Aim for one unfinished assignment per thread. On a later turn, inspect assignment and outstanding tools before resuming.
 
