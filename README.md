@@ -24,11 +24,11 @@ Use Python 3.12, Beads 1.2.2 in server mode, Dolt 2.2.0, and a configured Tollga
 
 Defaults without a file are `~/hive`, `~/.local/state/hive`, and `~/brain/hive`, with no registered projects. The Beads directory must already contain explicit server-mode `.beads/metadata.json`. Hive never initializes it, starts a replacement server, or falls back to another database. Change project/routing settings only during stopped maintenance with participating writers settled.
 
-`bin/hive-bd` selects the configured store and forwards native `bd` arguments and streams. For example:
+Agents run native `bd` directly, selecting the configured store with `BEADS_DIR` as described in the [shared routing recipe](skills/shared/routing.md). With the default store:
 
 ```sh
-~/hive/bin/hive-bd --actor "${CODEX_THREAD_ID:?}" list --all --json
-~/hive/bin/hive-bd --actor "${CODEX_THREAD_ID:?}" update hv-123 --claim --json
+BEADS_DIR=~/brain/hive/.beads BEADS_DOLT_AUTO_START=0 BD_NON_INTERACTIVE=1 BD_NO_HOOKS=true bd --sandbox --dolt-auto-commit off --actor "${CODEX_THREAD_ID:?}" list --all --json
+BEADS_DIR=~/brain/hive/.beads BEADS_DOLT_AUTO_START=0 BD_NON_INTERACTIVE=1 BD_NO_HOOKS=true bd --sandbox --dolt-auto-commit off --actor "${CODEX_THREAD_ID:?}" update hv-123 --claim --json
 ```
 
 The actor for a claim must be the actual invoking thread ID: `CODEX_THREAD_ID` in Codex or `CLAUDE_CODE_SESSION_ID` in Claude Code, never the other host's inherited variable. Agent-tool subagents in Claude Code share their parent's ID and must not claim. Inspect scope, status, dependencies, outcome, and rough workload first. Native ownership excludes a competing actor, but readiness and approval checks are agent responsibilities. See [role instructions](skills/executor/SKILL.md) and [operations](docs/operations.md).
@@ -57,5 +57,5 @@ scripts/check-fast
 scripts/check
 ```
 
-The fast gate checks style, strict typing, boundaries, and retained accounting/link behavior. The full gate adds source selection and native routing integration. Tollgate runs the full gate against the actual integration candidate before promotion. New source commits are selected on the next call; existing calls retain their snapshot. Dependency or state maintenance is explicit.
+The fast gate checks style, strict typing, boundaries, and retained accounting/link behavior. The full gate adds source selection and observer routing integration. Tollgate runs the full gate against the actual integration candidate before promotion. New source commits are selected on the next call; existing calls retain their snapshot. Dependency or state maintenance is explicit.
 The executor workflow can be exercised end to end by filing, claiming and delivering a trivial bead.

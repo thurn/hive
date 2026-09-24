@@ -2,7 +2,7 @@
 
 ## Work and repair
 
-Use `bin/hive-bd` with an actual `--actor` for native create, claim, dependency and close commands. Inspect `show --json` before uncertain retries. Preserve another owner's assignment until its writer and external provider work are settled. If a prerequisite was cancelled, native readiness may still expose its dependent; inspect `hive_resolution` and revise or cancel the dependent deliberately. A paused bead requires explicit resumption. Reopened work has its historical assignee and resolution cleared before another native claim.
+Use native `bd` with the [routing prefix](../skills/shared/routing.md) and an actual `--actor` for native create, claim, dependency and close commands. Inspect `show --json` before uncertain retries. Preserve another owner's assignment until its writer and external provider work are settled. If a prerequisite was cancelled, native readiness may still expose its dependent; inspect `hive_resolution` and revise or cancel the dependent deliberately. A paused bead requires explicit resumption. Reopened work has its historical assignee and resolution cleared before another native claim.
 
 For an incident, stop the affected writer, inspect the bead, worktree, candidate and provider status, and record native repair operations in a note. Coordinate server maintenance with all users. Leave ambiguous ownership in place rather than guessing that an old tool call stopped. No Hive-wide write stop or automatic takeover exists.
 
@@ -16,17 +16,21 @@ Use `hive telemetry links --json` for the bead-linked candidate list, including 
 
 ## Backup and restore
 
-Stop task writers for a consistent native backup. With Beads 1.2.2 and Dolt 2.2.0, the verified server-mode commands are:
+Stop task writers for a consistent native backup. With Beads 1.2.2 and Dolt 2.2.0, the verified server-mode commands, abbreviating the [routing prefix](../skills/shared/routing.md), are:
 
 ```sh
-hive-bd backup init /absolute/backup-directory --json
-hive-bd backup sync --json
-# On a newly initialized, isolated destination store:
-new-store-hive-bd backup restore /absolute/backup-directory --force --json
-new-store-hive-bd list --all --limit 0 --json
+bd backup init /absolute/backup-directory --json
+bd backup sync --json
 ```
 
-Here `new-store-hive-bd` means the same routing launcher with `HIVE_BOOTSTRAP_CONFIG` pointing to the new database; it is a placeholder, not an installed command. Never restore over the live database. Compare descriptions, priorities, dependencies, metadata, comments, outcomes and historical assignees before making the restored store available. A disposable native round trip verified those fields; see [acceptance](acceptance.md).
+For restoration, select a newly initialized, isolated destination store. Point `BEADS_DIR` at that store and verify `context --json` reports its database before running:
+
+```sh
+bd backup restore /absolute/backup-directory --force --json
+bd list --all --limit 0 --json
+```
+
+Never restore over the live database. Compare descriptions, priorities, dependencies, metadata, comments, outcomes and historical assignees before making the restored store available. A disposable native round trip verified those fields; see [acceptance](acceptance.md).
 
 ## Cutover
 

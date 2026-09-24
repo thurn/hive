@@ -1,6 +1,6 @@
 # Enter a Hive role
 
-Read `~/.config/hive/bootstrap.json` (or `HIVE_BOOTSTRAP_CONFIG`) to identify the requested configured project, repository, invariants and optional native project. Read project instructions and relevant beads through `~/hive/bin/hive-bd`. Keep implementation in that project. If the binding is unclear, clarify before claiming; read-only scoping may continue.
+Read `~/.config/hive/bootstrap.json` (or `HIVE_BOOTSTRAP_CONFIG`) to identify the requested configured project, repository, invariants and optional native project. Read project instructions and relevant beads with native `bd` using [explicit routing](routing.md). Keep implementation in that project. If the binding is unclear, clarify before claiming; read-only scoping may continue.
 
 Obtain the actual invoking thread ID from your own host's native context: `CODEX_THREAD_ID` in Codex, or `CLAUDE_CODE_SESSION_ID` in Claude Code. Never use the other host's variable, even when it is inherited. Expand it as `${VARIABLE:?}` in the same command as the Beads call so a missing ID fails instead of passing an empty actor. Do not invent one, reuse another thread's ID, or use a turn ID. A Claude Code Agent-tool subagent sees its parent's session ID, so it has no separate identity and must not claim or rename. If identity is unavailable, remain read-only or file what can be filed with a visible missing association; do not claim. Inspect existing assignments and outstanding tools on a returning thread before acting.
 

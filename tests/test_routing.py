@@ -1,7 +1,6 @@
-"""The source-selected native launcher cannot choose another store."""
+"""Observation reads the configured server despite unrelated native routing."""
 
 import json
-import os
 import shutil
 import subprocess
 import sys
@@ -12,15 +11,14 @@ from pathlib import Path
 from server_fixture import private_server
 from test_source_selection import commit, fixture
 
-from hive.beads_connection import BeadsConnection
-
 ROOT: Path = Path(__file__).resolve().parents[1]
+THREAD = "01a0d0bb-8916-7380-8a5e-24cacfaaeda1"
 
 
 class RoutingTests(unittest.TestCase):
-    def test_launcher_rejects_routing_override_but_not_description_text(self) -> None:
+    def test_observer_routes_reads_and_reports_unavailable_server(self) -> None:
         with (
-            private_server() as (connection, _),
+            private_server() as (connection, server),
             tempfile.TemporaryDirectory() as temporary,
         ):
             working_dir: Path = Path(temporary)
@@ -29,18 +27,43 @@ class RoutingTests(unittest.TestCase):
             shutil.copytree(
                 ROOT / "src/hive", repository / "src/hive", dirs_exist_ok=True
             )
-            commit(repository, "feat: native routing")
+            commit(repository, "feat: observation routing")
             config = Path(environment["HIVE_BOOTSTRAP_CONFIG"])
             settings = json.loads(config.read_text())
             settings["beads"] = str(connection.directory)
             config.write_text(json.dumps(settings))
+            created = subprocess.run(
+                [
+                    "bd",
+                    "-C",
+                    str(connection.directory),
+                    "--sandbox",
+                    "--dolt-auto-commit",
+                    "off",
+                    "create",
+                    "Observed",
+                    "--metadata",
+                    json.dumps({"hive_origin_thread": THREAD}),
+                    "--json",
+                ],
+                env=connection.environment(),
+                capture_output=True,
+                text=True,
+                check=True,
+                timeout=20,
+            )
+            bead = json.loads(created.stdout)
             environment.update(
-                BEADS_DIR="/missing/unrelated", BEADS_DOLT_AUTO_START="1"
+                BEADS_DIR=str(working_dir / ".beads"),
+                BEADS_DOLT_SERVER_DATABASE="wrong",
+                BEADS_DOLT_SERVER_PORT="1",
+                BEADS_DOLT_AUTO_START="1",
+                GIT_DIR="/missing/unrelated",
             )
 
             def invoke(*arguments: str) -> subprocess.CompletedProcess[str]:
                 return subprocess.run(
-                    [sys.executable, str(ROOT / "scripts/hive.py"), "bd", *arguments],
+                    [sys.executable, str(ROOT / "scripts/hive.py"), *arguments],
                     env=environment,
                     cwd=working_dir,
                     capture_output=True,
@@ -48,51 +71,24 @@ class RoutingTests(unittest.TestCase):
                     timeout=20,
                 )
 
-            created = invoke(
-                "create",
-                "Routed",
-                "--description",
-                "--db",
-                "--json",
-            )
-            self.assertEqual(created.returncode, 0, created.stderr)
-            bead = json.loads(created.stdout)
-            self.assertTrue(bead["id"].startswith("hv-"))
-            for override in (
-                ("--global",),
-                ("--db=elsewhere",),
-                ("-C", "/tmp"),
-                ("--directory=/tmp",),
-                ("--repo", "other"),
-                ("--sandbox=false",),
-                ("--dolt-auto-commit", "on"),
-            ):
-                result = invoke(*override, "list", "--json")
-                self.assertNotEqual(result.returncode, 0, override)
-                self.assertIn("Native routing override refused", result.stderr)
-            listed = invoke("list", "--all", "--json")
+            listed = invoke("telemetry", "links", "--json")
             self.assertEqual(listed.returncode, 0, listed.stderr)
-            self.assertIn(
-                bead["id"], [item["id"] for item in json.loads(listed.stdout)]
+            links = json.loads(listed.stdout)["links"]
+            self.assertEqual(len(links), 1)
+            self.assertEqual(links[0]["bead"], bead["id"])
+            self.assertEqual(links[0]["task"], THREAD)
+
+            server.terminate()
+            server.wait(timeout=5)
+            unavailable = invoke("telemetry", "links", "--json")
+            self.assertNotEqual(unavailable.returncode, 0)
+            self.assertEqual(
+                json.loads(unavailable.stderr)["code"], "ProviderUnavailable"
             )
+            self.assertFalse((working_dir / ".beads").exists())
+
             metadata = connection.directory / ".beads/metadata.json"
             metadata.write_text("{}")
-            unavailable = invoke("list", "--json")
-            self.assertNotEqual(unavailable.returncode, 0)
-            self.assertEqual(json.loads(unavailable.stderr)["code"], "InvalidInput")
-
-    def test_environment_sanitizes_conflicting_native_routing(self) -> None:
-        with private_server() as (connection, _):
-            original = os.environ.get("BEADS_DIR")
-            try:
-                os.environ["BEADS_DIR"] = "/tmp/wrong-beads"
-                routing = BeadsConnection.read(connection.directory).environment()
-                self.assertEqual(
-                    routing["BEADS_DIR"], str(connection.directory / ".beads")
-                )
-                self.assertEqual(routing["BEADS_DOLT_AUTO_START"], "0")
-            finally:
-                if original is None:
-                    del os.environ["BEADS_DIR"]
-                else:
-                    os.environ["BEADS_DIR"] = original
+            invalid = invoke("telemetry", "links", "--json")
+            self.assertNotEqual(invalid.returncode, 0)
+            self.assertEqual(json.loads(invalid.stderr)["code"], "InvalidInput")

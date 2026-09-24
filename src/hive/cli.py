@@ -1,8 +1,7 @@
-"""Source-selected diagnostics, native routing, and derived observation."""
+"""Source-selected diagnostics and derived observation."""
 
 import argparse
 import json
-import os
 import sys
 from pathlib import Path
 from typing import NoReturn
@@ -24,106 +23,10 @@ class Parser(argparse.ArgumentParser):
         raise HiveError(ErrorCode.INVALID_INPUT, message)
 
 
-def routed_arguments(arguments: list[str]) -> None:
-    """Reject native store selectors while leaving ordinary argument values alone."""
-    values = {
-        "--actor",
-        "--title",
-        "--description",
-        "-d",
-        "--acceptance",
-        "--metadata",
-        "--set-metadata",
-        "--unset-metadata",
-        "--append-notes",
-        "--notes",
-        "--body-file",
-        "--design",
-        "--design-file",
-        "--context",
-        "--priority",
-        "-p",
-        "--assignee",
-        "-a",
-        "--status",
-        "-s",
-        "--defer",
-        "--deps",
-        "--external-ref",
-        "--due",
-        "--parent",
-        "--type",
-        "-t",
-        "--output",
-        "-o",
-        "--input",
-        "-i",
-        "--label",
-        "-l",
-        "--limit",
-        "-n",
-        "--id",
-        "--sort",
-        "--format",
-    }
-    index = 0
-    while index < len(arguments):
-        argument = arguments[index]
-        if argument == "--":
-            break
-        if (
-            argument
-            in {
-                "--global",
-                "--db",
-                "-C",
-                "--directory",
-                "--repo",
-                "--sandbox",
-                "--dolt-auto-commit",
-            }
-            or any(
-                argument.startswith(prefix)
-                for prefix in (
-                    "--global=",
-                    "--db=",
-                    "-C=",
-                    "--directory=",
-                    "--repo=",
-                    "--sandbox=",
-                    "--dolt-auto-commit=",
-                )
-            )
-            or (argument.startswith("-C") and len(argument) > 2)
-        ):
-            raise HiveError(
-                ErrorCode.INVALID_INPUT, f"Native routing override refused: {argument}"
-            )
-        index += 2 if argument in values else 1
-
-
 def main() -> int:
     try:
         context = LaunchContext.read()
         arguments = sys.argv[1:]
-        if arguments and arguments[0] == "bd":
-            routed_arguments(arguments[1:])
-            connection = BeadsConnection.read(context.beads)
-            context.release()
-            os.chdir(connection.directory)
-            os.execvpe(
-                "bd",
-                [
-                    "bd",
-                    "-C",
-                    str(connection.directory),
-                    "--sandbox",
-                    "--dolt-auto-commit",
-                    "off",
-                    *arguments[1:],
-                ],
-                connection.environment(),
-            )
         parser = Parser(prog="hive")
         parser.add_argument("--json", action="store_true")
         groups = parser.add_subparsers(dest="group", required=True)
