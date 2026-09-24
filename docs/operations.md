@@ -14,6 +14,18 @@ Run `hive telemetry sweep --native-index PATH` manually or opt into `hive teleme
 
 Use `hive telemetry links --json` for the bead-linked candidate list, including closed beads, then check each thread with native activity tools (Codex tasks, or Claude desktop `get_session`; see the [archivist](../skills/archivist/SKILL.md) for Claude session ID mapping). Require no active or queued turn, no input/output/tool activity for 15 minutes, and known descendant effects. Recheck immediately before native archive. Skip unknown activity; a closed bead alone proves nothing. If activity races archival, unarchive the affected thread/descendants. Unlinked threads require explicit user scope.
 
+## Remote sync
+
+The Git repository containing `hive.json` (`~/brain` by default, which contains the Beads root) tracks the bootstrap configuration and the Beads root's tracked `.beads` files. Its private Git remote also stores the Dolt database under `refs/dolt/data`, added once with `bd dolt remote add origin git+ssh://git@github.com/OWNER/REPO.git`. Skills pass `--sandbox`, so nothing pushes automatically. Stop task writers first: skills write with auto-commit off, so `bd dolt commit` records whatever is in the shared working set. Then, abbreviating the [routing prefix](../skills/shared/routing.md), commit, push Dolt and push the Git branch:
+
+```sh
+bd dolt commit
+bd dolt push
+git -C /absolute/configuration-repository push origin master
+```
+
+Push from one machine only. A non-fast-forward rejection means another writer published; stop and investigate rather than forcing. Pulling onto another machine is restore-style maintenance with its writers stopped.
+
 ## Backup and restore
 
 Stop task writers for a consistent native backup. With Beads 1.2.2 and Dolt 2.2.0, the verified server-mode commands, abbreviating the [routing prefix](../skills/shared/routing.md), are:
