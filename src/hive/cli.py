@@ -68,15 +68,22 @@ def main() -> int:
             store = UsageStore(context.state / "telemetry.sqlite3")
             result = report(store, CodexTaskId(parsed.task), PricingTier(parsed.tier))
             registry = CollectionRegistry(store)
+            links, gaps, failure = None, None, None
             try:
                 links, gaps = read(
                     BeadsProcess(BeadsConnection.read(context.beads), timeout=2)
                 )
-                registry.refresh(links, gaps, None)
-                result["association_stale"] = False
             except (HiveError, OSError) as error:
-                registry.refresh(None, None, str(error))
-                result["association_stale"] = True
+                failure = str(error)
+            # Refreshing the link cache is incidental to a report; contention
+            # leaves the cached associations in place, reported as stale.
+            try:
+                registry.refresh(links, gaps, failure)
+            except HiveError as error:
+                if error.code != ErrorCode.BUSY:
+                    raise
+                failure = failure or error.detail
+            result["association_stale"] = failure is not None
             result["associated_beads"] = registry.associations(CodexTaskId(parsed.task))
             result["association_gaps"] = registry.gaps()
             result["usage_collectable"] = codex_thread(parsed.task)

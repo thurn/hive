@@ -1,7 +1,6 @@
 """Persist exact rate evidence and report assumptions separately from observation."""
 
 import json
-import sqlite3
 from collections import Counter
 from dataclasses import replace
 
@@ -14,7 +13,7 @@ from hive.usage_store import UsageStore, row, source_status
 
 
 def estimate(
-    connection: sqlite3.Connection,
+    fresh: list[tuple[str, str, str]],
     response: ResponseId,
     model: ModelId,
     tier: PricingTier,
@@ -28,20 +27,38 @@ def estimate(
         return result
     result = quote(model, tier, usage)
     if result is not None:
-        connection.execute(
-            "INSERT INTO response_estimates VALUES (?, ?, ?)",
-            (response, tier, json.dumps(result.value())),
-        )
+        fresh.append((response, tier, json.dumps(result.value())))
     return result
+
+
+def retain(store: UsageStore, fresh: list[tuple[str, str, str]]) -> int:
+    """Return how many new estimates contention left unretained."""
+    # Retention is best effort: contention defers it to a later report, which
+    # may reprice if the catalog changed meanwhile, instead of blocking or
+    # failing this one. The first writer wins if reports race.
+    if not fresh:
+        return 0
+    try:
+        with store.connect() as connection:
+            connection.executemany(
+                "INSERT OR IGNORE INTO response_estimates VALUES (?, ?, ?)", fresh
+            )
+    except HiveError as error:
+        if error.code != ErrorCode.BUSY:
+            raise
+        return len(fresh)
+    return 0
 
 
 def report(
     store: UsageStore, task: CodexTaskId, tier: PricingTier
 ) -> dict[str, object]:
     # One transaction gives counts, rates, source health, and gaps the same view.
-    # Quotes retain the price evidence first used; a later catalog edit never
-    # silently reprices a historical response. No task ownership is read here.
-    with store.connect() as connection:
+    # Retained quotes keep the price evidence first used, so a later catalog
+    # edit does not reprice them; unretained_estimates counts quotes this
+    # report could not retain. No task ownership is read here.
+    fresh: list[tuple[str, str, str]] = []
+    with store.connect(write=False) as connection:
         cursor = connection.execute(
             "SELECT r.response, r.usage, m.model, m.conflicted, e.quote "
             "FROM responses r LEFT JOIN turn_models m ON r.task=m.task AND r.turn=m.turn "
@@ -75,7 +92,7 @@ def report(
                 else:
                     model = ModelId(string(raw_model, "configured model"))
                     usage = tokens(parse(string(raw_usage, "stored usage")))
-                    quoted = estimate(connection, response, model, tier, usage, cached)
+                    quoted = estimate(fresh, response, model, tier, usage, cached)
                     if quoted is None:
                         reason = "unknown_model_price"
                 if reason is not None:
@@ -99,29 +116,31 @@ def report(
                 count, subtotal = groups.get(key, (0, 0))
                 groups[key] = count + 1, subtotal + quoted.amount
         health = source_status(connection, task)
-        unpriced = observed - counts["priced"]
-        return {
-            "code": "ApiEquivalentCost",
-            "task": task,
-            "observed_responses": observed,
-            "priced_responses": counts["priced"],
-            "unpriced_responses": unpriced,
-            "missing_usage": counts["missing_usage"],
-            "missing_model_context": counts["missing_model_context"],
-            "conflicting_model_context": counts["conflicting_model_context"],
-            "unknown_model_price": counts["unknown_model_price"],
-            "priced_subset_usd": dollars(amount) if counts["priced"] else None,
-            "observed_estimate_usd": (
-                dollars(amount) if observed and not unpriced else None
-            ),
-            "pricing_tier_assumption": tier,
-            "observed_service_tier": None,
-            "model_basis": "native turn context; live model overrides are not established",
-            "coverage": "API-equivalent estimate, not billing. Configured model and assumed tier; thread association is not a token allocation. Excludes tool fees and regional uplifts.",
-            "rate_groups": [
-                {**card.value(), "usd": dollars(subtotal), "responses": count}
-                for card, (count, subtotal) in groups.items()
-            ],
-            "unpriced_examples": examples,
-            **health,
-        }
+    unretained = retain(store, fresh)
+    unpriced = observed - counts["priced"]
+    return {
+        "code": "ApiEquivalentCost",
+        "task": task,
+        "observed_responses": observed,
+        "priced_responses": counts["priced"],
+        "unpriced_responses": unpriced,
+        "missing_usage": counts["missing_usage"],
+        "missing_model_context": counts["missing_model_context"],
+        "conflicting_model_context": counts["conflicting_model_context"],
+        "unknown_model_price": counts["unknown_model_price"],
+        "priced_subset_usd": dollars(amount) if counts["priced"] else None,
+        "observed_estimate_usd": (
+            dollars(amount) if observed and not unpriced else None
+        ),
+        "pricing_tier_assumption": tier,
+        "observed_service_tier": None,
+        "model_basis": "native turn context; live model overrides are not established",
+        "coverage": "API-equivalent estimate, not billing. Configured model and assumed tier; thread association is not a token allocation. Excludes tool fees and regional uplifts.",
+        "rate_groups": [
+            {**card.value(), "usd": dollars(subtotal), "responses": count}
+            for card, (count, subtotal) in groups.items()
+        ],
+        "unpriced_examples": examples,
+        "unretained_estimates": unretained,
+        **health,
+    }

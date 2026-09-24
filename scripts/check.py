@@ -114,6 +114,17 @@ def main() -> int:
             "test_links.py",
             "-v",
         ],
+        [
+            python,
+            "-m",
+            "unittest",
+            "discover",
+            "-s",
+            "tests",
+            "-p",
+            "test_contention.py",
+            "-v",
+        ],
     ]
     commands.append(
         [

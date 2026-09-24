@@ -8,6 +8,7 @@ The former Fulcrum design and Hive admission/session/delivery assertions are his
 - Explicit configured server validation and environment sanitization remain for read-only bead observation.
 - Source-selected local-master calls and immutable running-call snapshots.
 - Bead-linked creator/assignee worklist including closed work, cached discovery across outages, and thread-level incremental usage/cost associations.
+- Telemetry reports read without the database write lock; contention within the 0.1 s SQLite timeout is a structured `Busy` error, and cost defers estimate retention (reported as `unretained_estimates`; a later report may then reprice after a catalog edit) and link-cache refresh under contention. Covered by black-box lock tests; not yet observed against a live collector.
 - Native role instructions, simple skill links, reduced fast/full gates, and manual operations guidance.
 
 ## Acceptance evidence and remaining limits

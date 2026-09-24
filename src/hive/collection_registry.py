@@ -18,8 +18,8 @@ class CollectionRegistry:
     usage: UsageStore
 
     @contextmanager
-    def connect(self) -> Iterator[sqlite3.Connection]:
-        with self.usage.connect() as connection:
+    def connect(self, *, write: bool = True) -> Iterator[sqlite3.Connection]:
+        with self.usage.connect(write=write) as connection:
             connection.execute(
                 "CREATE TABLE IF NOT EXISTS collection_tasks (task TEXT PRIMARY KEY, attempted TEXT, error TEXT, validated_path TEXT)"
             )
@@ -78,7 +78,7 @@ class CollectionRegistry:
                 )
 
     def next(self, limit: int) -> tuple[CodexTaskId, ...]:
-        with self.connect() as connection:
+        with self.connect(write=False) as connection:
             values: object = connection.execute(
                 "SELECT task FROM collection_tasks ORDER BY attempted, task LIMIT ?",
                 (limit,),
@@ -89,7 +89,7 @@ class CollectionRegistry:
             )
 
     def associations(self, task: CodexTaskId) -> list[dict[str, str]]:
-        with self.connect() as connection:
+        with self.connect(write=False) as connection:
             values: object = connection.execute(
                 "SELECT bead, relation FROM collection_links WHERE task=? ORDER BY bead, relation",
                 (task,),
@@ -103,7 +103,7 @@ class CollectionRegistry:
             ]
 
     def gaps(self) -> list[str]:
-        with self.connect() as connection:
+        with self.connect(write=False) as connection:
             values: object = connection.execute(
                 "SELECT detail FROM collection_gaps ORDER BY detail LIMIT 100"
             ).fetchall()
@@ -113,7 +113,7 @@ class CollectionRegistry:
             ]
 
     def cached_path(self, task: CodexTaskId) -> Path | None:
-        with self.connect() as connection:
+        with self.connect(write=False) as connection:
             value: object = connection.execute(
                 "SELECT validated_path FROM collection_tasks WHERE task=?", (task,)
             ).fetchone()
@@ -138,7 +138,7 @@ class CollectionRegistry:
             )
 
     def status(self) -> dict[str, object]:
-        with self.connect() as connection:
+        with self.connect(write=False) as connection:
             health: object = connection.execute(
                 "SELECT refreshed,error FROM collection_health WHERE singleton=1"
             ).fetchone()
