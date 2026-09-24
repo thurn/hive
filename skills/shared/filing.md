@@ -1,6 +1,6 @@
 # File and maintain native beads
 
-Use native `bd` with the [routing prefix](routing.md) on every invocation, always naming bead IDs explicitly. The examples below abbreviate that prefix. Search for duplicates. Record a useful description, acceptance criteria, priority, intended project, and `hive_origin_thread` with the actual filing thread when available. `hive_project` must be a project `id` from the bootstrap `projects`; if the intended project is unregistered, file without it and report the gap. An ordinary ready filing may include `hive_project` in flat metadata:
+Use native `bd` with the [routing prefix](routing.md) on every invocation, always naming bead IDs explicitly. The examples below abbreviate that prefix. Record a useful description, acceptance criteria, priority, intended project, and `hive_origin_thread` with the actual filing thread when available. `hive_project` must be a project `id` from the bootstrap `projects`; if the intended project is unregistered, file without it and report the gap. An ordinary ready filing may include `hive_project` in flat metadata:
 
 ```sh
 # Claude Code uses thread="${CLAUDE_CODE_SESSION_ID:?}" instead.
