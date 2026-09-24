@@ -13,6 +13,7 @@ from test_source_selection import commit, fixture
 
 ROOT: Path = Path(__file__).resolve().parents[1]
 THREAD = "01a0d0bb-8916-7380-8a5e-24cacfaaeda1"
+CLAUDE = "a521cf51-c055-4715-832b-fc19921ee482"
 
 
 class RoutingTests(unittest.TestCase):
@@ -43,7 +44,7 @@ class RoutingTests(unittest.TestCase):
                     "create",
                     "Observed",
                     "--metadata",
-                    json.dumps({"hive_origin_thread": THREAD}),
+                    json.dumps({"hive_origin_thread": CLAUDE}),
                     "--json",
                 ],
                 env=connection.environment(),
@@ -53,6 +54,26 @@ class RoutingTests(unittest.TestCase):
                 timeout=20,
             )
             bead = json.loads(created.stdout)
+            subprocess.run(
+                [
+                    "bd",
+                    "-C",
+                    str(connection.directory),
+                    "--sandbox",
+                    "--dolt-auto-commit",
+                    "off",
+                    "--actor",
+                    THREAD,
+                    "update",
+                    bead["id"],
+                    "--claim",
+                ],
+                env=connection.environment(),
+                capture_output=True,
+                text=True,
+                check=True,
+                timeout=20,
+            )
             environment.update(
                 BEADS_DIR=str(working_dir / ".beads"),
                 BEADS_DOLT_SERVER_DATABASE="wrong",
@@ -74,9 +95,19 @@ class RoutingTests(unittest.TestCase):
             listed = invoke("telemetry", "links", "--json")
             self.assertEqual(listed.returncode, 0, listed.stderr)
             links = json.loads(listed.stdout)["links"]
-            self.assertEqual(len(links), 1)
-            self.assertEqual(links[0]["bead"], bead["id"])
-            self.assertEqual(links[0]["task"], THREAD)
+            self.assertEqual(
+                sorted((link["task"], link["collected"]) for link in links),
+                [(THREAD, True), (CLAUDE, False)],
+            )
+            self.assertEqual({link["bead"] for link in links}, {bead["id"]})
+
+            for task, collected in ((THREAD, True), (CLAUDE, False)):
+                priced = invoke("cost", "--task", task, "--json")
+                self.assertEqual(priced.returncode, 0, priced.stderr)
+                cost = json.loads(priced.stdout)
+                self.assertEqual(cost["usage_collectable"], collected)
+                self.assertEqual("collection_gap" in cost, not collected, cost)
+                self.assertEqual(len(cost["associated_beads"]), 1)
 
             server.terminate()
             server.wait(timeout=5)

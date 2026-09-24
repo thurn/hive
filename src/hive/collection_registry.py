@@ -42,7 +42,7 @@ class CollectionRegistry:
     ) -> None:
         with self.connect() as connection:
             if links is not None and gaps is not None:
-                tasks = {link.task for link in links}
+                tasks = {link.task for link in links if link.collected}
                 previous: object = connection.execute(
                     "SELECT task FROM collection_tasks"
                 ).fetchall()
@@ -150,6 +150,9 @@ class CollectionRegistry:
             failures: object = connection.execute(
                 "SELECT task,error FROM collection_tasks WHERE error IS NOT NULL ORDER BY attempted DESC LIMIT 20"
             ).fetchall()
+            uncollected: object = connection.execute(
+                "SELECT COUNT(DISTINCT task) FROM collection_links WHERE task NOT IN (SELECT task FROM collection_tasks)"
+            ).fetchone()
             gap_count: object = connection.execute(
                 "SELECT COUNT(*) FROM collection_gaps"
             ).fetchone()
@@ -161,6 +164,9 @@ class CollectionRegistry:
                 - integer(tried, "attempted threads"),
                 "registry_refreshed": refreshed,
                 "registry_error": failure,
+                "uncollected_threads": integer(
+                    row(uncollected, 1)[0], "uncollected threads"
+                ),
                 "association_gaps": integer(row(gap_count, 1)[0], "association gaps"),
                 "oldest_attempt": oldest,
                 "latest_attempt": newest,

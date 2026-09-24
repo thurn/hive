@@ -17,11 +17,12 @@ from hive.collection_registry import CollectionRegistry
 from hive.identity import CodexTaskId, SourceCommit
 from hive.jsonvalue import record, sequence
 from hive.launch_context import LaunchContext
-from hive.thread_links import decode, read
+from hive.thread_links import ThreadLink, decode, read
 from hive.usage_store import UsageStore
 
 CREATOR = "019a6191-60a3-7f2d-b05a-6ef901203040"
 EXECUTOR = "019a6191-60a4-7f2d-b05a-6ef901203040"
+CLAUDE = "a521cf51-c055-4715-832b-fc19921ee482"
 
 
 def bd(connection: BeadsConnection, *arguments: str) -> dict[str, object]:
@@ -154,6 +155,66 @@ class BeadLinkTests(unittest.TestCase):
                 )
             finally:
                 metadata.write_text(original)
+
+    def test_non_codex_sessions_are_associated_but_never_swept(self) -> None:
+        with (
+            private_server() as (connection, _),
+            tempfile.TemporaryDirectory() as temporary,
+        ):
+            bead = bd(
+                connection,
+                "create",
+                "Mixed hosts",
+                "--metadata",
+                json.dumps({"hive_project": "sample", "hive_origin_thread": CLAUDE}),
+            )
+            bd(connection, "--actor", CREATOR, "update", str(bead["id"]), "--claim")
+            root = Path(temporary)
+            transcript = root / "transcript.jsonl"
+            transcript.write_bytes(line("session_meta", {"id": CREATOR}))
+            index = root / "native.sqlite3"
+            with sqlite3.connect(index) as database:
+                database.execute(
+                    "CREATE TABLE threads(id TEXT PRIMARY KEY, rollout_path TEXT NOT NULL)"
+                )
+                database.execute(
+                    "INSERT INTO threads VALUES (?,?)", (CREATOR, str(transcript))
+                )
+            context = LaunchContext(
+                SourceCommit("source"),
+                root,
+                root / "state",
+                connection.directory,
+                0,
+                root,
+            )
+            stale = CollectionRegistry(UsageStore(context.state / "telemetry.sqlite3"))
+            stale.refresh(
+                (ThreadLink(CodexTaskId(CLAUDE), str(bead["id"]), "creator", True),),
+                (),
+                None,
+            )
+            stale.attempted(CodexTaskId(CLAUDE), "No transcript", None)
+            for _ in range(2):
+                batch = sweep(context, index, 32)
+                self.assertEqual(
+                    [
+                        record(result, "result")["task"]
+                        for result in sequence(batch["results"], "results")
+                    ],
+                    [CREATOR],
+                )
+            registry = CollectionRegistry(
+                UsageStore(context.state / "telemetry.sqlite3")
+            )
+            status = registry.status()
+            self.assertEqual(status["linked_threads"], 1)
+            self.assertEqual(status["uncollected_threads"], 1)
+            self.assertEqual(status["recent_failures"], [])
+            self.assertEqual(
+                registry.associations(CodexTaskId(CLAUDE)),
+                [{"bead": bead["id"], "relation": "creator"}],
+            )
 
     def test_invalid_metadata_is_a_gap_beside_valid_links(self) -> None:
         links, gaps = decode(

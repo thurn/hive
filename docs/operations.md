@@ -8,7 +8,7 @@ For an incident, stop the affected writer, inspect the bead, worktree, candidate
 
 ## Observation
 
-Run `hive telemetry sweep --native-index PATH` manually or opt into `hive telemetry watch --native-index PATH --interval-seconds 5`. A host service can run that exact command with `HIVE_BOOTSTRAP_CONFIG` in its environment; stop it before editing service configuration or resetting state. Uninstall by removing that service definition. The derived database is `${state}/telemetry.sqlite3`; inspect its file size directly. To reset, stop the collector and remove only that file. This loses historical price evidence and cursors; source transcripts remain under Codex control. Collection failure never blocks native work.
+Run `hive telemetry sweep --native-index PATH` manually or opt into `hive telemetry watch --native-index PATH --interval-seconds 5`. A host service can run that exact command with `HIVE_BOOTSTRAP_CONFIG` in its environment; stop it before editing service configuration or resetting state. Uninstall by removing that service definition. The derived database is `${state}/telemetry.sqlite3`; inspect its file size directly. To reset, stop the collector and remove only that file. This loses historical price evidence and cursors; source transcripts remain under Codex control. Collection failure never blocks native work. Only Codex (UUIDv7) thread links are swept; other linked sessions appear in links and cost with `collected: false` or `usage_collectable: false` instead of as collector failures.
 
 ## Manual archive
 

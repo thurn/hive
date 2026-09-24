@@ -14,7 +14,7 @@ from hive.cost_report import report
 from hive.errors import ErrorCode, HiveError
 from hive.identity import CodexTaskId, PricingTier
 from hive.launch_context import LaunchContext
-from hive.thread_links import read
+from hive.thread_links import codex_thread, read
 from hive.usage_store import UsageStore
 
 
@@ -79,6 +79,11 @@ def main() -> int:
                 result["association_stale"] = True
             result["associated_beads"] = registry.associations(CodexTaskId(parsed.task))
             result["association_gaps"] = registry.gaps()
+            result["usage_collectable"] = codex_thread(parsed.task)
+            if not result["usage_collectable"]:
+                result["collection_gap"] = (
+                    "Not a Codex thread ID; usage and cost are not collected"
+                )
         elif parsed.action == "collect":
             result = UsageStore(context.state / "telemetry.sqlite3").collect(
                 CodexTaskId(parsed.task),
