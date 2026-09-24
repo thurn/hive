@@ -58,3 +58,4 @@ scripts/check
 ```
 
 The fast gate checks style, strict typing, boundaries, and retained accounting/link behavior. The full gate adds source selection and native routing integration. Tollgate runs the full gate against the actual integration candidate before promotion. New source commits are selected on the next call; existing calls retain their snapshot. Dependency or state maintenance is explicit.
+The executor workflow can be exercised end to end by filing, claiming and delivering a trivial bead.
