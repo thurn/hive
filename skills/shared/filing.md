@@ -1,6 +1,6 @@
 # File and maintain native beads
 
-Use the configured `~/hive/bin/hive-bd`, always naming bead IDs explicitly. Search for duplicates. Record a useful description, acceptance criteria, priority, intended project, and `hive_origin_thread` with the actual filing thread when available. An ordinary ready filing may include `hive_project` in flat metadata:
+Use the configured `~/hive/bin/hive-bd`, always naming bead IDs explicitly. Search for duplicates. Record a useful description, acceptance criteria, priority, intended project, and `hive_origin_thread` with the actual filing thread when available. `hive_project` must be a project `id` from the bootstrap `projects`; if the intended project is unregistered, file without it and report the gap. An ordinary ready filing may include `hive_project` in flat metadata:
 
 ```sh
 # Claude Code uses thread="${CLAUDE_CODE_SESSION_ID:?}" instead.
@@ -13,4 +13,4 @@ For prerequisites or missing approval, initially omit `hive_project`, describe t
 
 Before claiming, inspect native status, edges and prerequisite `hive_resolution`. Open, deferred, cancelled or ambiguous prerequisites mean wait or repair. `bd ready` is a candidate list, not proof a cancelled prerequisite was completed. Never use implicit last-touched issue commands.
 
-For completion, settle writers and delivery, set `hive_resolution=completed` with a concise native outcome note, then `bd close <id>`. Cancellation uses `hive_resolution=cancelled`, closes explicitly, and triggers dependent inspection. Native close retains the assignee for observation. Repair/reopen must clear historical assignee and resolution only after affected workers are coordinated.
+For completion, settle writers and delivery, set `hive_resolution=completed`, then `bd close <id> --reason '<concise outcome>'`. Cancellation uses `hive_resolution=cancelled`, closes explicitly with the cause as `--reason`, and triggers dependent inspection. Native close retains the assignee for observation. Repair/reopen must clear historical assignee and resolution only after affected workers are coordinated.
