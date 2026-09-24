@@ -294,3 +294,18 @@ class SourceSelectionTests(unittest.TestCase):
             value = record(parse(output.stdout))
             self.assertEqual(value["code"], "SourceSelected")
             self.assertEqual(value["commit"], selected)
+
+    def test_default_configuration_lives_in_brain(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary).resolve()
+            repository, environment = fixture(root)
+            configured = Path(environment.pop("HIVE_BOOTSTRAP_CONFIG"))
+            (root / "brain").mkdir(exist_ok=True)
+            configured.rename(root / "brain/hive.json")
+            (root / ".config/hive").mkdir(parents=True)
+            (root / ".config/hive/bootstrap.json").write_text("not json")
+            environment["HOME"] = str(root)
+            output = call(environment)
+            self.assertEqual(output.returncode, 0, output.stderr)
+            value = record(parse(output.stdout))
+            self.assertEqual(value["commit"], git(repository, "rev-parse", "HEAD"))

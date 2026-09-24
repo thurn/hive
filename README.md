@@ -4,7 +4,7 @@ Hive is a small local companion to [Beads](https://github.com/steveyegge/beads) 
 
 ## Configure
 
-Use Python 3.12, Beads 1.2.2 in server mode, Dolt 2.2.0, and a configured Tollgate repository. Create `~/.config/hive/bootstrap.json` (or set `HIVE_BOOTSTRAP_CONFIG` for an isolated setup):
+Use Python 3.12, Beads 1.2.2 in server mode, Dolt 2.2.0, and a configured Tollgate repository. Create `~/brain/hive.json`, versioned beside the Beads data (or set `HIVE_BOOTSTRAP_CONFIG` for an isolated setup):
 
 ```json
 {

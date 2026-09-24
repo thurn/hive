@@ -27,7 +27,7 @@ def read_settings() -> Settings:
     path = (
         Path(configured).expanduser()
         if configured is not None
-        else Path.home() / ".config/hive/bootstrap.json"
+        else Path.home() / "brain/hive.json"
     )
     values: dict[str, object] = {}
     if configured is not None or path.exists():

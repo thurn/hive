@@ -1,6 +1,6 @@
 # Use Beads directly
 
-Read `${HIVE_BOOTSTRAP_CONFIG:-$HOME/.config/hive/bootstrap.json}`. Its `beads` field is the absolute store root (default `$HOME/brain/hive`), not the implementation checkout. Never infer the store from cwd: a Tollgate worktree or project checkout may have its own `.beads`.
+Read `${HIVE_BOOTSTRAP_CONFIG:-$HOME/brain/hive.json}`. Its `beads` field is the absolute store root (default `$HOME/brain/hive`), not the implementation checkout. Never infer the store from cwd: a Tollgate worktree or project checkout may have its own `.beads`.
 
 Run every native command with `BEADS_DIR` naming that root's `.beads` directory, auto-start, prompts and hooks disabled, and the flags Hive has always used:
 
