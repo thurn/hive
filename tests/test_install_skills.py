@@ -1,5 +1,6 @@
 """Skill installation preflights every destination before writing."""
 
+import os
 import subprocess
 import sys
 import tempfile
@@ -48,3 +49,34 @@ class InstallSkillsTests(unittest.TestCase):
             self.assertNotEqual(refused.returncode, 0)
             self.assertIn("Conflicting skill path", refused.stderr)
             self.assertFalse((destination / "warden").exists())
+
+    def test_claude_agent_defaults_to_claude_config_skills(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            home = Path(temporary)
+            environment = {
+                key: value
+                for key, value in os.environ.items()
+                if key not in {"CLAUDE_CONFIG_DIR", "CODEX_HOME"}
+            }
+            environment["HOME"] = str(home)
+            completed = subprocess.run(
+                [
+                    sys.executable,
+                    str(ROOT / "scripts/install-skills"),
+                    "--source",
+                    str(ROOT),
+                    "--agent",
+                    "claude",
+                ],
+                capture_output=True,
+                text=True,
+                timeout=10,
+                env=environment,
+            )
+            self.assertEqual(completed.returncode, 0, completed.stderr)
+            self.assertIn("/executor", completed.stdout)
+            for role in ROLES:
+                self.assertEqual(
+                    (home / ".claude/skills" / role).resolve(), ROOT / "skills" / role
+                )
+            self.assertFalse((home / ".codex").exists())

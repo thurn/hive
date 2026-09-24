@@ -5,16 +5,20 @@ import argparse
 import os
 from pathlib import Path
 
+AGENTS = {"codex": ("CODEX_HOME", ".codex"), "claude": ("CLAUDE_CONFIG_DIR", ".claude")}
 ROLES = ("executor", "bead", "warden", "weaver", "sage", "vizier", "justiciar", "archivist", "shared")
 
 
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--source", type=Path, default=Path.home() / "hive")
-    parser.add_argument("--dest", type=Path, default=Path(os.environ.get("CODEX_HOME", str(Path.home() / ".codex"))) / "skills")
+    parser.add_argument("--agent", choices=AGENTS, default="codex")
+    parser.add_argument("--dest", type=Path)
     args = parser.parse_args()
+    variable, home = AGENTS[args.agent]
     source = args.source.expanduser().resolve()
-    destination = args.dest.expanduser().resolve()
+    default = Path(os.environ.get(variable, str(Path.home() / home))) / "skills"
+    destination = (args.dest or default).expanduser().resolve()
     targets = [(source / "skills" / name, destination / name) for name in ROLES]
     for target, link in targets:
         if not target.is_dir():
@@ -29,7 +33,8 @@ def main() -> int:
         if not link.is_symlink():
             link.symlink_to(target, target_is_directory=True)
         print(f"{link} -> {target}")
-    print("Invoke $executor or $bead; remove only these links to uninstall.")
+    invoke = "/" if args.agent == "claude" else "$"
+    print(f"Invoke {invoke}executor or {invoke}bead; remove only these links to uninstall.")
     return 0
 
 

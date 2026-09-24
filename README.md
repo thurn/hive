@@ -1,6 +1,6 @@
 # Hive
 
-Hive is a small local companion to [Beads](https://github.com/steveyegge/beads) and Tollgate. Agents file, claim and close work with native Beads commands, and deliver code with native Tollgate commands. Hive selects committed local `master` for each call and observes Codex threads referenced by beads. [Implementation status](docs/implementation.md) records evidence and remaining acceptance.
+Hive is a small local companion to [Beads](https://github.com/steveyegge/beads) and Tollgate. Agents file, claim and close work with native Beads commands, and deliver code with native Tollgate commands. Hive selects committed local `master` for each call and observes Codex threads referenced by beads. Workflow skills also run in Claude Code; telemetry and cost remain Codex-only. [Implementation status](docs/implementation.md) records evidence and remaining acceptance.
 
 ## Configure
 
@@ -27,11 +27,11 @@ Defaults without a file are `~/hive`, `~/.local/state/hive`, and `~/brain/hive`,
 `bin/hive-bd` selects the configured store and forwards native `bd` arguments and streams. For example:
 
 ```sh
-~/hive/bin/hive-bd --actor "$CODEX_THREAD_ID" list --all --json
-~/hive/bin/hive-bd --actor "$CODEX_THREAD_ID" update hv-123 --claim --json
+~/hive/bin/hive-bd --actor "${CODEX_THREAD_ID:?}" list --all --json
+~/hive/bin/hive-bd --actor "${CODEX_THREAD_ID:?}" update hv-123 --claim --json
 ```
 
-The actor for a claim must be the actual invoking Codex thread ID. Inspect scope, status, dependencies, outcome, and rough workload first. Native ownership excludes a competing actor, but readiness and approval checks are agent responsibilities. See [role instructions](skills/executor/SKILL.md) and [operations](docs/operations.md).
+The actor for a claim must be the actual invoking thread ID: `CODEX_THREAD_ID` in Codex or `CLAUDE_CODE_SESSION_ID` in Claude Code, never the other host's inherited variable. Agent-tool subagents in Claude Code share their parent's ID and must not claim. Inspect scope, status, dependencies, outcome, and rough workload first. Native ownership excludes a competing actor, but readiness and approval checks are agent responsibilities. See [role instructions](skills/executor/SKILL.md) and [operations](docs/operations.md).
 
 ## Observe
 
@@ -47,7 +47,7 @@ The linked worklist comes from `hive_origin_thread` metadata and native assignee
 
 ## Install role skills
 
-Run `~/hive/scripts/install-skills`. It links the eight skills and shared instructions from the stable Hive checkout into `${CODEX_HOME:-$HOME/.codex}/skills`. It refuses conflicting names and does not change Fulcrum's live setup. Use `--source` and `--dest` for a disposable trial. Review [cutover](docs/operations.md) before making production bindings.
+Run `~/hive/scripts/install-skills`. It links the eight skills and shared instructions from the stable Hive checkout into `${CODEX_HOME:-$HOME/.codex}/skills`, or with `--agent claude` into `${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills`. It refuses conflicting names and does not change Fulcrum's live setup. Use `--source` and `--dest` for a disposable trial. Review [cutover](docs/operations.md) before making production bindings.
 
 ## Develop
 
