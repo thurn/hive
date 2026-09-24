@@ -1,6 +1,8 @@
 # Enter a Hive role
 
-Read `~/brain/hive.json` (or `HIVE_BOOTSTRAP_CONFIG`) to identify the requested configured project, repository, invariants and optional native project. Read project instructions and relevant beads with native `bd` using [explicit routing](routing.md). Keep implementation in that project. If the binding is unclear, clarify before claiming; read-only scoping may continue.
+Read `~/brain/hive.json` (or `HIVE_BOOTSTRAP_CONFIG`) to identify the requested configured project, repository, invariants and optional native project. A project named in the invocation wins. Otherwise the configured project is the session's: the `projects` entry whose `repository` contains the directory the thread started in. For a linked worktree stored elsewhere, compare its main checkout, the parent of `git rev-parse --path-format=absolute --git-common-dir`. Resolve this once at entry, before changing directories, and keep it for the thread. If no entry or more than one matches, the binding is unclear.
+
+Read project instructions and relevant beads with native `bd` using [explicit routing](routing.md). Keep implementation in that project. If the binding is unclear, clarify before claiming; read-only scoping may continue.
 
 Obtain the actual invoking thread ID from your own host's native context: `CODEX_THREAD_ID` in Codex, or `CLAUDE_CODE_SESSION_ID` in Claude Code. Never use the other host's variable, even when it is inherited. Expand it as `${VARIABLE:?}` in the same command as the Beads call so a missing ID fails instead of passing an empty actor. Do not invent one, reuse another thread's ID, or use a turn ID. A Claude Code Agent-tool subagent sees its parent's session ID, so it has no separate identity and must not claim or rename. If identity is unavailable, remain read-only or file what can be filed with a visible missing association; do not claim. Inspect existing assignments and outstanding tools on a returning thread before acting.
 
