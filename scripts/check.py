@@ -73,7 +73,7 @@ def main() -> int:
         )
     )
     fast = "--fast" in sys.argv[1:]
-    deadline = time.monotonic() + (30 if fast else 180)
+    deadline = time.monotonic() + (30 if fast else 240)
     if boundary_rules():
         return 1
     python = sys.executable
@@ -178,6 +178,20 @@ def main() -> int:
             "-p",
             "test_request_detail.py",
             "-v",
+        ]
+    )
+    commands.append(
+        [
+            python,
+            "-m",
+            "unittest",
+            "discover",
+            "-s",
+            "tests",
+            "-p",
+            "test_dashboard_server.py",
+            "-v",
+            *(["-k", "environment_failure"] if fast else []),
         ]
     )
     if not fast:

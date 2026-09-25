@@ -23,6 +23,12 @@ def add_parser[ParserType: argparse.ArgumentParser](
 ) -> None:
     dashboard = groups.add_parser("dashboard")
     operations = dashboard.add_subparsers(dest="action", required=True)
+    server = operations.add_parser("serve")
+    server.add_argument("--port", type=int, default=4320)
+    build = operations.add_parser("build")
+    build.add_argument("commit")
+    build.add_argument("--retry", action="store_true")
+    operations.add_parser("page")
     api = operations.add_parser("api")
     routes = api.add_subparsers(dest="route", required=True)
     feed = routes.add_parser("feed")
@@ -93,6 +99,19 @@ def read(path: Path) -> sqlite3.Connection:
 
 
 def dispatch(context: LaunchContext, args: argparse.Namespace) -> dict[str, object]:
+    if args.action == "serve":
+        from hive.dashboard_transport import run
+
+        return run(context.state, context.repository / "scripts/hive.py", args.port)
+    if args.action in {"build", "page"}:
+        from hive.dashboard_build import build
+        from hive.dashboard_build import page as document
+
+        return (
+            build(context, args.commit, retry=args.retry)
+            if args.action == "build"
+            else document(context)
+        )
     from hive.dashboard_detail import detail, page
     from hive.dashboard_feed import feed, freshness
     from hive.dashboard_panel import panel
