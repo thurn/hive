@@ -130,6 +130,9 @@ def _refresh(
                 )
             )
     with store.connect() as connection:
+        from hive.dashboard_beads import cache as cache_beads
+
+        cache_beads(connection, listed)
         listed_ids = {item[0] for item in snapshots}
         previous_snapshots: object = connection.execute(
             "SELECT bead,listed FROM bead_snapshots"

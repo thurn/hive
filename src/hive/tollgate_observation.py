@@ -216,7 +216,9 @@ def poll(
         return status(connection)
 
 
-def candidates(connection: sqlite3.Connection) -> list[dict[str, object]]:
+def candidates(
+    connection: sqlite3.Connection, candidate_id: str | None = None
+) -> list[dict[str, object]]:
     from hive.bead_assignment import Evidence
     from hive.bead_requests import Request
     from hive.identity import Host, ThreadId
@@ -224,7 +226,8 @@ def candidates(connection: sqlite3.Connection) -> list[dict[str, object]]:
 
     evidence = Evidence.read(connection)
     values: object = connection.execute(
-        "SELECT c.candidate,c.project,c.payload,MAX(c.updated,COALESCE(p.at,c.updated)) AS effective_update FROM tollgate_candidates c LEFT JOIN tollgate_promotions p ON c.candidate=p.candidate ORDER BY effective_update DESC,c.candidate"
+        "SELECT c.candidate,c.project,c.payload,MAX(c.updated,COALESCE(p.at,c.updated)) AS effective_update FROM tollgate_candidates c LEFT JOIN tollgate_promotions p ON c.candidate=p.candidate WHERE (? IS NULL OR c.candidate=?) ORDER BY effective_update DESC,c.candidate",
+        (candidate_id, candidate_id),
     ).fetchall()
     result: list[dict[str, object]] = []
     for raw in sequence(values, "candidates"):

@@ -136,6 +136,20 @@ def main() -> int:
             "-s",
             "tests",
             "-p",
+            "test_dashboard_api.py",
+            "-v",
+            *(["-k", "excerpts"] if fast else []),
+        ]
+    )
+    commands.append(
+        [
+            python,
+            "-m",
+            "unittest",
+            "discover",
+            "-s",
+            "tests",
+            "-p",
             "test_claude.py",
             "-v",
         ]
@@ -167,6 +181,19 @@ def main() -> int:
         ]
     )
     if not fast:
+        commands.append(
+            [
+                python,
+                "-m",
+                "unittest",
+                "discover",
+                "-s",
+                "tests",
+                "-p",
+                "test_dashboard_budget.py",
+                "-v",
+            ]
+        )
         commands.append(
             [
                 python,

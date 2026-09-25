@@ -33,6 +33,9 @@ def main() -> int:
         parser.add_argument("--json", action="store_true")
         groups = parser.add_subparsers(dest="group", required=True)
         groups.add_parser("source")
+        from hive.dashboard_api import add_parser, dispatch
+
+        add_parser(groups)
         executor = groups.add_parser("executor")
         executor_actions = executor.add_subparsers(dest="action", required=True)
         executor_start = executor_actions.add_parser("start")
@@ -101,11 +104,14 @@ def main() -> int:
                 result = configuration(context)
             else:
                 result = handle(context, sys.stdin.read(1_048_577))
+        elif parsed.group == "dashboard":
+            result = dispatch(context, parsed)
         elif parsed.group == "cost":
             if parsed.task is None:
-                if parsed.requests or parsed.cursor is not None:
+                if parsed.reconcile and (parsed.requests or parsed.cursor is not None):
                     raise HiveError(
-                        ErrorCode.INVALID_INPUT, "Request paging requires --task"
+                        ErrorCode.INVALID_INPUT,
+                        "Request paging requires --task or --bead",
                     )
                 from hive.bead_cost import report as bead_report
 
@@ -127,6 +133,22 @@ def main() -> int:
                     None if parsed.tier is None else PricingTier(parsed.tier),
                     history_error=history_error,
                 )
+                if parsed.cursor is not None and not parsed.requests:
+                    raise HiveError(
+                        ErrorCode.INVALID_INPUT, "--cursor requires --requests"
+                    )
+                if parsed.requests:
+                    if parsed.tier not in (None, "standard"):
+                        raise HiveError(
+                            ErrorCode.INVALID_INPUT,
+                            "Bead request pages use the standard Codex tier",
+                        )
+                    from hive.dashboard_detail import page
+
+                    with store.connect(write=False) as connection:
+                        result.update(
+                            page(connection, "bead:" + parsed.bead, parsed.cursor)
+                        )
             else:
                 store = UsageStore(context.state / "telemetry.sqlite3")
                 registry = CollectionRegistry(store)

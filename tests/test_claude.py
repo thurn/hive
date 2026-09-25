@@ -92,7 +92,7 @@ class ClaudeTests(unittest.TestCase):
                 record(json.loads(result.stdout))["priced_subset_usd"], "0.000438000000"
             )
             with sqlite3.connect(state / "telemetry.sqlite3") as db:
-                self.assertEqual(db.execute("PRAGMA user_version").fetchone(), (15,))
+                self.assertEqual(db.execute("PRAGMA user_version").fetchone(), (16,))
 
     def test_host_totals_replay_old_cursors_and_reject_late_output(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -120,6 +120,9 @@ class ClaudeTests(unittest.TestCase):
             # Construct the populated delivered v2 schema: it had consumed
             # these records but could not retain cost-state or latest time.
             with sqlite3.connect(root / "state/telemetry.sqlite3") as db:
+                from dashboard_fixture import remove_dashboard
+
+                remove_dashboard(db)
                 db.execute("DROP VIEW request_detail")
                 db.execute("DROP TABLE claude_cost_states")
                 db.execute("DROP VIEW claude_agent_parents")

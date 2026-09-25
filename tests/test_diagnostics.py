@@ -204,6 +204,9 @@ class DiagnosticTests(unittest.TestCase):
                 count = len(calls)
             # A schema-13 store already at EOF must replay metadata during upgrade.
             with sqlite3.connect(store.path) as db:
+                from dashboard_fixture import remove_dashboard
+
+                remove_dashboard(db)
                 for table in (
                     "tollgate_promotions",
                     "tollgate_mapping_state",

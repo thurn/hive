@@ -203,6 +203,9 @@ class TollgateTests(unittest.TestCase):
             )
             # Upgrade an already scanned schema-14 transcript without explicit rewind.
             with sqlite3.connect(root / "state/telemetry.sqlite3") as db:
+                from dashboard_fixture import remove_dashboard
+
+                remove_dashboard(db)
                 for table in (
                     "tollgate_promotions",
                     "tollgate_mapping_state",
