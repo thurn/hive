@@ -175,6 +175,13 @@ def collect(
             ).fetchone()
             is not None
         )
+        diagnostic_replay = (
+            connection.execute(
+                "SELECT 1 FROM diagnostic_replays WHERE task=? AND file=?",
+                (thread, key),
+            ).fetchone()
+            is not None
+        )
         remaining: int | None = None
         incomplete: bool | None = None
         error: str | None = None
@@ -206,7 +213,7 @@ def collect(
                             "Transcript replaced or truncated; earlier coverage may be missing",
                         )
                     device, inode, position, skipping = info.st_dev, info.st_ino, 0, 0
-                if from_start or replay_requested:
+                if from_start or replay_requested or diagnostic_replay:
                     position, skipping = 0, 0
                 start = position
                 chunk = read(stream, position, bool(skipping), budget)
@@ -241,6 +248,10 @@ def collect(
                     )
                 connection.execute(
                     "DELETE FROM claude_modifier_replays WHERE task=? AND file=?",
+                    (thread, key),
+                )
+                connection.execute(
+                    "DELETE FROM diagnostic_replays WHERE task=? AND file=?",
                     (thread, key),
                 )
                 for item in records:
@@ -278,6 +289,47 @@ def collect(
 
                         observe(connection, thread, raw)
                         observe_parts(connection, thread, key, offset, raw, event)
+                        if event is not None:
+                            from hive.diagnostic_report import cache_event
+                            from hive.diagnostic_store import Location
+                            from hive.diagnostic_store import event as diagnostic_event
+
+                            marker = cache_event(
+                                connection, thread, event.usage.response
+                            )
+                            if marker is not None:
+                                diagnostic_event(
+                                    connection,
+                                    Location(
+                                        Host.CLAUDE,
+                                        thread,
+                                        agent or "",
+                                        key,
+                                        offset,
+                                        device,
+                                        inode,
+                                    ),
+                                    marker[0],
+                                    marker[1],
+                                    ref=event.usage.response,
+                                )
+
+                        from hive.diagnostic_store import Location
+                        from hive.diagnostic_store import observe as observe_diagnostics
+
+                        observe_diagnostics(
+                            connection,
+                            Location(
+                                Host.CLAUDE,
+                                thread,
+                                agent or "",
+                                key,
+                                offset,
+                                device,
+                                inode,
+                            ),
+                            raw,
+                        )
                     except HiveError as failure:
                         gap(offset, str(failure))
                 position, skipping = chunk.position, int(chunk.skipping)
@@ -319,6 +371,10 @@ def collect(
         )
     if error is None:
         metadata(store, thread, path)
+        with store.connect() as connection:
+            from hive.diagnostic_roles import finalize as finalize_roles
+
+            finalize_roles(connection, thread)
     return {
         "code": "TranscriptCollected",
         "task": thread,

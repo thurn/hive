@@ -113,6 +113,7 @@ def main() -> int:
             "-p",
             "test_links.py",
             "-v",
+            *(["-k", "sweep_uses_links"] if fast else []),
         ],
         [
             python,
@@ -166,6 +167,19 @@ def main() -> int:
         ]
     )
     if not fast:
+        commands.append(
+            [
+                python,
+                "-m",
+                "unittest",
+                "discover",
+                "-s",
+                "tests",
+                "-p",
+                "test_diagnostics.py",
+                "-v",
+            ]
+        )
         commands.append(
             [
                 python,

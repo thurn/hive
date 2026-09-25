@@ -1,5 +1,6 @@
 """One root owns each Codex response; native child identity stays observable."""
 
+import hashlib
 import sqlite3
 
 from hive.identity import ThreadId
@@ -17,6 +18,77 @@ def root(connection: sqlite3.Connection, thread: str) -> ThreadId:
 def fold(connection: sqlite3.Connection, child: str, parent: str) -> None:
     if child == parent:
         return
+    # Diagnostics collected before native parent metadata arrived follow the same
+    # root/file identity without requiring access to an old transcript again.
+    for table in (
+        "tool_calls",
+        "tool_commands",
+        "role_spans",
+        "diagnostic_sessions",
+        "diagnostic_titles",
+    ):
+        fields = [
+            string(row(v, 6)[1], "column")
+            for v in sequence(
+                connection.execute(f"PRAGMA table_info({table})").fetchall(), "columns"
+            )
+        ]
+        if not fields:
+            continue
+        expressions = [
+            (
+                "?"
+                if name == "thread"
+                else (
+                    "CASE WHEN agent='' THEN ? ELSE agent END"
+                    if name == "agent"
+                    else (
+                        "CASE WHEN file='' THEN ? ELSE file END"
+                        if name == "file"
+                        else name
+                    )
+                )
+            )
+            for name in fields
+        ]
+        parameters = tuple(
+            (
+                parent
+                if name == "thread"
+                else child if name == "agent" else "codex-agent-" + child
+            )
+            for name in fields
+            if name in {"thread", "agent", "file"}
+        )
+        connection.execute(
+            f"INSERT OR IGNORE INTO {table} SELECT {','.join(expressions)} FROM {table} WHERE thread=?",
+            (*parameters, child),
+        )
+        connection.execute(f"DELETE FROM {table} WHERE thread=?", (child,))
+    if connection.execute(
+        "SELECT 1 FROM sqlite_master WHERE name='session_events'"
+    ).fetchone():
+        events: object = connection.execute(
+            "SELECT id,host,thread,agent,kind,at,until,amount_picos,ref,file,offset,device,inode FROM session_events WHERE thread=?",
+            (child,),
+        ).fetchall()
+        for raw in sequence(events, "folded diagnostic events"):
+            values = list(row(raw, 13))
+            values[2], values[3] = parent, values[3] or child
+            values[9] = values[9] or "codex-agent-" + child
+            values[0] = hashlib.sha256(
+                f"{parent}:{values[9]}:{values[10]}:{values[4]}:{values[8]}".encode()
+            ).hexdigest()
+            connection.execute(
+                "INSERT OR IGNORE INTO session_events VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                values,
+            )
+        connection.execute("DELETE FROM session_events WHERE thread=?", (child,))
+        connection.execute(
+            "INSERT OR IGNORE INTO diagnostic_replays SELECT ?,CASE WHEN file='' THEN ? ELSE file END FROM diagnostic_replays WHERE task=?",
+            (parent, "codex-agent-" + child, child),
+        )
+        connection.execute("DELETE FROM diagnostic_replays WHERE task=?", (child,))
     # Retained quotes use globally unique response ids and are untouched.
     connection.execute(
         "UPDATE responses SET task=?,agent=? WHERE task=? AND host='codex'",

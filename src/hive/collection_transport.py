@@ -23,6 +23,7 @@ def environment() -> dict[str, str]:
             "HIVE_SELECTED_DIRECTORY",
             "HIVE_BEADS_DIRECTORY",
             "HIVE_CLAUDE_PROJECTS",
+            "HIVE_PROJECTS",
             "HIVE_STATE_DIRECTORY",
             "HIVE_MUTATION_GUARD_FD",
             "HIVE_REPOSITORY_DIRECTORY",

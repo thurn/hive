@@ -89,6 +89,13 @@ class UsageStore:
                 if previous is None
                 else tuple(integer(v, "source cursor") for v in row(previous, 4))
             )
+            diagnostic_replay = (
+                connection.execute(
+                    "SELECT 1 FROM diagnostic_replays WHERE task=? AND file=?",
+                    (task, file),
+                ).fetchone()
+                is not None
+            )
             remaining: int | None = None
             incomplete: bool | None = None
             read_bytes = 0
@@ -135,8 +142,12 @@ class UsageStore:
                             0,
                             0,
                         )
-                    if from_start:
+                    if from_start or diagnostic_replay:
                         position, skipping = 0, 0
+                    connection.execute(
+                        "DELETE FROM diagnostic_replays WHERE task=? AND file=?",
+                        (task, file),
+                    )
                     chunk_start = position
                     chunk = read(stream, position, bool(skipping), budget)
                     for line in chunk.records:
@@ -148,7 +159,14 @@ class UsageStore:
                                 )
                             continue
                         try:
-                            raw = parse(line.data.decode("utf-8"))
+                            raw = record(
+                                parse(line.data.decode("utf-8")), "native record"
+                            )
+                            from hive.diagnostic_store import Location
+                            from hive.diagnostic_store import (
+                                observe as observe_diagnostics,
+                            )
+
                             model = turn_model.decode(raw, identity)
                             if model is not None:
                                 model = replace(
@@ -171,6 +189,19 @@ class UsageStore:
                                     ),
                                 )
                                 self.save(connection, event)
+                            observe_diagnostics(
+                                connection,
+                                Location(
+                                    Host.CODEX,
+                                    task,
+                                    agent or "",
+                                    file,
+                                    line.offset,
+                                    device,
+                                    inode,
+                                ),
+                                raw,
+                            )
                         except (HiveError, UnicodeError) as failure:
                             gap(line.offset, str(failure))
                     position, skipping = chunk.position, int(chunk.skipping)
@@ -205,6 +236,9 @@ class UsageStore:
                     size,
                 ),
             )
+            from hive.diagnostic_roles import finalize as finalize_roles
+
+            finalize_roles(connection, task)
         return {
             "code": "TranscriptCollected",
             "task": task,

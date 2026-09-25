@@ -7,7 +7,7 @@ from hive.errors import ErrorCode, HiveError
 from hive.jsonvalue import integer, parse, sequence, string
 from hive.usage import tokens
 
-VERSION = 13
+VERSION = 14
 
 SCHEMA = (
     """CREATE TABLE IF NOT EXISTS sources (
@@ -124,10 +124,19 @@ def prepare(connection: sqlite3.Connection, *, write: bool) -> None:
                 )
             if current == VERSION:
                 return
+            if current == 13:
+                from hive.diagnostic_schema import create as create_diagnostics
+
+                create_diagnostics(connection)
+                connection.execute(f"PRAGMA user_version={VERSION}")
+                return
             if current == 12:
                 from hive.project_schema import create as create_projects
 
                 create_projects(connection)
+                from hive.diagnostic_schema import create as create_diagnostics
+
+                create_diagnostics(connection)
                 connection.execute(f"PRAGMA user_version={VERSION}")
                 return
             if current in (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11):
@@ -168,6 +177,9 @@ def prepare(connection: sqlite3.Connection, *, write: bool) -> None:
                 from hive.project_schema import create as create_projects
 
                 create_projects(connection)
+                from hive.diagnostic_schema import create as create_diagnostics
+
+                create_diagnostics(connection)
                 connection.execute(f"PRAGMA user_version={VERSION}")
                 return
             existing = tables(connection)
@@ -244,6 +256,9 @@ def prepare(connection: sqlite3.Connection, *, write: bool) -> None:
             from hive.project_schema import create as create_projects
 
             create_projects(connection)
+            from hive.diagnostic_schema import create as create_diagnostics
+
+            create_diagnostics(connection)
             connection.execute(f"PRAGMA user_version={VERSION}")
     finally:
         connection.execute("PRAGMA busy_timeout=100")

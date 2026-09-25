@@ -98,6 +98,10 @@ def sweep(context: LaunchContext, index: Path, limit: int) -> dict[str, object]:
             )
             results.update(idle_results)
             native_error = native_error or error
+        with usage.connect() as connection:
+            from hive.diagnostic_store import orphan
+
+            orphan(connection)
         return {
             "code": "CollectionBatch",
             **event_health,
