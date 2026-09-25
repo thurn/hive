@@ -1,0 +1,147 @@
+{
+  "hv-4up": {
+    "attributed_usd": "3.970022400000",
+    "intervals": [
+      {
+        "thread": "01a0d0bb-8916-7380-8a5e-24cacfaaeda1",
+        "host": "codex",
+        "start": "2026-09-24T00:07:49.580000+00:00",
+        "end": "2026-09-24T03:12:35.924000+00:00",
+        "usd": "2.574416000000",
+        "deleted": false
+      },
+      {
+        "thread": "1adb320e-554a-4b4e-a560-cbbeb03a8bdf",
+        "host": "claude",
+        "start": "2026-09-24T03:12:35.924000+00:00",
+        "end": "2026-09-24T03:16:14.268000+00:00",
+        "usd": "1.395606400000",
+        "deleted": false
+      }
+    ],
+    "interval_status": "known",
+    "interval_reason": null,
+    "bead_events_caught_up": true,
+    "coverage": {
+      "threads_with_unpriced": [
+        "1adb320e-554a-4b4e-a560-cbbeb03a8bdf"
+      ],
+      "threads_with_source_gaps": [
+        "01a0d0bb-8916-7380-8a5e-24cacfaaeda1"
+      ],
+      "threads_without_complete_estimate": [
+        "01a0d0bb-8916-7380-8a5e-24cacfaaeda1",
+        "1adb320e-554a-4b4e-a560-cbbeb03a8bdf"
+      ]
+    },
+    "attempts": 29,
+    "last_call_seconds": 2.1584523339988664
+  },
+  "hv-67e": {
+    "attributed_usd": "2.777258400000",
+    "intervals": [
+      {
+        "thread": "3583abd8-aec6-4be7-ab0f-cbdac049eaf4",
+        "host": "claude",
+        "start": "2026-09-24T04:08:16.899000+00:00",
+        "end": "2026-09-24T04:16:03.590000+00:00",
+        "usd": "2.777258400000",
+        "deleted": false
+      }
+    ],
+    "interval_status": "known",
+    "interval_reason": null,
+    "bead_events_caught_up": true,
+    "coverage": {
+      "threads_with_unpriced": [],
+      "threads_with_source_gaps": [],
+      "threads_without_complete_estimate": [
+        "3583abd8-aec6-4be7-ab0f-cbdac049eaf4"
+      ]
+    },
+    "attempts": 7,
+    "last_call_seconds": 2.145873000001302
+  },
+  "hv-0m1": {
+    "attributed_usd": "0.000000000000",
+    "intervals": [
+      {
+        "thread": "3583abd8-aec6-4be7-ab0f-cbdac049eaf4",
+        "host": "claude",
+        "start": "2026-09-24T04:33:43.319000+00:00",
+        "end": "2026-09-24T12:40:46.043000+00:00",
+        "usd": "0.000000000000",
+        "deleted": false
+      }
+    ],
+    "interval_status": "unknown",
+    "interval_reason": "Ownership history is not caught up",
+    "bead_events_caught_up": false,
+    "coverage": {
+      "threads_with_unpriced": [],
+      "threads_with_source_gaps": [],
+      "threads_without_complete_estimate": [
+        "3583abd8-aec6-4be7-ab0f-cbdac049eaf4"
+      ]
+    },
+    "attempts": 30,
+    "last_call_seconds": 2.126250458008144
+  },
+  "reconcile": {
+    "code": "CostReconciliation",
+    "balanced": true,
+    "difference_usd": "0.000000000000",
+    "thread_total_usd": "26.342745000000",
+    "attributed_usd": "0.000000000000",
+    "unowned_usd": "0.000000000000",
+    "unattributable_usd": "26.342745000000",
+    "unpriced_requests": 1,
+    "threads": [
+      {
+        "thread": "01a0d0bb-8916-7380-8a5e-24cacfaaeda1",
+        "total_usd": "3.569038000000",
+        "attributed_usd": "0.000000000000",
+        "unowned_usd": "0.000000000000",
+        "unattributable_usd": "3.569038000000",
+        "unpriced_requests": 0
+      },
+      {
+        "thread": "1adb320e-554a-4b4e-a560-cbbeb03a8bdf",
+        "total_usd": "1.885827200000",
+        "attributed_usd": "0.000000000000",
+        "unowned_usd": "0.000000000000",
+        "unattributable_usd": "1.885827200000",
+        "unpriced_requests": 1
+      },
+      {
+        "thread": "3583abd8-aec6-4be7-ab0f-cbdac049eaf4",
+        "total_usd": "17.798517800000",
+        "attributed_usd": "0.000000000000",
+        "unowned_usd": "0.000000000000",
+        "unattributable_usd": "17.798517800000",
+        "unpriced_requests": 0
+      },
+      {
+        "thread": "4dd72542-9ef2-4e3f-a039-ff40ae8d192a",
+        "total_usd": "0.890536800000",
+        "attributed_usd": "0.000000000000",
+        "unowned_usd": "0.000000000000",
+        "unattributable_usd": "0.890536800000",
+        "unpriced_requests": 0
+      },
+      {
+        "thread": "f8e5bf9f-868b-41cb-9692-1d2d7991bc87",
+        "total_usd": "2.198825200000",
+        "attributed_usd": "0.000000000000",
+        "unowned_usd": "0.000000000000",
+        "unattributable_usd": "2.198825200000",
+        "unpriced_requests": 0
+      }
+    ],
+    "beads": [],
+    "meaning": "Bookkeeping consistency, not attribution accuracy.",
+    "bead_events_caught_up": false,
+    "unretained_estimates": 0,
+    "pricing_tier_assumption": "standard"
+  }
+}

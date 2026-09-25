@@ -36,6 +36,27 @@ class Modifiers:
             counter(data.get("web_searches", 0), "web searches"),
         )
 
+    def enrich(self, later: "Modifiers") -> "Modifiers":
+        def merge(old: str | None, new: str | None) -> str | None:
+            if old is not None and new is not None and old != new:
+                raise HiveError(
+                    ErrorCode.INVALID_RECORD,
+                    "Conflicting Claude response identity or usage",
+                )
+            return old if new is None else new
+
+        if self.web_searches != later.web_searches:
+            raise HiveError(
+                ErrorCode.INVALID_RECORD,
+                "Conflicting Claude response identity or usage",
+            )
+        return Modifiers(
+            merge(self.speed, later.speed),
+            merge(self.service_tier, later.service_tier),
+            merge(self.inference_geo, later.inference_geo),
+            self.web_searches,
+        )
+
     @property
     def key(self) -> str:
         return "/".join(

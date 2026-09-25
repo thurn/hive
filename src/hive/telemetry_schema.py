@@ -7,7 +7,7 @@ from hive.errors import ErrorCode, HiveError
 from hive.jsonvalue import integer, parse, sequence, string
 from hive.usage import tokens
 
-VERSION = 11
+VERSION = 12
 
 SCHEMA = (
     """CREATE TABLE IF NOT EXISTS sources (
@@ -75,6 +75,11 @@ def add_cost_states(connection: sqlite3.Connection) -> None:
         PRIMARY KEY(task,start))""")
 
 
+def create_modifier_replays(connection: sqlite3.Connection) -> None:
+    connection.execute("""CREATE TABLE IF NOT EXISTS claude_modifier_replays (
+        task TEXT NOT NULL, file TEXT NOT NULL, PRIMARY KEY(task,file))""")
+
+
 def version(connection: sqlite3.Connection) -> int:
     raw: object = connection.execute("PRAGMA user_version").fetchone()
     if not isinstance(raw, tuple) or len(raw) != 1:
@@ -119,7 +124,7 @@ def prepare(connection: sqlite3.Connection, *, write: bool) -> None:
                 )
             if current == VERSION:
                 return
-            if current in (1, 2, 3, 4, 5, 6, 7, 8, 9, 10):
+            if current in (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11):
                 if current == 1:
                     add_claude(connection)
                 if current < 3:
@@ -150,6 +155,10 @@ def prepare(connection: sqlite3.Connection, *, write: bool) -> None:
                 from hive.tool_allocation_store import create as create_allocations
 
                 create_allocations(connection)
+                create_modifier_replays(connection)
+                connection.execute(
+                    "INSERT OR IGNORE INTO claude_modifier_replays SELECT task,file FROM sources WHERE host='claude'"
+                )
                 connection.execute(f"PRAGMA user_version={VERSION}")
                 return
             existing = tables(connection)
@@ -222,6 +231,7 @@ def prepare(connection: sqlite3.Connection, *, write: bool) -> None:
             from hive.tool_allocation_store import create as create_allocations
 
             create_allocations(connection)
+            create_modifier_replays(connection)
             connection.execute(f"PRAGMA user_version={VERSION}")
     finally:
         connection.execute("PRAGMA busy_timeout=100")

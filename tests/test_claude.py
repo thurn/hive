@@ -92,7 +92,7 @@ class ClaudeTests(unittest.TestCase):
                 record(json.loads(result.stdout))["priced_subset_usd"], "0.000438000000"
             )
             with sqlite3.connect(state / "telemetry.sqlite3") as db:
-                self.assertEqual(db.execute("PRAGMA user_version").fetchone(), (11,))
+                self.assertEqual(db.execute("PRAGMA user_version").fetchone(), (12,))
 
     def test_host_totals_replay_old_cursors_and_reject_late_output(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -299,6 +299,107 @@ class ClaudeTests(unittest.TestCase):
             )
             self.assertEqual(result["host_process_segments"], 1)
             self.assertIsNone(result["host_reported"])
+
+    def test_partial_modifier_enrichment_and_migration_recover_native_stream(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            path = root / f"{THREAD}.jsonl"
+            early = assistant(
+                "enriched",
+                3,
+                complete=False,
+                usage_changes={
+                    "speed": None,
+                    "service_tier": None,
+                    "inference_geo": None,
+                },
+            )
+            final = assistant(
+                "enriched",
+                283,
+                usage_changes={"output_tokens_details": {"thinking_tokens": 85}},
+            )
+            path.write_bytes(early)
+            store = UsageStore(root / "state/telemetry.sqlite3")
+            store.collect(THREAD, path)
+            before = record(json.loads(hive(root, "cost", "--task", THREAD).stdout))
+            self.assertEqual(before["unpriced_responses"], 1)
+            with path.open("ab") as stream:
+                stream.write(final)
+            store.collect(THREAD, path)
+            after = record(json.loads(hive(root, "cost", "--task", THREAD).stdout))
+            self.assertEqual(after["priced_responses"], 1)
+            self.assertEqual(after["parse_gaps"], 0)
+            self.assertEqual(after["possibly_partial_output"], 0)
+            self.assertEqual(after["priced_subset_usd"], "0.005898000000")
+            # Replay the early nulls without losing the final known modifiers.
+            store.collect(THREAD, path, from_start=True)
+            reread = record(json.loads(hive(root, "cost", "--task", THREAD).stdout))
+            self.assertEqual(reread["priced_subset_usd"], after["priced_subset_usd"])
+            self.assertEqual(reread["parse_gaps"], 0)
+            # Recreate the legacy rejected final record, then recover by upgrade.
+            with sqlite3.connect(store.path) as db:
+                db.execute(
+                    "UPDATE responses SET modifiers=json_set(modifiers,'$.speed',NULL),modifier_key='unknown/standard/not_available',output=3,reasoning=0,complete=0,usage=json_set(usage,'$.output_tokens',3,'$.reasoning_output_tokens',0)"
+                )
+                db.execute("DELETE FROM response_estimates")
+                db.execute(
+                    "INSERT INTO gaps(task,file,device,inode,position,detail) SELECT task,file,device,inode,?,'Conflicting Claude response identity or usage' FROM sources",
+                    (len(early),),
+                )
+                db.execute("PRAGMA user_version=11")
+            store.collect(THREAD, path)
+            upgraded = record(json.loads(hive(root, "cost", "--task", THREAD).stdout))
+            self.assertEqual(upgraded["priced_subset_usd"], after["priced_subset_usd"])
+            self.assertEqual(upgraded["parse_gaps"], 0)
+            with path.open("ab") as stream:
+                stream.write(
+                    assistant("enriched", 284, usage_changes={"speed": "fast"})
+                )
+            store.collect(THREAD, path)
+            conflict = record(json.loads(hive(root, "cost", "--task", THREAD).stdout))
+            self.assertEqual(conflict["priced_subset_usd"], after["priced_subset_usd"])
+            self.assertEqual(conflict["parse_gaps"], 1)
+
+    def test_modifier_migration_preserves_unrecoverable_conflict_evidence(self) -> None:
+        for mutation in ("missing", "replaced", "truncated"):
+            with (
+                self.subTest(mutation=mutation),
+                tempfile.TemporaryDirectory() as temporary,
+            ):
+                root = Path(temporary)
+                path = root / f"{THREAD}.jsonl"
+                valid = assistant("conflict", 10)
+                path.write_bytes(
+                    valid + assistant("conflict", 11, usage_changes={"speed": "fast"})
+                )
+                store = UsageStore(root / "state/telemetry.sqlite3")
+                store.collect(THREAD, path)
+                before = record(json.loads(hive(root, "cost", "--task", THREAD).stdout))
+                self.assertEqual(before["parse_gaps"], 1)
+                with sqlite3.connect(store.path) as db:
+                    db.execute("PRAGMA user_version=11")
+                if mutation == "missing":
+                    path.unlink()
+                elif mutation == "replaced":
+                    replacement = root / "replacement"
+                    replacement.write_bytes(valid)
+                    replacement.replace(path)
+                else:
+                    path.write_bytes(valid)
+                store.collect(THREAD, path)
+                after = record(json.loads(hive(root, "cost", "--task", THREAD).stdout))
+                self.assertGreaterEqual(int(str(after["parse_gaps"])), 1)
+                self.assertIn(
+                    "Conflicting Claude response identity or usage",
+                    str(after["recent_gaps"]),
+                )
+                if mutation != "missing":
+                    self.assertIn(
+                        "Transcript replaced or truncated", str(after["recent_gaps"])
+                    )
 
     def test_commands_update_partial_requests_and_keep_each_file_cursor(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

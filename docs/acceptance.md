@@ -29,6 +29,22 @@ The original completed-session example `4dd72542` is also absent; the live arith
 
 Cold reviews found concrete bugs before promotion, including renamed/deleted history preservation, transient status recovery, streamed part growth, replayed oversized bytes and migrated early content blocks. Each confirmed defect gained a regression. Bucket equality alone missed several wrong allocations, so it is recorded only as bookkeeping evidence. User-directed autonomous implementation does not turn the remaining live-environment and accuracy checks into passing evidence.
 
+## Historical Claude acceptance recovery, 2026-09-25
+
+The original local transcripts became available and were collected into a private store without activating a production collector or changing Claude settings. This exposed a native streaming shape missed by the earlier fixtures: subagent partial usage omits `speed`, while the final record supplies it. The hv-b4r fix enriches absent modifiers, preserves known modifiers during rereads, and continues rejecting conflicting known values; schema 12 replays existing Claude sources to recover rejected finals.
+
+[Measurements](measurements/claude-historical-20260925.json) contain only IDs, counters and cost evidence:
+
+| Session | Collected files | Priced / observed requests | Exact priced USD | Evidence |
+| --- | --- | --- | --- | --- |
+| `4dd72542` | main + 1 subagent | 22 / 22 | 0.890536800000 | Matches the original native final cost total exactly. |
+| `1adb320e` | main + 1 subagent | 42 / 43 | 1.885827200000 | One unfinished subagent request still lacks a speed; it remains unpriced. |
+| `f8e5bf9f` | main + 2 subagents | 60 / 60 | 2.198825200000 | Matches the plan's rounded $2.19883 and includes every agent file. |
+
+All three have zero parse gaps, zero remaining bytes, zero unallocated USD, and request-detail sums equal to the priced totals. The three reports count 20, 40 and 48 suspected prefix rewrites respectively; these are heuristic markers, not confirmed cache waste. Every `byte_split_error` remains null (fewer than 20 qualifying single-part segments), so empirical tool-split accuracy is still unaccepted. The native cost-state records contain no timestamp; `host_reported` and `unrecorded_usd_lower_bound` correctly remain null with `cost_state_timestamp_unavailable`, so the required live positive-gap report is still not demonstrated. No missing timestamp or modifier was invented to meet acceptance. The desktop managed-settings and `/clear` checks from the earlier acceptance record also remain outstanding. These limitations keep the dashboard's hard prerequisite gate open.
+
+The same private store read live Beads history without changing native tasks. [Interval measurements](measurements/live-intervals-20260925.json) confirm `hv-4up`'s Codex interval `00:07:49.580Z–03:12:35.924Z` and Claude interval `03:12:35.924Z–03:16:14.268Z`, and `hv-67e`'s interval `04:08:16.899Z–04:16:03.590Z`. Catch-up required 29 and 7 bounded report attempts respectively. A subsequent 30 attempts for `hv-0m1` did not finish history refresh: its cached interval is present, but attribution correctly remains unknown. The final reconciliation balances $26.342745 solely in the unattributable bucket while behind; this is **not** successful live attribution acceptance. A reliable steady-state catch-up/performance check remains outstanding for `hv-qg7`.
+
 ## Tollgate completion status, 2026-09-23
 
 Provider candidate `01a0cead-dfd8-73a2-9b0f-6976155138f0` passed validation and was explicitly approved. Tollgate reported `promoted`, remote `synchronized` and cleanup `completed`, with certificate `01a0ceae-7bdd-7b82-8370-6ab766a232d6`. The certified release `d6f14f827772937d05eb6d9c1faf3876762fffef` was built in a detached worktree, code signed, installed and restarted. The installed app and CLI binaries matched the certified build. Native candidate status from the running app reported `local_master.status=synchronized`, `contains_tested=true`, `policy_enabled=true` and local master commit `d6f14f827772937d05eb6d9c1faf3876762fffef`. `tg --no-launch doctor` with Tollgate's repository ID returned `healthy=true` with all checks healthy.

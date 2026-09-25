@@ -1,0 +1,161 @@
+{
+  "source_base": "62246380ee1958e9fed2dc5596f12e2de1f34b0d",
+  "change": "hv-b4r streamed modifier enrichment; private store, original transcripts read only",
+  "sessions": [
+    {
+      "observed_responses": 22,
+      "priced_responses": 22,
+      "priced_subset_usd": "0.890536800000",
+      "host_reported": null,
+      "host_reported_reason": "cost_state_timestamp_unavailable",
+      "unrecorded_usd_lower_bound": null,
+      "unallocated_usd": "0.000000000000",
+      "context_resets": 0,
+      "suspected_prefix_rewrite": 20,
+      "byte_split_error": null,
+      "by_agent": [
+        {
+          "agent": null,
+          "label": "main",
+          "parent_agent": null,
+          "responses": 17,
+          "priced_responses": 17,
+          "unpriced_responses": 0,
+          "usd": "0.566813200000"
+        },
+        {
+          "agent": "a9a06c7835a1342b8",
+          "label": "subagent",
+          "agent_type": "general-purpose",
+          "parent_agent": null,
+          "spawn_depth": 1,
+          "responses": 5,
+          "priced_responses": 5,
+          "unpriced_responses": 0,
+          "usd": "0.323723600000"
+        },
+        {
+          "label": "event_only",
+          "responses": 0,
+          "usd": "0.000000000000",
+          "unpriced_responses": 0,
+          "by_query_source": []
+        }
+      ],
+      "parse_gaps": 0,
+      "source_errors": null,
+      "remaining_bytes": 0,
+      "thread": "4dd72542-9ef2-4e3f-a039-ff40ae8d192a",
+      "files": 2,
+      "request_rows": 22,
+      "detail_sum": "0.890536800000"
+    },
+    {
+      "observed_responses": 43,
+      "priced_responses": 42,
+      "priced_subset_usd": "1.885827200000",
+      "host_reported": null,
+      "host_reported_reason": "cost_state_timestamp_unavailable",
+      "unrecorded_usd_lower_bound": null,
+      "unallocated_usd": "0.000000000000",
+      "context_resets": 0,
+      "suspected_prefix_rewrite": 40,
+      "byte_split_error": null,
+      "by_agent": [
+        {
+          "agent": null,
+          "label": "main",
+          "parent_agent": null,
+          "responses": 35,
+          "priced_responses": 35,
+          "unpriced_responses": 0,
+          "usd": "1.484431600000"
+        },
+        {
+          "agent": "a552bcdfb757ccd4b",
+          "label": "subagent",
+          "agent_type": "general-purpose",
+          "parent_agent": null,
+          "spawn_depth": 1,
+          "responses": 8,
+          "priced_responses": 7,
+          "unpriced_responses": 1,
+          "usd": "0.401395600000"
+        },
+        {
+          "label": "event_only",
+          "responses": 0,
+          "usd": "0.000000000000",
+          "unpriced_responses": 0,
+          "by_query_source": []
+        }
+      ],
+      "parse_gaps": 0,
+      "source_errors": null,
+      "remaining_bytes": 0,
+      "thread": "1adb320e-554a-4b4e-a560-cbbeb03a8bdf",
+      "files": 2,
+      "request_rows": 43,
+      "detail_sum": "1.885827200000"
+    },
+    {
+      "observed_responses": 60,
+      "priced_responses": 60,
+      "priced_subset_usd": "2.198825200000",
+      "host_reported": null,
+      "host_reported_reason": "cost_state_timestamp_unavailable",
+      "unrecorded_usd_lower_bound": null,
+      "unallocated_usd": "0.000000000000",
+      "context_resets": 0,
+      "suspected_prefix_rewrite": 48,
+      "byte_split_error": null,
+      "by_agent": [
+        {
+          "agent": null,
+          "label": "main",
+          "parent_agent": null,
+          "responses": 45,
+          "priced_responses": 45,
+          "unpriced_responses": 0,
+          "usd": "1.546917400000"
+        },
+        {
+          "agent": "a2df51a0177a10e3b",
+          "label": "subagent",
+          "agent_type": "general-purpose",
+          "parent_agent": null,
+          "spawn_depth": 1,
+          "responses": 7,
+          "priced_responses": 7,
+          "unpriced_responses": 0,
+          "usd": "0.373161600000"
+        },
+        {
+          "agent": "aac1dd5ad9a99c591",
+          "label": "subagent",
+          "agent_type": "general-purpose",
+          "parent_agent": null,
+          "spawn_depth": 1,
+          "responses": 8,
+          "priced_responses": 8,
+          "unpriced_responses": 0,
+          "usd": "0.278746200000"
+        },
+        {
+          "label": "event_only",
+          "responses": 0,
+          "usd": "0.000000000000",
+          "unpriced_responses": 0,
+          "by_query_source": []
+        }
+      ],
+      "parse_gaps": 0,
+      "source_errors": null,
+      "remaining_bytes": 0,
+      "thread": "f8e5bf9f-868b-41cb-9692-1d2d7991bc87",
+      "files": 3,
+      "request_rows": 60,
+      "detail_sum": "2.198825200000"
+    }
+  ]
+}

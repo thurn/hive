@@ -4,10 +4,11 @@ import json
 import os
 import sqlite3
 import stat
+from dataclasses import replace
 from datetime import UTC, datetime
 from pathlib import Path
 
-from hive.claude_usage import ClaudeResponse, decode
+from hive.claude_usage import ClaudeResponse, Modifiers, decode
 from hive.errors import ErrorCode, HiveError
 from hive.identity import Host, ThreadId
 from hive.jsonvalue import integer, parse, record, string
@@ -57,10 +58,15 @@ def save(connection: sqlite3.Connection, event: ClaudeResponse) -> None:
         )
         last_observed = max(last_observed, timestamp(old_time))
         old = tokens(parse(string(raw_usage, "stored Claude usage")))
+        event = replace(
+            event,
+            modifiers=Modifiers.read(
+                parse(string(modifiers, "stored modifiers"))
+            ).enrich(event.modifiers),
+        )
         if (
             host != Host.CLAUDE
             or model != event.model
-            or parse(string(modifiers, "stored modifiers")) != event.modifiers.value()
             or (
                 old.input,
                 old.cached_input,
@@ -111,7 +117,7 @@ def save(connection: sqlite3.Connection, event: ClaudeResponse) -> None:
     connection.execute(
         "INSERT INTO responses(response,task,turn,observed,usage,input,cached,cache_write,output,reasoning,host,agent,model,modifier_key,modifiers,cache_write_1h,complete,skill,flags,last_observed) "
         "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(response) DO UPDATE SET "
-        "usage=excluded.usage,output=excluded.output,reasoning=excluded.reasoning,complete=excluded.complete,flags=excluded.flags,last_observed=excluded.last_observed",
+        "usage=excluded.usage,output=excluded.output,reasoning=excluded.reasoning,complete=excluded.complete,flags=excluded.flags,last_observed=excluded.last_observed,modifier_key=excluded.modifier_key,modifiers=excluded.modifiers",
         (
             usage.response,
             usage.owner.thread,
@@ -162,6 +168,13 @@ def collect(
             if previous is None
             else tuple(integer(v, "source cursor") for v in row(previous, 4))
         )
+        replay_requested = (
+            connection.execute(
+                "SELECT 1 FROM claude_modifier_replays WHERE task=? AND file=?",
+                (thread, key),
+            ).fetchone()
+            is not None
+        )
         remaining: int | None = None
         incomplete: bool | None = None
         error: str | None = None
@@ -191,7 +204,7 @@ def collect(
                             "Transcript replaced or truncated; earlier coverage may be missing",
                         )
                     device, inode, position, skipping = info.st_dev, info.st_ino, 0, 0
-                if from_start:
+                if from_start or replay_requested:
                     position, skipping = 0, 0
                 start = position
                 chunk = read(stream, position, bool(skipping), budget)
@@ -224,6 +237,10 @@ def collect(
                     raise ValueError(
                         "Claude transcript identity not yet observed; cursor retained"
                     )
+                connection.execute(
+                    "DELETE FROM claude_modifier_replays WHERE task=? AND file=?",
+                    (thread, key),
+                )
                 for item in records:
                     from hive.tool_store import observe as observe_parts
 
@@ -249,6 +266,12 @@ def collect(
                         event = decode(raw, thread)
                         if event is not None:
                             save(connection, event)
+                            # Repair only this exact record's prior conflict;
+                            # missing or replaced transcript evidence stays.
+                            connection.execute(
+                                "DELETE FROM gaps WHERE task=? AND file=? AND device=? AND inode=? AND position=? AND detail='Conflicting Claude response identity or usage'",
+                                (thread, key, device, inode, offset),
+                            )
                         from hive.agent_store import observe
 
                         observe(connection, thread, raw)
