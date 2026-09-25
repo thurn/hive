@@ -65,9 +65,18 @@ class Event:
         bead = string(raw["issue_id"], "event bead")
         if BEAD.fullmatch(bead) is None:
             raise HiveError(ErrorCode.INVALID_RECORD, "Invalid event bead ID")
+        kind = string(raw["event_type"], "event type")
         occurred: datetime | None = None
         error: str | None = None
         try:
+            if kind in {"label_added", "label_removed"} and any(
+                raw[name] is not None
+                for name in ("old_status", "old_assignee", "new_status", "new_assignee")
+            ):
+                raise HiveError(
+                    ErrorCode.INVALID_RECORD,
+                    "Label event unexpectedly changes ownership",
+                )
             occurred = event_time(identity)
             local = timestamp(raw["created_at"])
             offset = integer(raw["server_offset"], "server offset", minimum=-86400)
@@ -91,7 +100,7 @@ class Event:
         return cls(
             identity,
             bead,
-            string(raw["event_type"], "event type"),
+            kind,
             text(raw["old_status"], "old status") or "",
             text(raw["old_assignee"], "old assignee") or "",
             text(raw["new_status"], "new status"),

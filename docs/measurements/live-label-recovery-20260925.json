@@ -1,0 +1,147 @@
+{
+  "hv-4up": {
+    "attributed_usd": "3.970022400000",
+    "intervals": [
+      {
+        "thread": "01a0d0bb-8916-7380-8a5e-24cacfaaeda1",
+        "host": "codex",
+        "start": "2026-09-24T00:07:49.580000+00:00",
+        "end": "2026-09-24T03:12:35.924000+00:00",
+        "usd": "2.574416000000",
+        "deleted": false
+      },
+      {
+        "thread": "1adb320e-554a-4b4e-a560-cbbeb03a8bdf",
+        "host": "claude",
+        "start": "2026-09-24T03:12:35.924000+00:00",
+        "end": "2026-09-24T03:16:14.268000+00:00",
+        "usd": "1.395606400000",
+        "deleted": false
+      }
+    ],
+    "interval_status": "known",
+    "interval_reason": null,
+    "bead_events_caught_up": true,
+    "attempts": 13,
+    "last_call_seconds": 2.1753162080131005
+  },
+  "hv-67e": {
+    "attributed_usd": "2.777258400000",
+    "intervals": [
+      {
+        "thread": "3583abd8-aec6-4be7-ab0f-cbdac049eaf4",
+        "host": "claude",
+        "start": "2026-09-24T04:08:16.899000+00:00",
+        "end": "2026-09-24T04:16:03.590000+00:00",
+        "usd": "2.777258400000",
+        "deleted": false
+      }
+    ],
+    "interval_status": "known",
+    "interval_reason": null,
+    "bead_events_caught_up": true,
+    "attempts": 1,
+    "last_call_seconds": 1.2711932499951217
+  },
+  "hv-0m1": {
+    "attributed_usd": "8.536401800000",
+    "intervals": [
+      {
+        "thread": "3583abd8-aec6-4be7-ab0f-cbdac049eaf4",
+        "host": "claude",
+        "start": "2026-09-24T04:33:43.319000+00:00",
+        "end": "2026-09-24T12:40:46.043000+00:00",
+        "usd": "8.536401800000",
+        "deleted": false
+      }
+    ],
+    "interval_status": "known",
+    "interval_reason": null,
+    "bead_events_caught_up": true,
+    "attempts": 1,
+    "last_call_seconds": 0.4908946659998037
+  },
+  "reconcile": {
+    "code": "CostReconciliation",
+    "balanced": true,
+    "difference_usd": "0.000000000000",
+    "thread_total_usd": "26.342745000000",
+    "attributed_usd": "17.234444400000",
+    "unowned_usd": "9.108300600000",
+    "unattributable_usd": "0.000000000000",
+    "unpriced_requests": 1,
+    "threads": [
+      {
+        "thread": "01a0d0bb-8916-7380-8a5e-24cacfaaeda1",
+        "total_usd": "3.569038000000",
+        "attributed_usd": "2.574416000000",
+        "unowned_usd": "0.994622000000",
+        "unattributable_usd": "0.000000000000",
+        "unpriced_requests": 0
+      },
+      {
+        "thread": "1adb320e-554a-4b4e-a560-cbbeb03a8bdf",
+        "total_usd": "1.885827200000",
+        "attributed_usd": "1.395606400000",
+        "unowned_usd": "0.490220800000",
+        "unattributable_usd": "0.000000000000",
+        "unpriced_requests": 1
+      },
+      {
+        "thread": "3583abd8-aec6-4be7-ab0f-cbdac049eaf4",
+        "total_usd": "17.798517800000",
+        "attributed_usd": "11.313660200000",
+        "unowned_usd": "6.484857600000",
+        "unattributable_usd": "0.000000000000",
+        "unpriced_requests": 0
+      },
+      {
+        "thread": "4dd72542-9ef2-4e3f-a039-ff40ae8d192a",
+        "total_usd": "0.890536800000",
+        "attributed_usd": "0.598123400000",
+        "unowned_usd": "0.292413400000",
+        "unattributable_usd": "0.000000000000",
+        "unpriced_requests": 0
+      },
+      {
+        "thread": "f8e5bf9f-868b-41cb-9692-1d2d7991bc87",
+        "total_usd": "2.198825200000",
+        "attributed_usd": "1.352638400000",
+        "unowned_usd": "0.846186800000",
+        "unattributable_usd": "0.000000000000",
+        "unpriced_requests": 0
+      }
+    ],
+    "beads": [
+      {
+        "bead": "hv-0m1",
+        "attributed_usd": "8.536401800000"
+      },
+      {
+        "bead": "hv-0yu",
+        "attributed_usd": "0.598123400000"
+      },
+      {
+        "bead": "hv-4up",
+        "attributed_usd": "3.970022400000"
+      },
+      {
+        "bead": "hv-67e",
+        "attributed_usd": "2.777258400000"
+      },
+      {
+        "bead": "hv-rdz",
+        "attributed_usd": "0.715585400000"
+      },
+      {
+        "bead": "hv-sc8",
+        "attributed_usd": "0.637053000000"
+      }
+    ],
+    "meaning": "Bookkeeping consistency, not attribution accuracy.",
+    "bead_events_caught_up": true,
+    "unretained_estimates": 0,
+    "pricing_tier_assumption": "standard"
+  },
+  "known_histories": 173
+}

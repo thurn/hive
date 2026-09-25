@@ -7,6 +7,8 @@ from hive.bead_events import Event
 from hive.identity import ThreadId
 from hive.thread_links import thread_id
 
+NON_OWNERSHIP: frozenset[str] = frozenset({"renamed", "label_added", "label_removed"})
+
 
 @dataclass(frozen=True)
 class State:
@@ -40,10 +42,16 @@ def replay(events: tuple[Event, ...]) -> Replay:
         return failed("Missing creation event")
     # The first before-state establishes an already-assigned creation, including
     # a bead created directly in progress; current assignee is never backdated.
-    if len(events) > 1 and events[1].kind in {"claimed", "updated", "status_changed"}:
-        before = events[1]
-        if before.old_assignee:
-            state = State(before.old_status, before.old_assignee)
+    first_change = next(
+        (event for event in events[1:] if event.kind not in NON_OWNERSHIP), None
+    )
+    if first_change is not None and first_change.kind in {
+        "claimed",
+        "updated",
+        "status_changed",
+    }:
+        if first_change.old_assignee:
+            state = State(first_change.old_status, first_change.old_assignee)
     for index, event in enumerate(events):
         if event.error is not None or event.occurred is None:
             return failed(event.error or "Missing event time")
@@ -57,7 +65,14 @@ def replay(events: tuple[Event, ...]) -> Replay:
         ):
             if State(event.old_status, event.old_assignee) != state:
                 return failed("Event before-state disagrees with replay")
-        if event.kind == "renamed":
+        if event.kind in NON_OWNERSHIP:
+            if event.kind != "renamed" and (
+                event.old_status
+                or event.old_assignee
+                or event.new_status is not None
+                or event.new_assignee is not None
+            ):
+                return failed("Label event unexpectedly changes ownership")
             next_state = state
         elif event.kind == "closed":
             next_state = State("closed", state.assignee)

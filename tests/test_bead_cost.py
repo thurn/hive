@@ -341,6 +341,90 @@ class BeadCostTests(unittest.TestCase):
                     prices,
                 )
 
+    def test_native_labels_preserve_assigned_creation_and_owned_cost(self) -> None:
+        with (
+            private_server() as (connection, _),
+            tempfile.TemporaryDirectory() as temporary,
+        ):
+            root = Path(temporary)
+            setup(root, connection)
+            bead = str(bd(connection, "create", "Labelled", "--assignee", THREAD)["id"])
+
+            label_connection: BeadsConnection = connection
+            label_bead: str = bead
+
+            def label_event(action: str, name: str) -> None:
+                native(label_connection, "label", action, label_bead, name)
+                # bd 1.2.2's label command does not write history; replay the
+                # historical native label event shape retained in the live store.
+                at = datetime.now(UTC)
+                identity = uuid7(int(at.timestamp() * 1000))
+                kind = "label_added" if action == "add" else "label_removed"
+                sql(
+                    label_connection,
+                    "INSERT INTO events(id,issue_id,event_type,actor,old_value,new_value,created_at) VALUES ('"
+                    + identity
+                    + "','"
+                    + label_bead
+                    + "','"
+                    + kind
+                    + "','fixture',NULL,'"
+                    + name
+                    + "','"
+                    + at.astimezone().strftime("%Y-%m-%d %H:%M:%S")
+                    + "')",
+                )
+
+            label_event("add", "before")
+            bd(connection, "update", bead, "--status", "in_progress")
+            at = last(connection, bead) + timedelta(milliseconds=1)
+            label_event("add", "during")
+            label_event("remove", "before")
+            bd(connection, "close", bead)
+            label_event("remove", "during")
+            claude(root, THREAD, "label-owned", at)
+            report = command(root, "cost", "--bead", bead)
+            self.assertEqual(report["interval_status"], "known", report)
+            self.assertEqual(report["attributed_usd"], "0.000438000000")
+            self.assertEqual(len(sequence(report["intervals"], "intervals")), 1)
+            self.assertTrue(command(root, "cost", "--reconcile")["balanced"])
+            label = next(
+                event
+                for event in read(BeadsProcess(connection).bead_events(bead))
+                if event.kind == "label_added"
+            )
+            # Unknown event kinds and malformed labels must still fail closed.
+            for assignment, expected in (
+                ("event_type='future_event'", "Unsupported ownership event"),
+                (
+                    "event_type='label_added',new_value='{\"status\":\"closed\"}'",
+                    "Label event unexpectedly changes ownership",
+                ),
+                (
+                    "event_type='label_added',old_value='{\"assignee\":null,\"status\":\"\"}',new_value='during'",
+                    "Label event unexpectedly changes ownership",
+                ),
+                (
+                    "old_value=NULL,new_value='during',created_at='2020-01-01 00:00:00'",
+                    "Beads event time disagrees",
+                ),
+            ):
+                sql(
+                    connection,
+                    "UPDATE events SET "
+                    + assignment
+                    + " WHERE id='"
+                    + label.identity
+                    + "'",
+                )
+                for _ in range(4):
+                    report = command(root, "cost", "--bead", bead)
+                    if report["bead_events_caught_up"]:
+                        break
+                self.assertEqual(report["interval_status"], "unknown", report)
+                self.assertIn(expected, str(report["interval_reason"]))
+                self.assertEqual(report["attributed_usd"], "0.000000000000")
+
     def test_missing_middle_event_is_unknown_until_rebuild_recovers(self) -> None:
         with (
             private_server() as (connection, _),

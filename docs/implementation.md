@@ -54,3 +54,7 @@ Allocation remains estimated; exact reconciliation is bookkeeping evidence, not 
 ## Streamed Claude modifier enrichment (hv-b4r acceptance)
 
 Native subagent partial records can omit `speed` and only report it with final usage. Collection now fills absent speed, service tier and inference geography from later records without erasing known values during rereads; genuinely conflicting known values still create a gap. Schema 12 queues Claude sources for replay in the existing byte budget, preserving original cursors and conflict gaps until matching records replay successfully, recovering the previously rejected finals. Historical acceptance now reproduces the original $0.8905368 arithmetic and $2.1988252 two-subagent total; the positive live gap, empirical split accuracy and desktop event-source checks remain outstanding as detailed in `docs/acceptance.md`.
+
+## Native label events preserve ownership (hv-xi7)
+
+Beads `label_added` and `label_removed` events leave ownership unchanged. Replay skips these and rename events when finding the first ownership before-state, preserving assigned-creation behavior even with intervening labels. Label records that unexpectedly carry ownership fields, unsupported event kinds, and invalid timestamps still fail closed. Existing unknown histories are repaired through their normal bounded rebuilds; no event data or validation is discarded.
