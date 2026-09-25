@@ -1,6 +1,6 @@
 # Hive
 
-Hive is a small local companion to [Beads](https://github.com/steveyegge/beads) and Tollgate. Agents file, claim and close work with native Beads commands, and deliver code with native Tollgate commands. Hive selects committed local `master` for each call and observes Codex threads referenced by beads. Workflow skills also run in Claude Code; telemetry and cost remain Codex-only. [Implementation status](docs/implementation.md) records evidence and remaining acceptance.
+Hive is a small local companion to [Beads](https://github.com/steveyegge/beads) and Tollgate. Agents file, claim and close work with native Beads commands, and deliver code with native Tollgate commands. Hive selects committed local `master` for each call and observes Codex and Claude Code threads referenced by beads. Costs include per-request detail, Beads ownership attribution, exact Claude subagent/skill breakdowns and estimated tool allocation. [Implementation status](docs/implementation.md) records evidence and remaining acceptance.
 
 ## Configure
 
@@ -41,9 +41,12 @@ The actor for a claim must be the actual invoking thread ID: `CODEX_THREAD_ID` i
 ~/hive/bin/hive telemetry sweep --native-index "$HOME/.codex/state_5.sqlite" --json
 ~/hive/bin/hive telemetry status --json
 ~/hive/bin/hive cost --task <thread-id> --json
+~/hive/bin/hive cost --task <thread-id> --requests --json
+~/hive/bin/hive cost --bead <bead-id> --json
+~/hive/bin/hive cost --reconcile --json
 ```
 
-The linked worklist comes from `hive_origin_thread` metadata and native assignees on open and closed beads. Cost is one API-equivalent total per thread, with associated beads and explicit gaps. An unlinked conversation is outside default collection and archival. `telemetry collect --task ID --transcript PATH` remains available for an operator-supplied thread. `telemetry watch` runs opt-in as a resident timer, launching a new source-selected batch each time. [Operations](docs/operations.md) covers reset and service setup.
+The linked worklist comes from `hive_origin_thread` metadata, current native assignees and historical Beads ownership. Cost is observed per thread, with explicit coverage gaps; requests are attributed only to beads held at the request time, with equal sharing for overlapping claims. Claude discovery defaults to `~/.claude/projects` and can be routed with `claude_projects` in the bootstrap settings. The optional authenticated loopback OTLP receiver supplements transcripts; enabling it does not change Claude settings. Tool allocations are estimates, and exact bucket reconciliation does not establish their accuracy. An unlinked conversation is outside default collection and archival. `telemetry collect --task ID --transcript PATH` remains available for an operator-supplied thread. `telemetry watch` runs opt-in as a resident timer, launching a new source-selected batch each time. [Operations](docs/operations.md) covers reset and service setup.
 
 ## Install role skills
 
@@ -57,5 +60,5 @@ scripts/check-fast
 scripts/check
 ```
 
-The fast gate checks style, strict typing, boundaries, and retained accounting/link behavior. The full gate adds source selection and observer routing integration. Tollgate runs the full gate against the actual integration candidate before promotion. New source commits are selected on the next call; existing calls retain their snapshot. Dependency or state maintenance is explicit.
+The fast gate checks style, strict typing, boundaries, and retained accounting/link behavior. The full gate adds native Beads history/attribution, Claude events/tool allocation, source selection and observer routing integration. Tollgate runs the full gate against the actual integration candidate before promotion. New source commits are selected on the next call; existing calls retain their snapshot. Dependency or state maintenance is explicit.
 The executor workflow can be exercised end to end by filing, claiming and delivering a trivial bead.

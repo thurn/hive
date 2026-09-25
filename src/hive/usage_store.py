@@ -292,7 +292,7 @@ class UsageStore:
                 "known_tokens": summed,
                 **source_status(connection, task),
                 "api_equivalent_usd": None,
-                "coverage": "Usage counters only; use hive cost --task for estimates. Bead attribution remains unavailable",
+                "coverage": "Usage counters only; use hive cost --task for thread estimates or hive cost --bead for ownership-based attribution",
             }
 
 

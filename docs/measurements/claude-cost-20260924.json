@@ -1,0 +1,172 @@
+{
+  "date": "2026-09-24",
+  "timezone": "America/Los_Angeles",
+  "claude_code_version": "2.1.282",
+  "beads_version": "1.2.2",
+  "implementation_commit": "7be577198b74d720ecc1faae1ee6692b505f0bdd",
+  "tollgate_full_gate_ms": 127337,
+  "healthy_nested_export": {
+    "priced_subset_usd": "0.069755000000",
+    "event_only_usd": "0.000000000000",
+    "complete_estimate_usd": "0.069755000000",
+    "event_coverage": 1.0,
+    "event_sequence_gaps": 0,
+    "event_token_mismatches": 0,
+    "observed_responses": 5,
+    "event_only_requests": 0,
+    "parse_gaps": 0,
+    "source_error": null,
+    "remaining_bytes": 0,
+    "unallocated_usd": "0.000000000000",
+    "context_resets": 0,
+    "suspected_prefix_rewrite": 2,
+    "byte_split_error": null,
+    "allocation_missing_requests": 0,
+    "host_reported_reason": "cost_state_timestamp_unavailable"
+  },
+  "healthy_event_records": 19,
+  "subagents": [
+    {
+      "agent": "a217214107a01738f",
+      "parent_agent": "a23026375247b515d",
+      "spawn_depth": 2,
+      "usd": "0.004193000000"
+    },
+    {
+      "agent": "a23026375247b515d",
+      "parent_agent": null,
+      "spawn_depth": 1,
+      "usd": "0.020023400000"
+    }
+  ],
+  "export_outage": {
+    "priced_subset_usd": "0.109074200000",
+    "event_only_usd": "0.000000000000",
+    "complete_estimate_usd": null,
+    "event_coverage": 0.8571428571428571,
+    "event_sequence_gaps": 0,
+    "event_token_mismatches": 0,
+    "observed_responses": 7,
+    "event_only_requests": 0,
+    "parse_gaps": 0,
+    "source_error": null,
+    "remaining_bytes": 0,
+    "unallocated_usd": "0.000000000000",
+    "context_resets": 1,
+    "suspected_prefix_rewrite": 3,
+    "byte_split_error": null,
+    "allocation_missing_requests": 0,
+    "host_reported_reason": "cost_state_timestamp_unavailable"
+  },
+  "outage_reason": "incomplete_event_coverage",
+  "fast_mode_attempt": {
+    "priced_subset_usd": "0.016874200000",
+    "observed_modifiers": [
+      {
+        "speed": "standard",
+        "service_tier": "standard",
+        "inference_geo": "not_available",
+        "responses": 1
+      }
+    ],
+    "event_coverage": 1.0,
+    "complete_estimate_usd": "0.016874200000",
+    "complete_estimate_reasons": [],
+    "event_token_mismatches": 0,
+    "unallocated_usd": "0.000000000000",
+    "unknown_modifier": 0,
+    "ingest": {
+      "event_ingest_error": null,
+      "event_ingested_records": 6,
+      "event_rejected_records": 0,
+      "event_ingested_bytes": 9728
+    }
+  },
+  "tool_accuracy_sessions": [
+    {
+      "task": "4d0cc2b3-67b7-461a-992c-942f4ba1e324",
+      "observed_responses": 1,
+      "priced_subset_usd": "0.248765000000",
+      "unallocated_usd": "0.000000000000",
+      "context_resets": 0,
+      "suspected_prefix_rewrite": 0,
+      "byte_split_error": null,
+      "parse_gaps": 0,
+      "unknown_attachment_kinds": 3,
+      "allocation_missing_requests": 0
+    },
+    {
+      "task": "fe3acbf5-6748-4e8d-b50e-44038dbd1f80",
+      "observed_responses": 3,
+      "priced_subset_usd": "0.028711200000",
+      "unallocated_usd": "0.000000000000",
+      "context_resets": 0,
+      "suspected_prefix_rewrite": 2,
+      "byte_split_error": null,
+      "parse_gaps": 0,
+      "unknown_attachment_kinds": 0,
+      "allocation_missing_requests": 0
+    },
+    {
+      "task": "c7f89d5c-2fe9-4f60-ad4c-28f3346de0bb",
+      "observed_responses": 7,
+      "priced_subset_usd": "0.109074200000",
+      "unallocated_usd": "0.000000000000",
+      "context_resets": 1,
+      "suspected_prefix_rewrite": 3,
+      "byte_split_error": null,
+      "parse_gaps": 0,
+      "unknown_attachment_kinds": 0,
+      "allocation_missing_requests": 0
+    }
+  ],
+  "mixed_source_continuity": {
+    "initial_commit": "572a2bc7a2e9efdafce524dd45d3424203b0d895",
+    "updated_commit": "83935c75c312b6f3de59717267c0b2a431bfb43d",
+    "in_flight_source": "572a2bc7a2e9efdafce524dd45d3424203b0d895",
+    "versions": [
+      8,
+      9
+    ],
+    "before": {
+      "claude": 1,
+      "codex": 1
+    },
+    "after": {
+      "claude": 2,
+      "codex": 2
+    },
+    "batches": 3,
+    "listener_survived": true,
+    "restarted": false,
+    "exit_code": 0
+  },
+  "codex_reread": {
+    "before": {
+      "observed_responses": 2,
+      "priced_subset_usd": "0.003000000000",
+      "parse_gaps": 0
+    },
+    "after": {
+      "observed_responses": 2,
+      "priced_subset_usd": "0.003000000000",
+      "parse_gaps": 0
+    },
+    "collect_error": null
+  },
+  "request_details": {
+    "rows": 7,
+    "transcript_usd": "0.109074200000",
+    "event_only_usd": "0",
+    "healthy_event_host_usd": "0.069755000000",
+    "healthy_transcript_usd": "0.069755000000",
+    "transcript_only_rows_after_outage": 1
+  },
+  "unverified": [
+    "Historical plan sessions and live hv-4up/hv-67e unavailable in this checkout environment",
+    "Desktop managed-settings overrides and /clear",
+    "Fast request attempt returned observed standard speed",
+    "US-only inference not enabled for this observation",
+    "Byte-split accuracy: all three real sessions below the 20-single-part threshold"
+  ]
+}
