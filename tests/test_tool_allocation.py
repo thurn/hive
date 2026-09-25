@@ -14,6 +14,7 @@ from test_claude import THREAD, assistant
 
 from hive.jsonvalue import record, sequence
 from hive.transcript_chunks import MAX_BATCH, MAX_LINE
+from hive.usage_store import row
 
 
 def encoded(value: dict[str, object]) -> bytes:
@@ -81,11 +82,134 @@ def collect(root: Path, path: Path, *, restart: bool = False) -> None:
     raise AssertionError("Collector failed to catch up")
 
 
+def allocation_rows(root: Path) -> tuple[tuple[object, ...], ...]:
+    with sqlite3.connect(root / "state/telemetry.sqlite3") as db:
+        fetched: object = db.execute(
+            "SELECT response,bucket,tool_use_id,tool_name,component,tokens,usd,method FROM tool_allocation ORDER BY response,ordinal"
+        ).fetchall()
+    return tuple(row(value, 8) for value in sequence(fetched, "allocations"))
+
+
 def report(root: Path) -> dict[str, object]:
-    return command(root, "cost", "--task", THREAD)
+    result = command(root, "cost", "--task", THREAD)
+    rows = allocation_rows(root)
+    page = command(root, "cost", "--task", THREAD, "--requests")
+    for raw in sequence(page["requests"], "requests"):
+        request = record(raw)
+        charges = [value for value in rows if value[0] == request["response"]]
+        if request["source"] == "events" or request["usd"] is None:
+            if charges:
+                raise AssertionError("Event-only or unpriced request has allocation")
+            continue
+        for component, field in (
+            ("input", "uncached_input"),
+            ("cache_read", "cache_read"),
+            ("cache_write_5m", "cache_write_5m"),
+            ("cache_write_1h", "cache_write_1h"),
+            ("output", "output"),
+            ("server_tools", None),
+        ):
+            matching = [value for value in charges if value[4] == component]
+            count = sum(int(str(value[5])) for value in matching)
+            amount = sum((Decimal(str(value[6])) for value in matching), Decimal(0))
+            if count != (0 if field is None else request[field]):
+                raise AssertionError((request["response"], component, count, request))
+            if amount != Decimal(str(request["usd_" + component])):
+                raise AssertionError((request["response"], component, amount, request))
+        if sum((Decimal(str(value[6])) for value in charges), Decimal(0)) != Decimal(
+            str(request["usd"])
+        ):
+            raise AssertionError("Allocation differs from request")
+    if sum((Decimal(str(value[6])) for value in rows), Decimal(0)) != Decimal(
+        str(result["priced_subset_usd"])
+    ):
+        raise AssertionError("Allocation differs from thread total")
+    return result
 
 
 class ToolAllocationTests(unittest.TestCase):
+    def test_query_rows_refresh_downstream_streams_and_migrate_retained_evidence(
+        self,
+    ) -> None:
+        from test_events import captured, spool
+
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            path = root / f"{THREAD}.jsonl"
+            early = response("a", 100, output=1, blocks=[{"type": "text", "text": "a"}])
+            later = response("b", 200, cached=100, output=0, minute=1, blocks=[])
+            path.write_bytes(
+                early
+                + later
+                + assistant(
+                    "fee", usage_changes={"server_tool_use": {"web_search_requests": 2}}
+                )
+            )
+            collect(root, path)
+            report(root)
+            before = allocation_rows(root)
+            with path.open("ab") as stream:
+                stream.write(
+                    response(
+                        "a",
+                        100,
+                        output=10,
+                        blocks=[
+                            {
+                                "type": "tool_use",
+                                "id": "call",
+                                "name": "Read",
+                                "input": {},
+                            }
+                        ],
+                    )
+                )
+            collect(root, path)
+            # Query immediately after collection, without a report to repair rows.
+            after = allocation_rows(root)
+            self.assertNotEqual(after, before)
+            self.assertTrue(
+                any(
+                    value[0] == "b" and value[2] == "call" and value[3] == "Read"
+                    for value in after
+                )
+            )
+            self.assertEqual(
+                next(value[5:7] for value in after if value[1] == "server_tool_fees"),
+                (0, "0.020000000000"),
+            )
+            report(root)
+            collect(root, path, restart=True)
+            self.assertEqual(allocation_rows(root), after)
+            with sqlite3.connect(root / "state/telemetry.sqlite3") as db:
+                db.execute(
+                    "CREATE TRIGGER reject_idle_replay BEFORE DELETE ON tool_allocation BEGIN SELECT RAISE(ABORT,'Idle allocation replay'); END"
+                )
+            collect(root, path)
+            self.assertEqual(allocation_rows(root), after)
+            with sqlite3.connect(root / "state/telemetry.sqlite3") as db:
+                db.execute("DROP TRIGGER reject_idle_replay")
+                quotes = db.execute(
+                    "SELECT * FROM response_estimates ORDER BY response,tier"
+                ).fetchall()
+                db.execute("DROP TABLE tool_allocation")
+                db.execute("PRAGMA user_version=10")
+            # Migration uses saved byte facts and retained rates, even with no file.
+            path.unlink()
+            command(root, "telemetry", "sweep", "--native-index", str(root / "missing"))
+            self.assertEqual(allocation_rows(root), after)
+            with sqlite3.connect(root / "state/telemetry.sqlite3") as db:
+                self.assertEqual(
+                    db.execute(
+                        "SELECT * FROM response_estimates ORDER BY response,tier"
+                    ).fetchall(),
+                    quotes,
+                )
+            spool(root, captured())
+            command(root, "telemetry", "sweep", "--native-index", str(root / "missing"))
+            report(root)
+            self.assertEqual(allocation_rows(root), after)
+
     def test_positional_bands_output_ties_thinking_and_exact_totals(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

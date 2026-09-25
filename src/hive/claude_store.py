@@ -173,6 +173,7 @@ def collect(
                 (thread, key, device, inode, offset, detail),
             )
 
+        facts_before = connection.total_changes
         try:
             regular(path, parents=3 if agent is not None else 1)
             descriptor = os.open(path, os.O_RDONLY | os.O_NONBLOCK | os.O_NOFOLLOW)
@@ -262,6 +263,7 @@ def collect(
                 ) and size <= start + read_bytes
         except (OSError, ValueError, HiveError) as failure:
             error = str(failure)
+        facts_changed = connection.total_changes != facts_before
         connection.execute(
             "INSERT INTO sources(task,file,path,device,inode,position,skipping,scanned,remaining,incomplete,error,host) "
             "VALUES (?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(task,file) DO UPDATE SET "
@@ -282,6 +284,10 @@ def collect(
                 Host.CLAUDE,
             ),
         )
+        from hive.tool_allocation_store import refresh as refresh_allocations
+
+        if facts_changed:
+            refresh_allocations(connection, thread)
     if error is None:
         metadata(store, thread, path)
     return {

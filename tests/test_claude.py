@@ -4,6 +4,7 @@ import json
 import sqlite3
 import tempfile
 import unittest
+from decimal import Decimal
 from pathlib import Path
 
 from test_contention import hive
@@ -91,7 +92,7 @@ class ClaudeTests(unittest.TestCase):
                 record(json.loads(result.stdout))["priced_subset_usd"], "0.000438000000"
             )
             with sqlite3.connect(state / "telemetry.sqlite3") as db:
-                self.assertEqual(db.execute("PRAGMA user_version").fetchone(), (10,))
+                self.assertEqual(db.execute("PRAGMA user_version").fetchone(), (11,))
 
     def test_host_totals_replay_old_cursors_and_reject_late_output(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -853,6 +854,25 @@ class ClaudePricingTests(unittest.TestCase):
                             "SELECT quote FROM response_estimates WHERE response='req_retained'"
                         ).fetchone()[0]
                     )
+                )
+            with sqlite3.connect(store.path) as db:
+                allocations = db.execute(
+                    "SELECT response,usd FROM tool_allocation"
+                ).fetchall()
+            for identity, expected in (
+                ("req_retained", "0.000438000000"),
+                ("req_new", "0.004380000000"),
+            ):
+                self.assertEqual(
+                    sum(
+                        (
+                            Decimal(amount)
+                            for response, amount in allocations
+                            if response == identity
+                        ),
+                        Decimal(0),
+                    ),
+                    Decimal(expected),
                 )
             self.assertEqual(kept.rates, old.rates)
             self.assertEqual(kept.amount, 438_000_000)

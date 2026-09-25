@@ -22,6 +22,8 @@ class Charge:
     phase: str
     amount: int
     method: str
+    component: str
+    tokens: int
 
 
 def split(total: int, weights: tuple[int, ...]) -> tuple[int, ...]:
@@ -90,22 +92,23 @@ def allocate(
 ) -> tuple[Charge, ...]:
     charges: list[Charge] = []
     bands = (
-        (usage.cached_input, quote.rates.cached),
-        (usage.cache_write_1h_input, quote.rates.cache_write_1h),
-        (usage.cache_write_input, quote.rates.cache_write),
+        (usage.cached_input, quote.rates.cached, "cache_read"),
+        (usage.cache_write_1h_input, quote.rates.cache_write_1h, "cache_write_1h"),
+        (usage.cache_write_input, quote.rates.cache_write, "cache_write_5m"),
         (
             usage.input
             - usage.cached_input
             - usage.cache_write_1h_input
             - usage.cache_write_input,
             quote.rates.input,
+            "input",
         ),
     )
     segment_start = 0
     for segment in segments:
         parts, weights, method = weighted(segment)
         band_start = 0
-        for count, rate in bands:
+        for count, rate, component in bands:
             overlap = max(
                 0,
                 min(segment_start + segment.size, band_start + count)
@@ -116,7 +119,14 @@ def allocate(
                 if tokens:
                     charges.append(
                         Charge(
-                            bucket, tool, part.ref, "carrying", tokens * rate, method
+                            bucket,
+                            tool,
+                            part.ref,
+                            "carrying",
+                            tokens * rate,
+                            method,
+                            component,
+                            tokens,
                         )
                     )
             band_start += count
@@ -131,6 +141,8 @@ def allocate(
                 "invocation",
                 thinking * quote.rates.output,
                 "exact",
+                "output",
+                thinking,
             )
         )
     output = tuple(part for part in blocks if part.kind != "thinking")
@@ -150,11 +162,17 @@ def allocate(
                 "invocation",
                 count * quote.rates.output,
                 "exact" if len(output) == 1 else "bytes",
+                "output",
+                count,
             )
         )
     fees = (
         0 if quote.modifiers is None else quote.modifiers.web_searches
     ) * quote.web_search_picos
     if fees:
-        charges.append(Charge("server_tool_fees", None, None, "fee", fees, "exact"))
+        charges.append(
+            Charge(
+                "server_tool_fees", None, None, "fee", fees, "exact", "server_tools", 0
+            )
+        )
     return tuple(charges)

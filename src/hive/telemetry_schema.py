@@ -7,7 +7,7 @@ from hive.errors import ErrorCode, HiveError
 from hive.jsonvalue import integer, parse, sequence, string
 from hive.usage import tokens
 
-VERSION = 10
+VERSION = 11
 
 SCHEMA = (
     """CREATE TABLE IF NOT EXISTS sources (
@@ -119,7 +119,7 @@ def prepare(connection: sqlite3.Connection, *, write: bool) -> None:
                 )
             if current == VERSION:
                 return
-            if current in (1, 2, 3, 4, 5, 6, 7, 8, 9):
+            if current in (1, 2, 3, 4, 5, 6, 7, 8, 9, 10):
                 if current == 1:
                     add_claude(connection)
                 if current < 3:
@@ -147,6 +147,9 @@ def prepare(connection: sqlite3.Connection, *, write: bool) -> None:
                     create_tools(connection)
                 connection.execute("UPDATE claude_request_events SET observed=occurred")
                 create(connection)
+                from hive.tool_allocation_store import create as create_allocations
+
+                create_allocations(connection)
                 connection.execute(f"PRAGMA user_version={VERSION}")
                 return
             existing = tables(connection)
@@ -216,6 +219,9 @@ def prepare(connection: sqlite3.Connection, *, write: bool) -> None:
 
             create_tools(connection)
             create(connection)
+            from hive.tool_allocation_store import create as create_allocations
+
+            create_allocations(connection)
             connection.execute(f"PRAGMA user_version={VERSION}")
     finally:
         connection.execute("PRAGMA busy_timeout=100")

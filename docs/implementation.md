@@ -44,3 +44,9 @@ The opt-in Codex executor stop check reads native assignments and project-ready 
 ## Event timestamp consistency (hv-k8r)
 
 Event-only request detail and bead attribution use the OTLP `event.timestamp`, including hourly and near-boundary accounting; duration no longer shifts the observation backward. Schema 10 repairs existing event observations during a collector write without replaying transcripts or repricing retained quotes. A native handoff regression crosses an hour boundary with a nonzero request duration and checks the public detail, bead amounts, reconciliation, and migration preservation.
+
+## Queryable request tool allocations (hv-82b)
+
+Schema 11 adds `tool_allocation(response, ordinal, bucket, tool_use_id, tool_name, component, tokens, usd, method)`. Token counts are integers and USD values are exact decimal strings from retained quote rates; `component` uses the request-detail price names (`input`, `cache_read`, `cache_write_5m`, `cache_write_1h`, `output`, `server_tools`). Thinking is an output component in its own bucket. Server fees carry zero tokens. Event-only, Codex and unpriced requests have no allocation rows.
+
+Allocation remains estimated; exact reconciliation is bookkeeping evidence, not proof of the byte split's accuracy. Collector batches and first price retention refresh rows atomically, replaying the affected thread's saved context facts so late streamed blocks also repair later carrying shares. Schema migration backfills retained prices without transcript access or new pricing. Query with a read-only SQLite connection and sum decimal strings in integer picodollars or decimal arithmetic, rather than SQLite floating-point `SUM(usd)`. Tests reconcile every component's tokens and dollars, including reset/oversized fixtures, streaming, rereads, fees, event exclusions, migration, and retained rates across a source price change.

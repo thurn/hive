@@ -8,7 +8,15 @@ from datetime import datetime
 from hive.claude_usage import Modifiers
 from hive.cost_breakdown import Subtotal
 from hive.errors import ErrorCode, HiveError
-from hive.identity import CodexTaskId, Host, ModelId, PricingTier, ResponseId, UsdPicos
+from hive.identity import (
+    CodexTaskId,
+    Host,
+    ModelId,
+    PricingTier,
+    ResponseId,
+    ThreadId,
+    UsdPicos,
+)
 from hive.jsonvalue import integer, parse, sequence, string
 from hive.price_evidence import adopt_event_rates, apply_updates, usage_updates
 from hive.pricing import Quote, claude_quote, claude_reason, dollars, quote
@@ -128,6 +136,18 @@ def retain(store: UsageStore, fresh: list[tuple[str, str, str]]) -> int:
                                 tokens(parse(string(usage, "usage"))),
                             ),
                         )
+            from hive.tool_allocation_store import refresh as refresh_allocations
+
+            tasks: set[ThreadId] = set()
+            for response, _, _ in fresh:
+                owner: object = connection.execute(
+                    "SELECT task FROM responses WHERE response=? AND host='claude'",
+                    (response,),
+                ).fetchone()
+                if owner is not None:
+                    tasks.add(ThreadId(string(row(owner, 1)[0], "allocation task")))
+            for task in sorted(tasks):
+                refresh_allocations(connection, task)
     except HiveError as error:
         if error.code != ErrorCode.BUSY:
             raise
