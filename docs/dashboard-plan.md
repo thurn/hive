@@ -1,9 +1,9 @@
 # Plan: Hive web dashboard
 
-- Beads: design `hv-amo`. Implementation: `hv-ijd` (steps 1–2), `hv-q9z` (step 3), `hv-l85` (steps 4–5), `hv-286` (steps 6–8), each blocked on the cost plan's implementation beads.
-- Status: revision 3, approved by the user on 2026-09-24. Revision 2 addresses the first cold review; revision 3 addresses the second (§14).
+- Epic: `hv-762` — **Deliver the Hive web dashboard**. Children: completed design `hv-amo`; implementation `hv-ijd` (steps 1–2), `hv-q9z` (step 3), `hv-l85` (steps 4–5), and `hv-286` (steps 6–8). Prerequisites and native dependency semantics are recorded in §12.
+- Status: revision 4. The user approved the design on 2026-09-24 and requested the epic and prerequisite updates on 2026-09-25. Revision 2 addresses the first cold review; revision 3 addresses the second (§14); revision 4 records the epic and cost-review follow-ups without changing the approved implementation scope.
 - Repository: `/Users/dthurn/hive`.
-- **Hard prerequisite:** every step of [`docs/claude-cost-plan.md`](claude-cost-plan.md) (steps 1–12) is implemented and accepted. The user chose this over a partial dependency (§13, decision 12).
+- **Hard prerequisite:** every step of [`docs/claude-cost-plan.md`](claude-cost-plan.md) (steps 1–12) is implemented and accepted, including the timestamp-consistency fix `hv-k8r` and per-request tool-allocation interface `hv-82b`. The user chose the entire cost plan over a partial dependency (§13, decision 12); passing checks alone does not satisfy its remaining acceptance requirements.
 - Related code: `src/hive_bootstrap/source.py` and `settings.py` (per-commit source selection, bootstrap config), `src/hive/launch_context.py`, `src/hive/collection*.py`, `src/hive/collection_registry.py`, `src/hive/usage_store.py`, `src/hive/cost_report.py`, `src/hive/thread_links.py`, `src/hive/beads_process.py`.
 - Visual reference: Fulcrum's design-system mockups (`~/fulcrum/docs/mockups/design-system-*.png`, `newsfeed-desktop.png`). They set the visual style only. Content, names and emblems below are Hive's.
 
@@ -629,12 +629,27 @@ Manual acceptance is recorded in `docs/acceptance.md`. Browser checks use the Pl
 
 ## 12. Beads
 
-Each bead depends on the cost plan's implementation beads (`hv-b4r`, `hv-2uo`, `hv-qg7`, `hv-8ib`) and on its predecessors, as in §10:
+Epic **`hv-762` — Deliver the Hive web dashboard** owns this plan. Its native `parent-child` links include the completed design task `hv-amo` and these implementation tasks, retaining their existing IDs:
 
 - `hv-ijd`: collect project sessions and diagnostic metadata (steps 1–2).
 - `hv-q9z`: observe Tollgate candidates (step 3).
 - `hv-l85`: dashboard API and loopback server (steps 4–5).
 - `hv-286`: dashboard UI and acceptance (steps 6–8).
+
+Every implementation task has direct blocking dependencies on all six prerequisites below, as well as its existing predecessors from §10:
+
+| Prerequisite | Required outcome |
+| --- | --- |
+| `hv-b4r` | Claude thread pricing, request detail, and exact subagent/skill breakdowns, with the cost plan's required evidence. |
+| `hv-2uo` | Request-event collection, transcript joins, coverage, and event-source acceptance. |
+| `hv-qg7` | Historical-owner collection and per-bead attribution with exact reconciliation. |
+| `hv-8ib` | Estimated tool allocation, including empirical `byte_split_error` evidence and the user's acceptance of its accuracy. |
+| `hv-k8r` | One event timestamp for event-only request details and bead attribution, including ownership-boundary regression coverage. |
+| `hv-82b` | The queryable per-request `tool_allocation` rows promised by cost-plan §5.8, with exact per-request reconciliation against retained prices. |
+
+Beads rejects blocking edges between an epic and a task. The epic therefore uses `tracks` links to these six prerequisites; the direct `blocks` edges on every implementation child enforce readiness. Parent-child links express ownership, not a replacement for those blockers. The epic completes only after all six prerequisites and all four implementation tasks have completed with accepted evidence, including §11 of this plan.
+
+The cost implementation has landed, but [its acceptance record](acceptance.md#claude-cost-implementation-2026-09-24) still distinguishes tested behavior from outstanding evidence: empirical tool-split accuracy is unaccepted, and several live-host checks remain unverified. These remain part of the original cost beads' acceptance; creating this epic does not release their holds or mark them complete.
 
 ## 13. Decisions
 
