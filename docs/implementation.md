@@ -11,6 +11,7 @@ The former Fulcrum design and Hive admission/session/delivery assertions are his
 - Telemetry reports read without the database write lock; contention within the 0.1 s SQLite timeout is a structured `Busy` error, and cost defers estimate retention (reported as `unretained_estimates`; a later report may then reprice after a catalog edit) and link-cache refresh under contention. Covered by black-box lock tests; not yet observed against a live collector.
 - Host-neutral thread and agent identities with compatibility aliases, schema version 9, and atomic collector-led migration of existing Codex usage, cursor, gap, link and quote evidence; reads of older stores ask for collection, and newer stores are rejected without writes. Migration/reread, rollback and version-guard tests run in both gates; the disposable mixed-host watcher passed an in-flight schema 8→9 source update without restarting.
 - Native role instructions, simple skill links, reduced fast/full gates, and manual operations guidance.
+- Weaver requires a parent implementation epic, child implementation beads, and explicit approval holds on the epic and unapproved children; this is instruction-level guidance, without an observed end-to-end Weaver journey.
 
 ## Acceptance evidence and remaining limits
 
