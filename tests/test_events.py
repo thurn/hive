@@ -506,6 +506,8 @@ class EventTests(unittest.TestCase):
                         "Invalid cost-state: observation timestamp must be a string",
                     ),
                 )
+                db.execute("DROP VIEW claude_agent_parents")
+                db.execute("DROP TABLE claude_tool_owners")
                 db.execute("PRAGMA user_version=4")
             result = store.collect(THREAD, path)
             self.assertGreater(int(str(result["read_bytes"])), 0)

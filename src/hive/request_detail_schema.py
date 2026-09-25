@@ -16,7 +16,7 @@ base AS (
  m.conflicted,
  CASE WHEN m.conflicted=1 OR EXISTS (SELECT 1 FROM json_each(r.flags) WHERE value='unsupported_iteration')
  THEN NULL ELSE e.quote END AS quote,
- a.agent_type, ev.response AS event_response, ev.query_source,
+ a.agent_type, a.agent AS metadata_agent, a.parent_agent, ev.response AS event_response, ev.query_source,
  ev.plugin, ev.mcp_tool, ev.effort, ev.host_usd,
  CASE WHEN ev.response IS NOT NULL AND (ev.task<>r.task OR ev.model<>r.model OR ev.input<>r.input-r.cached-r.cache_write-r.cache_write_1h
  OR ev.cached<>r.cached OR ev.writes<>r.cache_write+r.cache_write_1h OR ev.output<>r.output) THEN 1 ELSE 0 END AS join_mismatch
@@ -24,14 +24,14 @@ base AS (
  JOIN tiers t ON r.host='codex' OR t.tier='standard'
  LEFT JOIN claude_request_events ev ON r.host='claude' AND r.response=ev.request_id
  LEFT JOIN turn_models m ON r.host='codex' AND r.task=m.task AND r.turn=m.turn
- LEFT JOIN claude_agents a ON r.host='claude' AND r.task=a.task AND r.agent=a.agent
+ LEFT JOIN claude_agent_parents a ON r.host='claude' AND r.task=a.task AND r.agent=a.agent
  LEFT JOIN response_estimates e ON r.response=e.response
  AND e.tier=CASE WHEN r.host='claude' THEN r.modifier_key ELSE t.tier END
 )
 SELECT host, task AS thread, response, CASE WHEN event_response IS NULL THEN 'transcript' ELSE 'both' END AS source, observed AS observed_at,
  CASE WHEN host='claude' THEN turn END AS prompt_id,
  CASE WHEN host='codex' THEN turn END AS turn,
- agent, agent_type, NULL AS parent_agent, query_source, skill,
+ agent, agent_type, CASE WHEN host='claude' AND agent IS NOT NULL THEN CASE WHEN metadata_agent IS NULL THEN 'unknown' ELSE parent_agent END END AS parent_agent, query_source, skill,
  plugin, mcp_tool, priced_model AS model,
  CASE WHEN host='claude' THEN modifier_key ELSE selected_tier END AS modifier_key,
  CASE WHEN host='codex' THEN selected_tier END AS tier,

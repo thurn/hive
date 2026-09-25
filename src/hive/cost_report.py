@@ -6,6 +6,7 @@ from dataclasses import replace
 from datetime import datetime
 
 from hive.claude_usage import Modifiers
+from hive.cost_breakdown import Subtotal
 from hive.errors import ErrorCode, HiveError
 from hive.identity import CodexTaskId, Host, ModelId, PricingTier, ResponseId, UsdPicos
 from hive.jsonvalue import integer, parse, sequence, string
@@ -155,7 +156,7 @@ def report(
                 "Claude observes modifiers per request; --tier is not supported",
             )
         cursor = connection.execute(
-            "SELECT r.response, r.usage, CASE WHEN r.host='claude' THEN r.model ELSE m.model END, m.conflicted, e.quote, r.host, r.modifiers, r.flags, r.complete, COALESCE(r.last_observed,r.observed) "
+            "SELECT r.response, r.usage, CASE WHEN r.host='claude' THEN r.model ELSE m.model END, m.conflicted, e.quote, r.host, r.modifiers, r.flags, r.complete, COALESCE(r.last_observed,r.observed),r.agent,r.skill "
             "FROM responses r LEFT JOIN turn_models m ON r.task=m.task AND r.turn=m.turn AND r.host='codex' "
             "LEFT JOIN response_estimates e ON r.response=e.response AND e.tier=CASE WHEN r.host='claude' THEN r.modifier_key ELSE ? END "
             "WHERE r.task=?",
@@ -170,6 +171,8 @@ def report(
         observed = 0
         last_priced: datetime | None = None
         observed_modifiers: Counter[Modifiers] = Counter()
+        agents: dict[str | None, Subtotal] = {}
+        skills: dict[str | None, Subtotal] = {}
         while True:
             fetched: object = cursor.fetchmany(256)
             batch = sequence(fetched, "cost batch")
@@ -187,7 +190,9 @@ def report(
                     raw_flags,
                     complete,
                     observed_at,
-                ) = row(raw, 10)
+                    raw_agent,
+                    raw_skill,
+                ) = row(raw, 12)
                 request_host = Host(string(raw_host, "request host"))
                 flags = tuple(
                     string(value, "usage flag")
@@ -225,6 +230,12 @@ def report(
                     flags,
                     selected_tier,
                 )
+                if request_host == Host.CLAUDE:
+                    agent = None if raw_agent is None else string(raw_agent, "agent")
+                    skill = None if raw_skill is None else string(raw_skill, "skill")
+                    subtotal = None if quoted is None else int(quoted.amount)
+                    agents[agent] = agents.get(agent, Subtotal()).add(subtotal)
+                    skills[skill] = skills.get(skill, Subtotal()).add(subtotal)
                 if reason is not None:
                     counts[reason] += 1
                     if len(examples) < 20:
@@ -254,6 +265,7 @@ def report(
         health = source_status(connection, task)
         host_totals: dict[str, object] = {}
         event_totals: dict[str, object] = {}
+        breakdowns: dict[str, object] = {}
         if host == Host.CLAUDE:
             from hive.claude_cost_state import comparison
 
@@ -271,6 +283,11 @@ def report(
                 partial=counts["possibly_partial_output"],
                 health=health,
                 host_totals=host_totals,
+            )
+            from hive.cost_breakdown import report as breakdown_report
+
+            breakdowns = breakdown_report(
+                connection, task, agents, skills, event_totals
             )
     unretained = retain(store, fresh)
     unpriced = observed - counts["priced"]
@@ -324,5 +341,6 @@ def report(
         "unretained_estimates": unretained,
         **host_totals,
         **event_totals,
+        **breakdowns,
         **health,
     }

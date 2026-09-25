@@ -7,7 +7,7 @@ from pathlib import Path
 
 from hive.beads_connection import BeadsConnection
 from hive.beads_process import BeadsProcess
-from hive.claude_store import files, metadata
+from hive.claude_store import files
 from hive.collection_registry import CollectionRegistry
 from hive.errors import ErrorCode, HiveError
 from hive.event_ingest import ingest
@@ -93,8 +93,6 @@ def sweep(context: LaunchContext, index: Path, limit: int) -> dict[str, object]:
                         problem = string(result["error"], "collection error")
                     else:
                         validated_path = found.path
-                    if found.host == Host.CLAUDE:
-                        metadata(usage, task, path)
                     work[task] = tuple(rest)
                     if rest:
                         queue.append(task)

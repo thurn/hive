@@ -236,6 +236,9 @@ def collect(
                         event = decode(raw, thread)
                         if event is not None:
                             save(connection, event)
+                        from hive.agent_store import observe
+
+                        observe(connection, thread, raw)
                     except HiveError as failure:
                         gap(offset, str(failure))
                 position, skipping = chunk.position, int(chunk.skipping)
@@ -266,6 +269,8 @@ def collect(
                 Host.CLAUDE,
             ),
         )
+    if error is None:
+        metadata(store, thread, path)
     return {
         "code": "TranscriptCollected",
         "task": thread,
