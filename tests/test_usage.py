@@ -202,3 +202,143 @@ class UsageTests(unittest.TestCase):
                 self.assertEqual(result.returncode, 0, result.stderr)
             store = UsageStore(root / "observations.sqlite3")
             self.assertEqual(store.report(TASK)["observed_responses"], 10)
+
+
+class SchemaMigrationTests(unittest.TestCase):
+    def legacy_store(self, root: Path) -> UsageStore:
+        store = UsageStore(root / "usage.sqlite3")
+        with sqlite3.connect(store.path) as db:
+            db.executescript((ROOT / "tests/fixtures/telemetry-v0.sql").read_text())
+            db.execute(
+                "INSERT INTO responses VALUES (?,?,?,?,?,?,?,?,?,?)",
+                (
+                    "old",
+                    TASK,
+                    "turn-1",
+                    "2026-09-23T00:00:00Z",
+                    json.dumps(counters()),
+                    100,
+                    0,
+                    0,
+                    0,
+                    0,
+                ),
+            )
+            db.execute(
+                "INSERT INTO turn_models VALUES (?,?,?,?,?)",
+                (TASK, "turn-1", "gpt-6-astra", "2026-09-23T00:00:00Z", 0),
+            )
+            db.execute(
+                "INSERT INTO collection_tasks VALUES (?,NULL,NULL,?)",
+                (TASK, "native.jsonl"),
+            )
+        return store
+
+    def test_collector_migrates_old_usage_without_repricing_or_recounting(self) -> None:
+        from hive.cost_report import report
+        from hive.errors import ErrorCode, HiveError
+        from hive.identity import ModelId, PricingTier
+        from hive.pricing import quote
+        from hive.usage import Tokens
+
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            store = self.legacy_store(root)
+            # Historical rate evidence differs from the current rate card.
+            evidence = quote(
+                ModelId("gpt-6-astra"), PricingTier.STANDARD, Tokens(100, 0, 0, 0, 0)
+            )
+            self.assertIsNotNone(evidence)
+            if evidence is None:
+                raise AssertionError("Missing historical quote")
+            value = {**evidence.value(), "usd": "0.123456789012"}
+            with sqlite3.connect(store.path) as db:
+                db.execute(
+                    "INSERT INTO response_estimates VALUES (?,?,?)",
+                    ("old", "standard", json.dumps(value)),
+                )
+            before = store.path.read_bytes()
+            with self.assertRaises(HiveError) as caught:
+                report(store, TASK, PricingTier.STANDARD)
+            self.assertEqual(caught.exception.code, ErrorCode.INVALID_RECORD)
+            self.assertIn("not yet migrated", str(caught.exception))
+            self.assertEqual(store.path.read_bytes(), before)
+            path = root / "native.jsonl"
+            path.write_bytes(header() + response("old", counters()))
+            store.collect(TASK, path, from_start=True)
+            result = report(store, TASK, PricingTier.STANDARD)
+            self.assertEqual(result["observed_responses"], 1)
+            self.assertEqual(result["parse_gaps"], 0)
+            self.assertEqual(result["observed_estimate_usd"], "0.123456789012")
+            with sqlite3.connect(store.path) as db:
+                self.assertEqual(db.execute("PRAGMA user_version").fetchone(), (1,))
+                self.assertEqual(
+                    db.execute("SELECT host,cache_write_1h FROM responses").fetchone(),
+                    ("codex", 0),
+                )
+                self.assertEqual(
+                    db.execute(
+                        "SELECT host,validated_path FROM collection_tasks"
+                    ).fetchone(),
+                    ("codex", "native.jsonl"),
+                )
+                usage = json.loads(
+                    db.execute("SELECT usage FROM responses").fetchone()[0]
+                )
+                self.assertEqual(usage["cache_write_1h_input_tokens"], 0)
+
+    def test_migration_failure_rolls_back_schema_and_data(self) -> None:
+        from hive.errors import HiveError
+
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            store = self.legacy_store(root)
+            with sqlite3.connect(store.path) as db:
+                db.execute("UPDATE responses SET usage='{}'")
+            path = root / "native.jsonl"
+            path.write_bytes(header())
+            with self.assertRaises(HiveError):
+                store.collect(TASK, path)
+            with sqlite3.connect(store.path) as db:
+                self.assertEqual(db.execute("PRAGMA user_version").fetchone(), (0,))
+                self.assertEqual(
+                    db.execute("SELECT usage FROM responses").fetchone(), ("{}",)
+                )
+                self.assertEqual(
+                    [r[1] for r in db.execute("PRAGMA table_info(sources)")],
+                    [
+                        "task",
+                        "path",
+                        "device",
+                        "inode",
+                        "position",
+                        "skipping",
+                        "scanned",
+                        "remaining",
+                        "incomplete",
+                        "error",
+                    ],
+                )
+                self.assertEqual(
+                    db.execute(
+                        "SELECT name FROM sqlite_master WHERE name LIKE 'legacy_%'"
+                    ).fetchall(),
+                    [],
+                )
+
+    def test_newer_schema_refuses_reads_and_writes_without_changes(self) -> None:
+        from hive.errors import ErrorCode, HiveError
+
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            store = self.legacy_store(root)
+            with sqlite3.connect(store.path) as db:
+                db.execute("PRAGMA user_version=999")
+            before = store.path.read_bytes()
+            for write in (False, True):
+                with self.assertRaises(HiveError) as caught:
+                    with store.connect(write=write):
+                        self.fail("Newer schema was accepted")
+                self.assertEqual(caught.exception.code, ErrorCode.INVALID_RECORD)
+                self.assertIn("newer schema", str(caught.exception))
+            self.assertEqual(before, store.path.read_bytes())

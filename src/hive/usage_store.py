@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 
-from hive import turn_model
+from hive import telemetry_schema, turn_model
 from hive.errors import ErrorCode, HiveError
 from hive.identity import CodexTaskId
 from hive.jsonvalue import integer, parse, record, sequence, string
@@ -35,31 +35,7 @@ class UsageStore:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         connection = sqlite3.connect(self.path, timeout=0.1)
         try:
-            connection.executescript("""
-                CREATE TABLE IF NOT EXISTS sources (
-                    task TEXT PRIMARY KEY, path TEXT NOT NULL,
-                    device INTEGER NOT NULL, inode INTEGER NOT NULL,
-                    position INTEGER NOT NULL, skipping INTEGER NOT NULL,
-                    scanned TEXT NOT NULL, remaining INTEGER,
-                    incomplete INTEGER, error TEXT);
-                CREATE TABLE IF NOT EXISTS responses (
-                    response TEXT PRIMARY KEY, task TEXT NOT NULL,
-                    turn TEXT NOT NULL, observed TEXT NOT NULL,
-                    usage TEXT, input INTEGER, cached INTEGER, cache_write INTEGER,
-                    output INTEGER, reasoning INTEGER);
-                CREATE INDEX IF NOT EXISTS responses_task ON responses(task);
-                CREATE TABLE IF NOT EXISTS turn_models (
-                    task TEXT NOT NULL, turn TEXT NOT NULL, model TEXT NOT NULL,
-                    observed TEXT NOT NULL, conflicted INTEGER NOT NULL,
-                    PRIMARY KEY(task, turn));
-                CREATE TABLE IF NOT EXISTS response_estimates (
-                    response TEXT NOT NULL, tier TEXT NOT NULL, quote TEXT NOT NULL,
-                    PRIMARY KEY(response, tier));
-                CREATE TABLE IF NOT EXISTS gaps (
-                    task TEXT NOT NULL, device INTEGER NOT NULL, inode INTEGER NOT NULL,
-                    position INTEGER NOT NULL, detail TEXT NOT NULL,
-                    PRIMARY KEY (task, device, inode, position, detail));
-            """)
+            telemetry_schema.prepare(connection, write=write)
             with connection:
                 connection.execute("BEGIN IMMEDIATE" if write else "BEGIN")
                 yield connection
@@ -88,7 +64,7 @@ class UsageStore:
         inode: int
         with self.connect() as connection:
             previous: object = connection.execute(
-                "SELECT device, inode, position, skipping FROM sources WHERE task = ?",
+                "SELECT device, inode, position, skipping FROM sources WHERE task = ? AND file = ''",
                 (task,),
             ).fetchone()
             device, inode, position, skipping = (
@@ -103,7 +79,7 @@ class UsageStore:
 
             def gap(offset: int, detail: str) -> None:
                 connection.execute(
-                    "INSERT OR IGNORE INTO gaps VALUES (?, ?, ?, ?, ?)",
+                    "INSERT OR IGNORE INTO gaps(task,device,inode,position,detail) VALUES (?, ?, ?, ?, ?)",
                     (task, device, inode, offset, detail),
                 )
 
@@ -169,8 +145,8 @@ class UsageStore:
                 error = str(failure)
                 remaining, incomplete = None, None
             connection.execute(
-                "INSERT INTO sources VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) "
-                "ON CONFLICT(task) DO UPDATE SET path=excluded.path, device=excluded.device, "
+                "INSERT INTO sources(task,path,device,inode,position,skipping,scanned,remaining,incomplete,error) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) "
+                "ON CONFLICT(task,file) DO UPDATE SET path=excluded.path, device=excluded.device, "
                 "inode=excluded.inode, position=excluded.position, skipping=excluded.skipping, "
                 "scanned=excluded.scanned, remaining=excluded.remaining, "
                 "incomplete=excluded.incomplete, error=excluded.error",
@@ -206,13 +182,19 @@ class UsageStore:
             else json.dumps(observed_tokens.value(), sort_keys=True)
         )
         previous: object = connection.execute(
-            "SELECT task, turn, usage FROM responses WHERE response = ?",
+            "SELECT task, turn, usage, host FROM responses WHERE response = ?",
             (event.response,),
         ).fetchone()
         if previous is not None:
-            old_task, old_turn, old_usage = row(previous, 3)
-            if (old_task, old_turn) != (event.owner.task, event.owner.turn) or (
-                old_usage is not None and usage is not None and old_usage != usage
+            old_task, old_turn, old_usage, old_host = row(previous, 4)
+            if (old_task, old_turn, old_host) != (
+                event.owner.task,
+                event.owner.turn,
+                event.owner.host,
+            ) or (
+                old_usage is not None
+                and usage is not None
+                and tokens(parse(string(old_usage, "stored usage"))) != observed_tokens
             ):
                 raise HiveError(
                     ErrorCode.INVALID_RECORD,
@@ -221,7 +203,7 @@ class UsageStore:
             if old_usage is not None or usage is None:
                 return
         counters: tuple[int | None, ...] = (
-            (None,) * 5
+            (None,) * 5 + (0,)
             if isinstance(observed_tokens, MissingUsage)
             else (
                 observed_tokens.input,
@@ -229,13 +211,14 @@ class UsageStore:
                 observed_tokens.cache_write_input,
                 observed_tokens.output,
                 observed_tokens.reasoning_output,
+                observed_tokens.cache_write_1h_input,
             )
         )
         connection.execute(
-            "INSERT INTO responses VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) "
+            "INSERT INTO responses(response,task,turn,observed,usage,input,cached,cache_write,output,reasoning,cache_write_1h,host,agent) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) "
             "ON CONFLICT(response) DO UPDATE SET usage=excluded.usage, input=excluded.input, "
             "cached=excluded.cached, cache_write=excluded.cache_write, "
-            "output=excluded.output, reasoning=excluded.reasoning",
+            "output=excluded.output, reasoning=excluded.reasoning, cache_write_1h=excluded.cache_write_1h",
             (
                 event.response,
                 event.owner.task,
@@ -243,6 +226,8 @@ class UsageStore:
                 event.observed.isoformat(),
                 usage,
                 *counters,
+                event.owner.host,
+                event.owner.agent,
             ),
         )
 
@@ -279,6 +264,8 @@ class UsageStore:
             summed: dict[str, object] | None = None
             if known:
                 summed = tokens(dict(zip(counter_names, totals, strict=True))).value()
+                # Keep the Codex usage report shape stable during migration.
+                summed.pop("cache_write_1h_input_tokens")
             return {
                 "code": "ObservedUsage",
                 "task": task,

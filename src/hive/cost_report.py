@@ -41,7 +41,8 @@ def retain(store: UsageStore, fresh: list[tuple[str, str, str]]) -> int:
     try:
         with store.connect() as connection:
             connection.executemany(
-                "INSERT OR IGNORE INTO response_estimates VALUES (?, ?, ?)", fresh
+                "INSERT OR IGNORE INTO response_estimates(response,tier,quote) VALUES (?, ?, ?)",
+                fresh,
             )
     except HiveError as error:
         if error.code != ErrorCode.BUSY:

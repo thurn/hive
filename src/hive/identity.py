@@ -8,8 +8,12 @@ from typing import NewType
 BeadId = NewType("BeadId", str)
 ProjectId = NewType("ProjectId", str)
 CodexProjectId = NewType("CodexProjectId", str)
-CodexTaskId = NewType("CodexTaskId", str)
-CodexTurnId = NewType("CodexTurnId", str)
+ThreadId = NewType("ThreadId", str)
+TurnId = NewType("TurnId", str)
+AgentId = NewType("AgentId", str)
+# Compatibility aliases while observation callers migrate.
+CodexTaskId = ThreadId
+CodexTurnId = TurnId
 ResponseId = NewType("ResponseId", str)
 CandidateId = NewType("CandidateId", str)
 SourceCommit = NewType("SourceCommit", str)
@@ -17,6 +21,11 @@ WorktreePath = NewType("WorktreePath", Path)
 
 ModelId = NewType("ModelId", str)
 UsdPicos = NewType("UsdPicos", int)
+
+
+class Host(StrEnum):
+    CODEX = "codex"
+    CLAUDE = "claude"
 
 
 class PricingTier(StrEnum):
@@ -28,5 +37,11 @@ class PricingTier(StrEnum):
 
 @dataclass(frozen=True)
 class Owner:
-    task: CodexTaskId
-    turn: CodexTurnId
+    thread: ThreadId
+    turn: TurnId | None
+    host: Host = Host.CODEX
+    agent: AgentId | None = None
+
+    @property
+    def task(self) -> ThreadId:
+        return self.thread

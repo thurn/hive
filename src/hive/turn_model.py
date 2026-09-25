@@ -34,7 +34,7 @@ def save(connection: sqlite3.Connection, value: TurnModel) -> None:
     # context observations invalidate estimates for the whole turn. Replay cannot
     # silently pick the last model or clear this uncertainty.
     connection.execute(
-        "INSERT INTO turn_models VALUES (?, ?, ?, ?, 0) "
+        "INSERT INTO turn_models(task,turn,model,observed,conflicted) VALUES (?, ?, ?, ?, 0) "
         "ON CONFLICT(task,turn) DO UPDATE SET "
         "conflicted=turn_models.conflicted OR turn_models.model!=excluded.model",
         (value.owner.task, value.owner.turn, value.model, value.observed.isoformat()),

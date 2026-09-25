@@ -15,6 +15,7 @@ class Tokens:
     cache_write_input: int
     output: int
     reasoning_output: int
+    cache_write_1h_input: int = 0
 
     def __post_init__(self) -> None:
         values = (
@@ -23,11 +24,13 @@ class Tokens:
             self.cache_write_input,
             self.output,
             self.reasoning_output,
+            self.cache_write_1h_input,
         )
         if (
             any(isinstance(v, bool) or v < 0 for v in values)
             or self.cached_input > self.input
-            or self.cached_input + self.cache_write_input > self.input
+            or self.cached_input + self.cache_write_input + self.cache_write_1h_input
+            > self.input
             or self.reasoning_output > self.output
         ):
             raise HiveError(ErrorCode.INVALID_RECORD, "Inconsistent token counters")
@@ -37,6 +40,7 @@ class Tokens:
             "input_tokens": self.input,
             "cached_input_tokens": self.cached_input,
             "cache_write_input_tokens": self.cache_write_input,
+            "cache_write_1h_input_tokens": self.cache_write_1h_input,
             "output_tokens": self.output,
             "reasoning_output_tokens": self.reasoning_output,
         }
@@ -79,7 +83,10 @@ def tokens(value: object) -> Tokens:
                 "output_tokens",
                 "reasoning_output_tokens",
             )
-        )
+        ),
+        cache_write_1h_input=integer(
+            data.get("cache_write_1h_input_tokens", 0), "1h cache write tokens"
+        ),
     )
     if (
         "total_tokens" in data

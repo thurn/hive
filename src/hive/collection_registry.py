@@ -20,18 +20,6 @@ class CollectionRegistry:
     @contextmanager
     def connect(self, *, write: bool = True) -> Iterator[sqlite3.Connection]:
         with self.usage.connect(write=write) as connection:
-            connection.execute(
-                "CREATE TABLE IF NOT EXISTS collection_tasks (task TEXT PRIMARY KEY, attempted TEXT, error TEXT, validated_path TEXT)"
-            )
-            connection.execute(
-                "CREATE TABLE IF NOT EXISTS collection_links (task TEXT NOT NULL, bead TEXT NOT NULL, relation TEXT NOT NULL, PRIMARY KEY(task,bead,relation))"
-            )
-            connection.execute(
-                "CREATE TABLE IF NOT EXISTS collection_gaps (detail TEXT PRIMARY KEY)"
-            )
-            connection.execute(
-                "CREATE TABLE IF NOT EXISTS collection_health (singleton INTEGER PRIMARY KEY CHECK(singleton=1), refreshed TEXT, error TEXT)"
-            )
             yield connection
 
     def refresh(
@@ -60,20 +48,21 @@ class CollectionRegistry:
                 )
                 connection.execute("DELETE FROM collection_links")
                 connection.executemany(
-                    "INSERT INTO collection_links VALUES (?,?,?)",
+                    "INSERT INTO collection_links(task,bead,relation) VALUES (?,?,?)",
                     [(link.task, link.bead, link.relation) for link in links],
                 )
                 connection.execute("DELETE FROM collection_gaps")
                 connection.executemany(
-                    "INSERT INTO collection_gaps VALUES (?)", [(gap,) for gap in gaps]
+                    "INSERT INTO collection_gaps(detail) VALUES (?)",
+                    [(gap,) for gap in gaps],
                 )
                 connection.execute(
-                    "INSERT INTO collection_health VALUES (1, ?, NULL) ON CONFLICT(singleton) DO UPDATE SET refreshed=excluded.refreshed, error=NULL",
+                    "INSERT INTO collection_health(singleton,refreshed,error) VALUES (1, ?, NULL) ON CONFLICT(singleton) DO UPDATE SET refreshed=excluded.refreshed, error=NULL",
                     (datetime.now(UTC).isoformat(),),
                 )
             else:
                 connection.execute(
-                    "INSERT INTO collection_health VALUES (1, NULL, ?) ON CONFLICT(singleton) DO UPDATE SET error=excluded.error",
+                    "INSERT INTO collection_health(singleton,refreshed,error) VALUES (1, NULL, ?) ON CONFLICT(singleton) DO UPDATE SET error=excluded.error",
                     (error,),
                 )
 
