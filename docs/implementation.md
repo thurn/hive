@@ -12,7 +12,7 @@ The former Fulcrum design and Hive admission/session/delivery assertions are his
 - Host-neutral thread and agent identities with compatibility aliases, schema version 9, and atomic collector-led migration of existing Codex usage, cursor, gap, link and quote evidence; reads of older stores ask for collection, and newer stores are rejected without writes. Migration/reread, rollback and version-guard tests run in both gates; the disposable mixed-host watcher passed an in-flight schema 8→9 source update without restarting.
 - Native role instructions, simple skill links, reduced fast/full gates, and manual operations guidance.
 - Executor and shared guidance make original-scope transitions explicit, require epic-context inspection and discoverable coordination records, and distinguish same-project workstreams from authorized cross-project execution; these are instruction-level conventions, with no observed end-to-end concurrent-epic acceptance.
-- Weaver requires a parent implementation epic, child implementation beads, and explicit approval holds on the epic and unapproved children; this is instruction-level guidance, without an observed end-to-end Weaver journey.
+- Weaver requires a parent implementation epic and child implementation beads; native deferral for initial approval holds requires fresh independent justiciar agreement. This is instruction-level guidance, without an observed end-to-end Weaver journey.
 
 ## Acceptance evidence and remaining limits
 
@@ -160,3 +160,11 @@ Both gates now use the same preparation/check command and `.python-version` pin 
 Feed profiling exposed full scans of `bead_rows` and `bead_replays` for each summary card: concatenating their primary keys in the join prevented indexed lookup. Extracting the bead ID from the summary key instead preserves matching semantics and lets SQLite use both existing primary-key indexes, without migration or cached result changes. The 7,000-card test retains its 500 ms end-to-end limit and now prints measured latency in both gates. Neither performance acceptance nor Tollgate's independent promotion policy is relaxed. Native OS/hardware differences remain; this change controls validation inputs and fixes the observed portability/performance defects, not arbitrary host contention.
 
 At this implementation checkpoint, the UTC-launched repeated-hour regression and dashboard API suite passed; final cold review, full Tollgate certification and the delivered commit's GitHub result remain to be recorded in the native task.
+
+## Archive eligibility and independent deferral review (hv-bu6)
+
+Archivist now treats telemetry links as candidate membership, checks current native assignments separately, skips existing archives, and accepts native idle/terminal-turn evidence without demanding an unavailable queue field. Historical executor links and released deferred beads no longer block cleanup. Project/host scope, fifteen-minute inactivity, actual native archive effects and immediate ownership/activity rechecks remain required, including reversal of a newly archived task if activity raced the operation.
+
+Shared filing and recovery guidance requires explicit agreement from a fresh, read-only justiciar subagent before initial deferral, later deferral or setting/extending its date. The record names the reviewer, evidence, responsible party and resumption condition. Executor, entry and Weaver use that same rule, preserving immediate user pauses while removing automatic deferral for ordinary prerequisites and rejecting superseded approval holds. These are agent workflow requirements, not enforcement in Beads or the stop hook.
+
+The four edited skills pass structural validation, changed relative links resolve, and `scripts/check-fast` passes. Cold review and full Tollgate delivery are recorded on the native bead. No new live deferral or rollback race was manufactured to test the instructions; an end-to-end justiciar deferral decision remains unobserved.

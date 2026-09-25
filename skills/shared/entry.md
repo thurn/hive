@@ -17,4 +17,4 @@ Title a thread `<emoji> [<bead-id>] <summary>`, where the emoji is the role's (�
 
 Keep the same summary between the working and completed titles. Do not add the role name, `·` separators, outcomes or status words such as "complete"; for example, never `⚒️ executor · Scope plan removed · hv-bmx complete`.
 
-Explicit user pauses and unapproved designs remain deferred until explicit resumption or approval. Readiness and resource judgment belong to the agent. Native claiming excludes a competing owner, but cannot force noncooperating agents to respect scope or pauses.
+Honor explicit user pauses and genuinely unapproved designs until resumption or approval; any native deferral requires [fresh justiciar agreement](repair.md#deferral-decisions). Check later user direction before treating an old approval note as a current hold. Readiness and resource judgment belong to the agent. Native claiming excludes a competing owner, but cannot force noncooperating agents to respect scope or pauses.
