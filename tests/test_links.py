@@ -137,6 +137,7 @@ class BeadLinkTests(unittest.TestCase):
                 connection.directory,
                 0,
                 root,
+                claude_projects=root / "claude-projects",
             )
             first = sweep(context, index, 32)
             self.assertEqual(first["attempted"], 1)
@@ -189,6 +190,7 @@ class BeadLinkTests(unittest.TestCase):
                 connection.directory,
                 0,
                 root,
+                claude_projects=root / "claude-projects",
             )
             stale = CollectionRegistry(UsageStore(context.state / "telemetry.sqlite3"))
             stale.refresh(

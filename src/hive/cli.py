@@ -33,6 +33,14 @@ def main() -> int:
         parser.add_argument("--json", action="store_true")
         groups = parser.add_subparsers(dest="group", required=True)
         groups.add_parser("source")
+        executor = groups.add_parser("executor")
+        executor_actions = executor.add_subparsers(dest="action", required=True)
+        executor_start = executor_actions.add_parser("start")
+        executor_start.add_argument("--project", required=True)
+        executor_stop = executor_actions.add_parser("stop")
+        executor_stop.add_argument("--reason", required=True)
+        executor_actions.add_parser("hook")
+        executor_actions.add_parser("hook-config")
         cost = groups.add_parser("cost")
         cost_target = cost.add_mutually_exclusive_group(required=True)
         cost_target.add_argument("--task")
@@ -82,6 +90,17 @@ def main() -> int:
                 "commit": context.commit,
                 "directory": str(context.source),
             }
+        elif parsed.group == "executor":
+            from hive.executor_hook import configuration, handle, start, stop
+
+            if parsed.action == "start":
+                result = start(context, parsed.project)
+            elif parsed.action == "stop":
+                result = stop(context, parsed.reason)
+            elif parsed.action == "hook-config":
+                result = configuration(context)
+            else:
+                result = handle(context, sys.stdin.read(1_048_577))
         elif parsed.group == "cost":
             if parsed.task is None:
                 if parsed.requests or parsed.cursor is not None:

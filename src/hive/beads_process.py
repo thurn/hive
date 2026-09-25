@@ -16,6 +16,15 @@ class BeadsProcess:
     def list_all(self) -> object:
         return self._run(("list", "--all", "--limit", "0"))
 
+    def assigned(self, actor: str) -> object:
+        return self._run(("list", "--all", "--limit", "0", "--assignee", actor), actor)
+
+    def ready(self, project: str, actor: str) -> object:
+        return self._run(
+            ("ready", "--limit", "0", "--metadata-field", f"hive_project={project}"),
+            actor,
+        )
+
     def event_page(self, after: str) -> object:
         from hive.bead_queries import page
 
@@ -26,15 +35,14 @@ class BeadsProcess:
 
         return self._run(("sql", bead(identifier)))
 
-    def _run(self, arguments: tuple[str, ...]) -> object:
+    def _run(self, arguments: tuple[str, ...], actor: str | None = None) -> object:
         command = [
             "bd",
-            "-C",
-            str(self.connection.directory),
             "--sandbox",
             "--dolt-auto-commit",
             "off",
             "--json",
+            *(("--actor", actor) if actor is not None else ()),
             *arguments,
         ]
         try:

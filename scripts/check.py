@@ -175,6 +175,19 @@ def main() -> int:
                 "-s",
                 "tests",
                 "-p",
+                "test_executor_hook.py",
+                "-v",
+            ]
+        )
+        commands.append(
+            [
+                python,
+                "-m",
+                "unittest",
+                "discover",
+                "-s",
+                "tests",
+                "-p",
                 "test_tool_allocation.py",
                 "-v",
             ]
