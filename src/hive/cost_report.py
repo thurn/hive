@@ -30,7 +30,7 @@ def estimate(
         return result
     result = quote(model, tier, usage)
     if result is not None:
-        fresh.append((response, tier, json.dumps(result.value())))
+        fresh.append((response, tier, json.dumps(result.value(usage))))
     return result
 
 
@@ -55,8 +55,36 @@ def estimate_claude(
         return result.with_usage(usage), None
     result = claude_quote(model, modifiers, usage)
     if result is not None:
-        fresh.append((response, modifiers.key, json.dumps(result.value())))
+        fresh.append((response, modifiers.key, json.dumps(result.value(usage))))
     return result, claude_reason(model, modifiers)
+
+
+def price_response(
+    fresh: list[tuple[str, str, str]],
+    response: ResponseId,
+    raw_usage: object,
+    raw_model: object,
+    conflicted: object,
+    cached: object,
+    host: Host,
+    modifiers: Modifiers | None,
+    flags: tuple[str, ...],
+    tier: PricingTier,
+) -> tuple[Quote | None, str | None]:
+    if raw_usage is None:
+        return None, "missing_usage"
+    if raw_model is None:
+        return None, "missing_model_context"
+    if host == Host.CODEX and integer(conflicted, "model conflict") != 0:
+        return None, "conflicting_model_context"
+    if "unsupported_iteration" in flags:
+        return None, "unsupported_iteration"
+    model = ModelId(string(raw_model, "configured model"))
+    usage = tokens(parse(string(raw_usage, "stored usage")))
+    if modifiers is not None:
+        return estimate_claude(fresh, response, model, modifiers, usage, cached)
+    quoted = estimate(fresh, response, model, tier, usage, cached)
+    return quoted, "unknown_model_price" if quoted is None else None
 
 
 def retain(store: UsageStore, fresh: list[tuple[str, str, str]]) -> int:
@@ -175,32 +203,18 @@ def report(
                         )
                 response = ResponseId(string(identity, "response"))
                 observed += 1
-                reason: str | None = None
-                quoted: Quote | None = None
-                if raw_usage is None:
-                    reason = "missing_usage"
-                elif raw_model is None:
-                    reason = "missing_model_context"
-                elif (
-                    request_host == Host.CODEX
-                    and integer(conflicted, "model conflict") != 0
-                ):
-                    reason = "conflicting_model_context"
-                elif "unsupported_iteration" in flags:
-                    reason = "unsupported_iteration"
-                else:
-                    model = ModelId(string(raw_model, "configured model"))
-                    usage = tokens(parse(string(raw_usage, "stored usage")))
-                    if modifiers is not None:
-                        quoted, reason = estimate_claude(
-                            fresh, response, model, modifiers, usage, cached
-                        )
-                    else:
-                        quoted = estimate(
-                            fresh, response, model, selected_tier, usage, cached
-                        )
-                        if quoted is None:
-                            reason = "unknown_model_price"
+                quoted, reason = price_response(
+                    fresh,
+                    response,
+                    raw_usage,
+                    raw_model,
+                    conflicted,
+                    cached,
+                    request_host,
+                    modifiers,
+                    flags,
+                    selected_tier,
+                )
                 if reason is not None:
                     counts[reason] += 1
                     if len(examples) < 20:

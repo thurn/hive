@@ -72,8 +72,18 @@ class Quote:
     def with_usage(self, usage: Tokens) -> "Quote":
         return replace(self, amount=UsdPicos(sum(self.components(usage).values())))
 
-    def value(self) -> dict[str, object]:
+    def value(self, usage: Tokens | None = None) -> dict[str, object]:
         return {
+            **(
+                {
+                    "components_usd": {
+                        key: dollars(value)
+                        for key, value in self.components(usage).items()
+                    }
+                }
+                if usage is not None
+                else {}
+            ),
             "host": self.host,
             "modifier_key": self.modifier_key,
             "modifiers": None if self.modifiers is None else self.modifiers.value(),

@@ -152,6 +152,19 @@ def main() -> int:
             "-v",
         ]
     )
+    commands.append(
+        [
+            python,
+            "-m",
+            "unittest",
+            "discover",
+            "-s",
+            "tests",
+            "-p",
+            "test_request_detail.py",
+            "-v",
+        ]
+    )
     if not fast:
         commands.extend(
             (

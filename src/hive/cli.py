@@ -40,6 +40,8 @@ def main() -> int:
         cost.add_argument(
             "--tier", choices=[tier.value for tier in PricingTier], default=None
         )
+        cost.add_argument("--requests", action="store_true")
+        cost.add_argument("--cursor")
         telemetry = groups.add_parser("telemetry")
         actions = telemetry.add_subparsers(dest="action", required=True)
         collect = actions.add_parser("collect")
@@ -81,12 +83,25 @@ def main() -> int:
                 registry,
             )
             found = discoveries[CodexTaskId(parsed.task)]
-            result = report(
-                store,
-                CodexTaskId(parsed.task),
-                None if parsed.tier is None else PricingTier(parsed.tier),
-                host_hint=found.host,
-            )
+            if parsed.cursor is not None and not parsed.requests:
+                raise HiveError(ErrorCode.INVALID_INPUT, "--cursor requires --requests")
+            if parsed.requests:
+                from hive.request_detail import report as request_report
+
+                result = request_report(
+                    store,
+                    CodexTaskId(parsed.task),
+                    None if parsed.tier is None else PricingTier(parsed.tier),
+                    cursor=parsed.cursor,
+                    host_hint=found.host,
+                )
+            else:
+                result = report(
+                    store,
+                    CodexTaskId(parsed.task),
+                    None if parsed.tier is None else PricingTier(parsed.tier),
+                    host_hint=found.host,
+                )
             links, gaps, failure = None, None, None
             try:
                 links, gaps = read(

@@ -27,7 +27,7 @@ def usage_updates(
             )
         updates.append(
             (
-                json.dumps(quoted.with_usage(usage).value()),
+                json.dumps(quoted.with_usage(usage).value(usage)),
                 response,
                 string(key, "modifier key"),
             )
