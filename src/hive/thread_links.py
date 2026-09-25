@@ -18,15 +18,6 @@ class ThreadLink:
     collected: bool
 
 
-def codex_thread(value: str) -> bool:
-    # Codex thread IDs are UUIDv7; Claude Code session IDs are UUIDv4 and have
-    # no Codex transcript, so they are associated but never collected.
-    try:
-        return UUID(value).version == 7
-    except ValueError:
-        return False
-
-
 def thread_id(value: object) -> CodexTaskId | None:
     if not isinstance(value, str):
         return None
@@ -63,7 +54,7 @@ def decode(value: object) -> tuple[tuple[ThreadLink, ...], tuple[str, ...]]:
             if task is None:
                 gaps.add(f"{identifier}: invalid {relation} thread")
             else:
-                links.add(ThreadLink(task, identifier, relation, codex_thread(task)))
+                links.add(ThreadLink(task, identifier, relation, False))
     return tuple(sorted(links)), tuple(sorted(gaps))
 
 

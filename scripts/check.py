@@ -135,6 +135,19 @@ def main() -> int:
             "-s",
             "tests",
             "-p",
+            "test_claude.py",
+            "-v",
+        ]
+    )
+    commands.append(
+        [
+            python,
+            "-m",
+            "unittest",
+            "discover",
+            "-s",
+            "tests",
+            "-p",
             "test_install_skills.py",
             "-v",
         ]

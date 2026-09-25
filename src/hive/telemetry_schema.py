@@ -7,7 +7,7 @@ from hive.errors import ErrorCode, HiveError
 from hive.jsonvalue import integer, parse, sequence, string
 from hive.usage import tokens
 
-VERSION = 1
+VERSION = 2
 
 SCHEMA = (
     """CREATE TABLE IF NOT EXISTS sources (
@@ -44,6 +44,21 @@ SCHEMA = (
     """CREATE TABLE IF NOT EXISTS collection_health (
         singleton INTEGER PRIMARY KEY CHECK(singleton=1), refreshed TEXT, error TEXT)""",
 )
+
+
+def add_claude(connection: sqlite3.Connection) -> None:
+    connection.execute("""CREATE TABLE claude_response_counts (
+        response TEXT NOT NULL, output INTEGER NOT NULL, reasoning INTEGER NOT NULL,
+        PRIMARY KEY(response,output,reasoning))""")
+    connection.execute(
+        "ALTER TABLE responses ADD COLUMN flags TEXT NOT NULL DEFAULT '[]'"
+    )
+    connection.execute(
+        "ALTER TABLE sources ADD COLUMN host TEXT NOT NULL DEFAULT 'codex'"
+    )
+    connection.execute("""CREATE TABLE claude_agents (
+        task TEXT NOT NULL, agent TEXT NOT NULL, tool_use_id TEXT, agent_type TEXT,
+        description TEXT, spawn_depth INTEGER, PRIMARY KEY(task,agent))""")
 
 
 def version(connection: sqlite3.Connection) -> int:
@@ -89,6 +104,10 @@ def prepare(connection: sqlite3.Connection, *, write: bool) -> None:
                     ErrorCode.INVALID_RECORD, "Telemetry store has a newer schema"
                 )
             if current == VERSION:
+                return
+            if current == 1:
+                add_claude(connection)
+                connection.execute(f"PRAGMA user_version={VERSION}")
                 return
             existing = tables(connection)
             for name in ("sources", "responses", "gaps"):
@@ -138,6 +157,7 @@ def prepare(connection: sqlite3.Connection, *, write: bool) -> None:
             for name in ("sources", "responses", "gaps"):
                 if name in existing:
                     connection.execute(f"DROP TABLE legacy_{name}")
+            add_claude(connection)
             connection.execute(f"PRAGMA user_version={VERSION}")
     finally:
         connection.execute("PRAGMA busy_timeout=100")

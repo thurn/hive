@@ -12,6 +12,7 @@ class Settings:
     state: Path
     beads: Path
     projects: tuple["Project", ...]
+    claude_projects: Path = Path.home() / ".claude/projects"
 
 
 @dataclass(frozen=True)
@@ -40,6 +41,7 @@ def read_settings() -> Settings:
                 "state",
                 "beads",
                 "projects",
+                "claude_projects",
             }:
                 raise ValueError("Unknown bootstrap setting")
             values[key] = value
@@ -92,4 +94,10 @@ def read_settings() -> Settings:
         projects.append(Project(identifier, locations[0], locations[1], native_id))
     if len({project.id for project in projects}) != len(projects):
         raise ValueError("Duplicate project identity")
-    return Settings(repository, state, beads, tuple(projects))
+    return Settings(
+        repository,
+        state,
+        beads,
+        tuple(projects),
+        location("claude_projects", Path.home() / ".claude/projects"),
+    )

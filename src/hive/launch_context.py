@@ -18,6 +18,7 @@ class LaunchContext:
     beads: Path
     guard: int
     repository: Path
+    claude_projects: Path = Path.home() / ".claude/projects"
 
     @classmethod
     def read(cls) -> LaunchContext:
@@ -33,6 +34,11 @@ class LaunchContext:
                 Path(os.environ["HIVE_BEADS_DIRECTORY"]),
                 descriptor,
                 Path(os.environ["HIVE_REPOSITORY_DIRECTORY"]),
+                Path(
+                    os.environ.get(
+                        "HIVE_CLAUDE_PROJECTS", str(Path.home() / ".claude/projects")
+                    )
+                ),
             )
         except (KeyError, ValueError, OSError) as error:
             raise HiveError(

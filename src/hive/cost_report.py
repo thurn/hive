@@ -62,7 +62,7 @@ def report(
     with store.connect(write=False) as connection:
         cursor = connection.execute(
             "SELECT r.response, r.usage, m.model, m.conflicted, e.quote "
-            "FROM responses r LEFT JOIN turn_models m ON r.task=m.task AND r.turn=m.turn "
+            "FROM responses r LEFT JOIN turn_models m ON r.task=m.task AND r.turn=m.turn AND r.host='codex' "
             "LEFT JOIN response_estimates e ON r.response=e.response AND e.tier=? "
             "WHERE r.task=?",
             (tier, task),

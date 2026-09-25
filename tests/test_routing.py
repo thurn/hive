@@ -2,6 +2,7 @@
 
 import json
 import shutil
+import sqlite3
 import subprocess
 import sys
 import tempfile
@@ -32,6 +33,19 @@ class RoutingTests(unittest.TestCase):
             config = Path(environment["HIVE_BOOTSTRAP_CONFIG"])
             settings = json.loads(config.read_text())
             settings["beads"] = str(connection.directory)
+            settings["claude_projects"] = str(working_dir / "claude-projects")
+            transcript = working_dir / "native.jsonl"
+            transcript.write_text(
+                json.dumps({"type": "session_meta", "payload": {"id": THREAD}}) + "\n"
+            )
+            index = working_dir / "native.sqlite3"
+            with sqlite3.connect(index) as db:
+                db.execute(
+                    "CREATE TABLE threads(id TEXT PRIMARY KEY, rollout_path TEXT NOT NULL)"
+                )
+                db.execute(
+                    "INSERT INTO threads VALUES (?,?)", (THREAD, str(transcript))
+                )
             config.write_text(json.dumps(settings))
             created = subprocess.run(
                 [
@@ -92,7 +106,9 @@ class RoutingTests(unittest.TestCase):
                     timeout=20,
                 )
 
-            listed = invoke("telemetry", "links", "--json")
+            listed = invoke(
+                "telemetry", "links", "--native-index", str(index), "--json"
+            )
             self.assertEqual(listed.returncode, 0, listed.stderr)
             links = json.loads(listed.stdout)["links"]
             self.assertEqual(
@@ -102,7 +118,9 @@ class RoutingTests(unittest.TestCase):
             self.assertEqual({link["bead"] for link in links}, {bead["id"]})
 
             for task, collected in ((THREAD, True), (CLAUDE, False)):
-                priced = invoke("cost", "--task", task, "--json")
+                priced = invoke(
+                    "cost", "--task", task, "--native-index", str(index), "--json"
+                )
                 self.assertEqual(priced.returncode, 0, priced.stderr)
                 cost = json.loads(priced.stdout)
                 self.assertEqual(cost["usage_collectable"], collected)
@@ -111,7 +129,9 @@ class RoutingTests(unittest.TestCase):
 
             server.terminate()
             server.wait(timeout=5)
-            unavailable = invoke("telemetry", "links", "--json")
+            unavailable = invoke(
+                "telemetry", "links", "--native-index", str(index), "--json"
+            )
             self.assertNotEqual(unavailable.returncode, 0)
             self.assertEqual(
                 json.loads(unavailable.stderr)["code"], "ProviderUnavailable"
@@ -120,6 +140,8 @@ class RoutingTests(unittest.TestCase):
 
             metadata = connection.directory / ".beads/metadata.json"
             metadata.write_text("{}")
-            invalid = invoke("telemetry", "links", "--json")
+            invalid = invoke(
+                "telemetry", "links", "--native-index", str(index), "--json"
+            )
             self.assertNotEqual(invalid.returncode, 0)
             self.assertEqual(json.loads(invalid.stderr)["code"], "InvalidInput")

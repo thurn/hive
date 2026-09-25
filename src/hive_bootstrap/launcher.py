@@ -24,6 +24,7 @@ def main() -> int:
             HIVE_SELECTED_DIRECTORY=str(source.directory),
             HIVE_BEADS_DIRECTORY=str(settings.beads),
             HIVE_STATE_DIRECTORY=str(settings.state),
+            HIVE_CLAUDE_PROJECTS=str(settings.claude_projects),
             HIVE_MUTATION_GUARD_FD=str(descriptor),
         )
     except (

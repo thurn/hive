@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 
-from hive.identity import CodexTaskId
+from hive.identity import CodexTaskId, Host
 from hive.jsonvalue import integer, sequence, string
 from hive.thread_links import ThreadLink
 from hive.usage_store import UsageStore, row
@@ -30,7 +30,7 @@ class CollectionRegistry:
     ) -> None:
         with self.connect() as connection:
             if links is not None and gaps is not None:
-                tasks = {link.task for link in links if link.collected}
+                tasks = {link.task for link in links}
                 previous: object = connection.execute(
                     "SELECT task FROM collection_tasks"
                 ).fetchall()
@@ -112,16 +112,32 @@ class CollectionRegistry:
                 else Path(string(row(value, 1)[0], "cached transcript"))
             )
 
+    def cached_host(self, task: CodexTaskId) -> Host | None:
+        with self.connect(write=False) as connection:
+            value: object = connection.execute(
+                "SELECT host FROM collection_tasks WHERE task=?", (task,)
+            ).fetchone()
+            return (
+                None
+                if value is None or row(value, 1)[0] is None
+                else Host(string(row(value, 1)[0], "cached host"))
+            )
+
     def attempted(
-        self, task: CodexTaskId, error: str | None, validated_path: Path | None
+        self,
+        task: CodexTaskId,
+        error: str | None,
+        validated_path: Path | None,
+        host: Host | None = None,
     ) -> None:
         with self.connect() as connection:
             connection.execute(
-                "UPDATE collection_tasks SET attempted=?, error=?, validated_path=COALESCE(?,validated_path) WHERE task=?",
+                "UPDATE collection_tasks SET attempted=?, error=?, validated_path=COALESCE(?,validated_path), host=? WHERE task=?",
                 (
                     datetime.now(UTC).isoformat(),
                     error,
                     None if validated_path is None else str(validated_path),
+                    host,
                     task,
                 ),
             )
@@ -140,7 +156,7 @@ class CollectionRegistry:
                 "SELECT task,error FROM collection_tasks WHERE error IS NOT NULL ORDER BY attempted DESC LIMIT 20"
             ).fetchall()
             uncollected: object = connection.execute(
-                "SELECT COUNT(DISTINCT task) FROM collection_links WHERE task NOT IN (SELECT task FROM collection_tasks)"
+                "SELECT COUNT(*) FROM collection_tasks WHERE host IS NULL"
             ).fetchone()
             gap_count: object = connection.execute(
                 "SELECT COUNT(*) FROM collection_gaps"

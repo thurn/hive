@@ -14,7 +14,8 @@ from hive.cost_report import report
 from hive.errors import ErrorCode, HiveError
 from hive.identity import CodexTaskId, PricingTier
 from hive.launch_context import LaunchContext
-from hive.thread_links import codex_thread, read
+from hive.thread_links import read
+from hive.transcript_discovery import probe
 from hive.usage_store import UsageStore
 
 
@@ -34,6 +35,9 @@ def main() -> int:
         cost = groups.add_parser("cost")
         cost.add_argument("--task", required=True)
         cost.add_argument(
+            "--native-index", default=str(Path.home() / ".codex/state_5.sqlite")
+        )
+        cost.add_argument(
             "--tier", choices=[tier.value for tier in PricingTier], default="standard"
         )
         telemetry = groups.add_parser("telemetry")
@@ -46,7 +50,10 @@ def main() -> int:
         usage = actions.add_parser("usage")
         usage.add_argument("--task", required=True)
         actions.add_parser("status")
-        actions.add_parser("links")
+        links_parser = actions.add_parser("links")
+        links_parser.add_argument(
+            "--native-index", default=str(Path.home() / ".codex/state_5.sqlite")
+        )
         for name in ("sweep", "watch"):
             operation = actions.add_parser(name)
             operation.add_argument("--native-index", required=True)
@@ -86,11 +93,19 @@ def main() -> int:
             result["association_stale"] = failure is not None
             result["associated_beads"] = registry.associations(CodexTaskId(parsed.task))
             result["association_gaps"] = registry.gaps()
-            result["usage_collectable"] = codex_thread(parsed.task)
-            if not result["usage_collectable"]:
-                result["collection_gap"] = (
-                    "Not a Codex thread ID; usage and cost are not collected"
-                )
+            discoveries, _ = probe(
+                (CodexTaskId(parsed.task),),
+                Path(parsed.native_index),
+                context.claude_projects,
+                registry,
+            )
+            found = discoveries[CodexTaskId(parsed.task)]
+            result["host"] = found.host
+            result["usage_collectable"] = (
+                found.host is not None and found.path is not None
+            )
+            if found.error:
+                result["collection_gap"] = found.error
         elif parsed.action == "collect":
             result = UsageStore(context.state / "telemetry.sqlite3").collect(
                 CodexTaskId(parsed.task),
@@ -110,11 +125,32 @@ def main() -> int:
             links, gaps = read(
                 BeadsProcess(BeadsConnection.read(context.beads), timeout=2)
             )
-            result = {
-                "code": "BeadThreads",
-                "links": [link.__dict__ for link in links],
-                "gaps": gaps,
-            }
+            registry = CollectionRegistry(
+                UsageStore(context.state / "telemetry.sqlite3")
+            )
+            registry.refresh(links, gaps, None)
+            tasks = tuple(sorted({link.task for link in links}))
+            linked: list[dict[str, object]] = []
+            for start in range(0, len(tasks), 64):
+                discoveries, _ = probe(
+                    tasks[start : start + 64],
+                    Path(parsed.native_index),
+                    context.claude_projects,
+                    registry,
+                )
+                for link in links:
+                    if link.task in discoveries:
+                        found = discoveries[link.task]
+                        linked.append(
+                            {
+                                **link.__dict__,
+                                "collected": found.host is not None
+                                and found.path is not None,
+                                "host": found.host,
+                                "collection_gap": found.error,
+                            }
+                        )
+            result = {"code": "BeadThreads", "links": linked, "gaps": gaps}
         elif parsed.action == "sweep":
             result = sweep(context, Path(parsed.native_index), parsed.batch_size)
         else:

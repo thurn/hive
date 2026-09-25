@@ -156,7 +156,9 @@ class BeadLinkTests(unittest.TestCase):
             finally:
                 metadata.write_text(original)
 
-    def test_non_codex_sessions_are_associated_but_never_swept(self) -> None:
+    def test_missing_transcripts_are_visible_and_retried_without_uuid_routing(
+        self,
+    ) -> None:
         with (
             private_server() as (connection, _),
             tempfile.TemporaryDirectory() as temporary,
@@ -202,15 +204,15 @@ class BeadLinkTests(unittest.TestCase):
                         record(result, "result")["task"]
                         for result in sequence(batch["results"], "results")
                     ],
-                    [CREATOR],
+                    [CREATOR, CLAUDE],
                 )
             registry = CollectionRegistry(
                 UsageStore(context.state / "telemetry.sqlite3")
             )
             status = registry.status()
-            self.assertEqual(status["linked_threads"], 1)
+            self.assertEqual(status["linked_threads"], 2)
             self.assertEqual(status["uncollected_threads"], 1)
-            self.assertEqual(status["recent_failures"], [])
+            self.assertEqual(len(sequence(status["recent_failures"], "failures")), 1)
             self.assertEqual(
                 registry.associations(CodexTaskId(CLAUDE)),
                 [{"bead": bead["id"], "relation": "creator"}],
