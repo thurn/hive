@@ -222,6 +222,7 @@ def candidates(
     from hive.bead_assignment import Evidence
     from hive.bead_requests import Request
     from hive.identity import Host, ThreadId
+    from hive.transcript_source import ValidatedSource
     from hive.usage import timestamp
 
     evidence = Evidence.read(connection)
@@ -241,18 +242,24 @@ def candidates(
         if promotion is not None:
             value["promoted_at"] = row(promotion, 1)[0]
         mentions: object = connection.execute(
-            "SELECT m.thread,m.agent,m.first_seen,COALESCE(c.host,'codex') FROM tollgate_mentions m LEFT JOIN collection_tasks c ON c.task=m.thread WHERE m.candidate=? ORDER BY m.first_seen,m.thread,m.agent",
+            "SELECT m.thread,m.agent,m.first_seen,c.validated_source FROM tollgate_mentions m LEFT JOIN collection_tasks c ON c.task=m.thread WHERE m.candidate=? ORDER BY m.first_seen,m.thread,m.agent",
             (candidate,),
         ).fetchall()
         links: list[dict[str, object]] = []
         for mention in sequence(mentions, "mentions"):
-            thread, agent, seen, host = row(mention, 4)
+            thread, agent, seen, source = row(mention, 4)
             owner = string(thread, "thread")
             child = string(agent, "agent", empty=True)
             request = Request(
                 "candidate",
                 ThreadId(owner),
-                Host(string(host, "host")),
+                (
+                    Host.CODEX
+                    if source is None
+                    else ValidatedSource.decode(
+                        string(source, "validated source"), ThreadId(owner)
+                    ).locator.host
+                ),
                 timestamp(seen),
                 None,
                 child or None,

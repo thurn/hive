@@ -5,15 +5,15 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from pathlib import Path
 
 from hive.bead_history import historical
 from hive.bead_history import status as history_status
 from hive.codex_folding import root
-from hive.identity import CodexTaskId, Host
+from hive.identity import CodexTaskId
 from hive.jsonvalue import integer, sequence, string
 from hive.otlp_storage import status as otlp_status
 from hive.thread_links import ThreadLink
+from hive.transcript_source import Attempt, Collected, Rejected, ValidatedSource
 from hive.usage_store import UsageStore, row
 
 
@@ -144,46 +144,39 @@ class CollectionRegistry:
                 for value in sequence(values, "association gaps")
             ]
 
-    def cached_path(self, task: CodexTaskId) -> Path | None:
+    def cached_source(self, task: CodexTaskId) -> ValidatedSource | None:
+        """Read the entire validated locator in one snapshot."""
         with self.connect(write=False) as connection:
             value: object = connection.execute(
-                "SELECT validated_path FROM collection_tasks WHERE task=?", (task,)
+                "SELECT validated_source FROM collection_tasks WHERE task=?", (task,)
             ).fetchone()
             return (
                 None
                 if value is None or row(value, 1)[0] is None
-                else Path(string(row(value, 1)[0], "cached transcript"))
+                else ValidatedSource.decode(
+                    string(row(value, 1)[0], "cached source"), task
+                )
             )
 
-    def cached_host(self, task: CodexTaskId) -> Host | None:
-        with self.connect(write=False) as connection:
-            value: object = connection.execute(
-                "SELECT host FROM collection_tasks WHERE task=?", (task,)
-            ).fetchone()
-            return (
-                None
-                if value is None or row(value, 1)[0] is None
-                else Host(string(row(value, 1)[0], "cached host"))
-            )
-
-    def attempted(
-        self,
-        task: CodexTaskId,
-        error: str | None,
-        validated_path: Path | None,
-        host: Host | None = None,
-    ) -> None:
+    def attempted(self, task: CodexTaskId, outcome: Attempt) -> None:
+        """Install/revoke one complete identity, or retain it on a failed read."""
         with self.connect() as connection:
             connection.execute(
-                "UPDATE collection_tasks SET attempted=?, error=?, validated_path=COALESCE(?,validated_path), host=? WHERE task=?",
-                (
-                    datetime.now(UTC).isoformat(),
-                    error,
-                    None if validated_path is None else str(validated_path),
-                    host,
-                    task,
-                ),
+                "UPDATE collection_tasks SET attempted=?, error=? WHERE task=?",
+                (datetime.now(UTC).isoformat(), outcome.error, task),
             )
+            if isinstance(outcome, (Collected, Rejected)):
+                connection.execute(
+                    "UPDATE collection_tasks SET validated_source=? WHERE task=?",
+                    (
+                        (
+                            outcome.source.encode()
+                            if isinstance(outcome, Collected)
+                            else None
+                        ),
+                        task,
+                    ),
+                )
 
     def status(self) -> dict[str, object]:
         with self.connect(write=False) as connection:
@@ -199,7 +192,7 @@ class CollectionRegistry:
                 "SELECT task,error FROM collection_tasks WHERE error IS NOT NULL ORDER BY attempted DESC LIMIT 20"
             ).fetchall()
             uncollected: object = connection.execute(
-                "SELECT COUNT(*) FROM collection_tasks WHERE host IS NULL"
+                "SELECT COUNT(*) FROM collection_tasks WHERE validated_source IS NULL"
             ).fetchone()
             gap_count: object = connection.execute(
                 "SELECT COUNT(*) FROM collection_gaps"

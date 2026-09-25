@@ -8,12 +8,12 @@ from decimal import Decimal
 from pathlib import Path
 
 from test_contention import hive
-from test_usage import line
+from test_usage import counters, line
 
 from hive.collection import sweep
 from hive.collection_registry import CollectionRegistry
-from hive.identity import Host, SourceCommit, ThreadId
-from hive.jsonvalue import integer, record
+from hive.identity import SourceCommit, ThreadId
+from hive.jsonvalue import integer, record, sequence
 from hive.launch_context import LaunchContext
 from hive.thread_links import ThreadLink
 from hive.usage_store import UsageStore
@@ -92,7 +92,7 @@ class ClaudeTests(unittest.TestCase):
                 record(json.loads(result.stdout))["priced_subset_usd"], "0.000438000000"
             )
             with sqlite3.connect(state / "telemetry.sqlite3") as db:
-                self.assertEqual(db.execute("PRAGMA user_version").fetchone(), (16,))
+                self.assertEqual(db.execute("PRAGMA user_version").fetchone(), (17,))
 
     def test_host_totals_replay_old_cursors_and_reject_late_output(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -615,8 +615,8 @@ class ClaudeTests(unittest.TestCase):
             )
             result = sweep(context, index, 32)
             self.assertEqual(result["attempted"], 2)
-            self.assertEqual(registry.cached_host(THREAD), Host.CLAUDE)
-            self.assertEqual(registry.cached_host(OTHER), Host.CODEX)
+            self.assertEqual(store.report(THREAD)["observed_responses"], 1)
+            self.assertEqual(registry.status()["uncollected_threads"], 0)
             child = project / THREAD / "subagents/agent-late.jsonl"
             child.parent.mkdir(parents=True)
             child.write_bytes(assistant("req_late", agent="late"))
@@ -639,10 +639,10 @@ class ClaudeTests(unittest.TestCase):
             with main.open("ab") as stream:
                 stream.write(assistant("req_ambiguous"))
             sweep(context, index, 32)
-            self.assertIsNone(registry.cached_host(THREAD))
+            self.assertEqual(registry.status()["uncollected_threads"], 1)
             self.assertEqual(store.report(THREAD)["observed_responses"], 2)
 
-    def test_index_outage_requires_cached_host_and_duplicates_are_rejected(
+    def test_index_outage_requires_validated_source_and_duplicates_are_rejected(
         self,
     ) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -668,15 +668,150 @@ class ClaudeTests(unittest.TestCase):
             )
             sweep(context, root / "missing-index", 32)
             self.assertEqual(store.report(THREAD)["observed_responses"], 0)
-            registry.attempted(THREAD, None, main, Host.CLAUDE)
-            sweep(context, root / "missing-index", 32)
+            index = root / "index.sqlite3"
+            with sqlite3.connect(index) as db:
+                db.execute(
+                    "CREATE TABLE threads(id TEXT PRIMARY KEY, rollout_path TEXT NOT NULL)"
+                )
+            sweep(context, index, 32)
             self.assertEqual(store.report(THREAD)["observed_responses"], 1)
+            with main.open("ab") as stream:
+                stream.write(assistant("req_outage"))
+            outage = sweep(context, root / "missing-index", 32)
+            self.assertIsNotNone(outage["native_index_error"])
+            self.assertEqual(store.report(THREAD)["observed_responses"], 2)
             second = projects / "other" / main.name
             second.parent.mkdir()
             second.write_bytes(main.read_bytes())
             sweep(context, root / "missing-index", 32)
-            self.assertIsNone(registry.cached_host(THREAD))
+            self.assertEqual(registry.status()["uncollected_threads"], 1)
             self.assertIn("multiple", str(registry.status()["recent_failures"]))
+            second.unlink()
+            with main.open("ab") as stream:
+                stream.write(assistant("req_after_conflict"))
+            sweep(context, root / "missing-index", 32)
+            self.assertEqual(store.report(THREAD)["observed_responses"], 2)
+            sweep(context, index, 32)
+            self.assertEqual(store.report(THREAD)["observed_responses"], 3)
+
+    def test_rejected_host_candidate_cannot_relabel_cached_transcript(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            projects = root / "projects"
+            project = projects / "slug"
+            project.mkdir(parents=True)
+            codex = root / "rollout.jsonl"
+
+            def codex_response(identity: str) -> bytes:
+                return line(
+                    "token_usage_record",
+                    {
+                        "thread_id": THREAD,
+                        "session_id": THREAD,
+                        "turn_id": "turn",
+                        "response_id": identity,
+                        "usage": counters(),
+                    },
+                )
+
+            codex.write_bytes(
+                line("session_meta", {"id": THREAD}) + codex_response("initial")
+            )
+            index = root / "native.sqlite3"
+            with sqlite3.connect(index) as db:
+                db.execute(
+                    "CREATE TABLE threads(id TEXT PRIMARY KEY, rollout_path TEXT NOT NULL)"
+                )
+                db.execute("INSERT INTO threads VALUES (?,?)", (THREAD, str(codex)))
+            context = LaunchContext(
+                SourceCommit("fixture"),
+                root,
+                root / "state",
+                root / "missing-beads",
+                0,
+                root,
+                projects,
+            )
+            store = UsageStore(context.state / "telemetry.sqlite3")
+            registry = CollectionRegistry(store)
+            registry.refresh(
+                (ThreadLink(THREAD, "hv-test", "creator", False),), (), None
+            )
+            sweep(context, index, 32)
+            self.assertEqual(store.report(THREAD)["observed_responses"], 1)
+            with sqlite3.connect(index) as db:
+                db.execute("DELETE FROM threads")
+            main = project / f"{THREAD}.jsonl"
+            main.write_bytes(assistant("wrong_host", thread=OTHER))
+            rejected = sweep(context, index, 32)
+            self.assertIn("another task", str(rejected["results"]))
+            self.assertEqual(store.report(THREAD)["observed_responses"], 1)
+            with codex.open("ab") as stream:
+                stream.write(codex_response("during_outage"))
+            outage = sweep(context, root / "missing-index", 32)
+            self.assertIsNotNone(outage["native_index_error"])
+            self.assertNotIn("Claude filename", str(outage["results"]))
+            self.assertEqual(store.report(THREAD)["observed_responses"], 2)
+            main.write_bytes(assistant("repaired"))
+            sweep(context, index, 32)
+            self.assertEqual(store.report(THREAD)["observed_responses"], 3)
+            sweep(context, root / "missing-index", 32)
+            self.assertEqual(store.report(THREAD)["observed_responses"], 3)
+            self.assertEqual(registry.status()["uncollected_threads"], 0)
+
+    def test_legacy_source_pairs_require_native_revalidation(self) -> None:
+        for host in (None, "claude", "codex"):
+            with self.subTest(host=host), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                projects = root / "projects"
+                main = projects / "slug" / f"{THREAD}.jsonl"
+                main.parent.mkdir(parents=True)
+                main.write_bytes(assistant("initial"))
+                index = root / "native.sqlite3"
+                with sqlite3.connect(index) as db:
+                    db.execute(
+                        "CREATE TABLE threads(id TEXT PRIMARY KEY, rollout_path TEXT NOT NULL)"
+                    )
+                context = LaunchContext(
+                    SourceCommit("fixture"),
+                    root,
+                    root / "state",
+                    root / "missing-beads",
+                    0,
+                    root,
+                    projects,
+                )
+                store = UsageStore(context.state / "telemetry.sqlite3")
+                registry = CollectionRegistry(store)
+                registry.refresh(
+                    (ThreadLink(THREAD, "hv-test", "creator", False),), (), None
+                )
+                sweep(context, index, 32)
+                self.assertEqual(store.report(THREAD)["observed_responses"], 1)
+                # Reproduce the old independently writable pair, including a
+                # complete but mismatched host/path and an incomplete entry.
+                with sqlite3.connect(store.path) as db:
+                    db.execute(
+                        "ALTER TABLE collection_tasks DROP COLUMN validated_source"
+                    )
+                    db.execute("ALTER TABLE collection_tasks ADD COLUMN host TEXT")
+                    db.execute(
+                        "ALTER TABLE collection_tasks ADD COLUMN validated_path TEXT"
+                    )
+                    db.execute(
+                        "UPDATE collection_tasks SET host=?,validated_path=?",
+                        (host, str(main)),
+                    )
+                    db.execute("PRAGMA user_version=16")
+                with main.open("ab") as stream:
+                    stream.write(assistant("after_upgrade"))
+                sweep(context, root / "missing-index", 32)
+                self.assertEqual(store.report(THREAD)["observed_responses"], 1)
+                self.assertEqual(registry.status()["uncollected_threads"], 1)
+                sweep(context, index, 32)
+                self.assertEqual(store.report(THREAD)["observed_responses"], 2)
+                sweep(context, root / "missing-index", 32)
+                self.assertEqual(store.report(THREAD)["observed_responses"], 2)
 
     def test_known_partial_replays_are_idempotent_but_new_decreases_are_gaps(
         self,
@@ -744,9 +879,15 @@ class ClaudeTests(unittest.TestCase):
                 integer(store.report(THREAD)["observed_responses"], "responses"), 3500
             )
             for _ in range(5):
-                result = store.collect(THREAD, child)
-                self.assertLessEqual(integer(result["read_bytes"], "bytes"), 1048576)
-                if result["remaining_bytes"] == 0:
+                batch = sweep(context, root / "missing-index", 32)
+                self.assertIsNotNone(batch["native_index_error"])
+                self.assertIn("another task", str(batch["results"]))
+                for result in sequence(batch["results"], "results"):
+                    for file in sequence(record(result)["files"], "files"):
+                        self.assertLessEqual(
+                            integer(record(file).get("read_bytes", 0), "bytes"), 1048576
+                        )
+                if store.report(THREAD)["observed_responses"] == 3500:
                     break
             self.assertEqual(store.report(THREAD)["observed_responses"], 3500)
 
@@ -770,7 +911,9 @@ class ClaudeTests(unittest.TestCase):
             main.write_bytes(assistant("req_v2"))
             store.collect(THREAD, main)
             self.assertEqual(store.report(THREAD)["observed_responses"], 1)
-            self.assertEqual(CollectionRegistry(store).cached_host(OTHER), Host.CODEX)
+            self.assertEqual(
+                CollectionRegistry(store).status()["uncollected_threads"], 1
+            )
 
 
 class ClaudePricingTests(unittest.TestCase):

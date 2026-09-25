@@ -7,7 +7,7 @@ from hive.errors import ErrorCode, HiveError
 from hive.jsonvalue import integer, parse, sequence, string
 from hive.usage import tokens
 
-VERSION = 16
+VERSION = 17
 
 SCHEMA = (
     """CREATE TABLE IF NOT EXISTS sources (
@@ -35,8 +35,7 @@ SCHEMA = (
         inode INTEGER NOT NULL, position INTEGER NOT NULL, detail TEXT NOT NULL,
         PRIMARY KEY(task, file, device, inode, position, detail))""",
     """CREATE TABLE IF NOT EXISTS collection_tasks (
-        task TEXT PRIMARY KEY, attempted TEXT, error TEXT, validated_path TEXT,
-        host TEXT)""",
+        task TEXT PRIMARY KEY, attempted TEXT, error TEXT, validated_source TEXT)""",
     """CREATE TABLE IF NOT EXISTS collection_links (
         task TEXT NOT NULL, bead TEXT NOT NULL, relation TEXT NOT NULL,
         PRIMARY KEY(task,bead,relation))""",
@@ -78,6 +77,29 @@ def add_cost_states(connection: sqlite3.Connection) -> None:
 def create_modifier_replays(connection: sqlite3.Connection) -> None:
     connection.execute("""CREATE TABLE IF NOT EXISTS claude_modifier_replays (
         task TEXT NOT NULL, file TEXT NOT NULL, PRIMARY KEY(task,file))""")
+
+
+def migrate_sources(connection: sqlite3.Connection) -> None:
+    """Discard legacy pairs, including complete pairs with unproven provenance.
+
+    Usage and file cursors survive; native discovery and preflight rebuild only
+    the disposable source cache. Existing modern entries remain intact.
+    """
+    fetched: object = connection.execute(
+        "PRAGMA table_info(collection_tasks)"
+    ).fetchall()
+    columns: set[str] = set()
+    for info in sequence(fetched, "source columns"):
+        if not isinstance(info, tuple) or len(info) != 6:
+            raise HiveError(ErrorCode.INVALID_RECORD, "Invalid source column")
+        columns.add(string(info[1], "column"))
+    if "validated_source" not in columns:
+        connection.execute(
+            "ALTER TABLE collection_tasks ADD COLUMN validated_source TEXT"
+        )
+    for name in ("host", "validated_path"):
+        if name in columns:
+            connection.execute(f"ALTER TABLE collection_tasks DROP COLUMN {name}")
 
 
 def version(connection: sqlite3.Connection) -> int:
@@ -124,10 +146,15 @@ def prepare(connection: sqlite3.Connection, *, write: bool) -> None:
                 )
             if current == VERSION:
                 return
+            if current == 16:
+                migrate_sources(connection)
+                connection.execute(f"PRAGMA user_version={VERSION}")
+                return
             if current == 15:
                 from hive.dashboard_schema import create as create_dashboard
 
                 create_dashboard(connection)
+                migrate_sources(connection)
                 connection.execute(f"PRAGMA user_version={VERSION}")
                 return
             if current == 14:
@@ -137,6 +164,7 @@ def prepare(connection: sqlite3.Connection, *, write: bool) -> None:
                 from hive.dashboard_schema import create as create_dashboard
 
                 create_dashboard(connection)
+                migrate_sources(connection)
                 connection.execute(f"PRAGMA user_version={VERSION}")
                 return
             if current == 13:
@@ -149,6 +177,7 @@ def prepare(connection: sqlite3.Connection, *, write: bool) -> None:
                 from hive.dashboard_schema import create as create_dashboard
 
                 create_dashboard(connection)
+                migrate_sources(connection)
                 connection.execute(f"PRAGMA user_version={VERSION}")
                 return
             if current == 12:
@@ -164,6 +193,7 @@ def prepare(connection: sqlite3.Connection, *, write: bool) -> None:
                 from hive.dashboard_schema import create as create_dashboard
 
                 create_dashboard(connection)
+                migrate_sources(connection)
                 connection.execute(f"PRAGMA user_version={VERSION}")
                 return
             if current in (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11):
@@ -213,6 +243,7 @@ def prepare(connection: sqlite3.Connection, *, write: bool) -> None:
                 from hive.dashboard_schema import create as create_dashboard
 
                 create_dashboard(connection)
+                migrate_sources(connection)
                 connection.execute(f"PRAGMA user_version={VERSION}")
                 return
             existing = tables(connection)
@@ -298,6 +329,7 @@ def prepare(connection: sqlite3.Connection, *, write: bool) -> None:
             from hive.dashboard_schema import create as create_dashboard
 
             create_dashboard(connection)
+            migrate_sources(connection)
             connection.execute(f"PRAGMA user_version={VERSION}")
     finally:
         connection.execute("PRAGMA busy_timeout=100")

@@ -9,9 +9,16 @@ from pathlib import Path
 from hive.claude_store import files
 from hive.collection_registry import CollectionRegistry
 from hive.errors import HiveError
-from hive.identity import Host, ThreadId
+from hive.identity import ThreadId
 from hive.jsonvalue import sequence, string
 from hive.transcript_discovery import probe
+from hive.transcript_source import (
+    ClaudeSession,
+    Collected,
+    Rejected,
+    Unchanged,
+    ValidatedSource,
+)
 from hive.usage_store import UsageStore, row
 
 
@@ -36,11 +43,13 @@ def collect(
     for task in selected:
         found = discoveries[task]
         try:
-            if found.path is None:
+            if isinstance(found, Rejected):
                 work[task] = ()
-            elif found.host == Host.CLAUDE:
+                continue
+            locator = found.source.locator
+            if isinstance(locator, ClaudeSession):
                 work[task] = tuple(
-                    SourceFile(p) for p in files(usage, task, found.path)
+                    SourceFile(p) for p in files(usage, task, locator.main)
                 )
             else:
                 with usage.connect(write=False) as connection:
@@ -48,7 +57,7 @@ def collect(
                         "SELECT r.thread,p.path FROM codex_roots r JOIN project_sessions p ON r.thread=p.thread WHERE r.root=? AND r.thread<>r.root ORDER BY r.thread",
                         (task,),
                     ).fetchall()
-                work[task] = (SourceFile(found.path),) + tuple(
+                work[task] = (SourceFile(locator.path),) + tuple(
                     SourceFile(
                         Path(string(row(v, 2)[1], "child path")),
                         ThreadId(string(row(v, 2)[0], "child")),
@@ -65,9 +74,9 @@ def collect(
         found = discoveries[task]
         candidates = work[task]
         problem = found.error
-        validated_path: Path | None = None
+        validated: ValidatedSource | None = None
         try:
-            if not candidates or found.path is None or found.host is None:
+            if not candidates or isinstance(found, Rejected):
                 result: dict[str, object] = {
                     "task": task,
                     "error": problem or "No readable transcript files",
@@ -75,13 +84,22 @@ def collect(
             else:
                 source, *rest = candidates
                 result = usage.collect(
-                    task, source.path, host=found.host, agent=source.agent
+                    task,
+                    source.path,
+                    host=found.source.locator.host,
+                    agent=source.agent,
                 )
                 result["discovery_error"] = problem
                 if result["error"] is not None:
                     problem = string(result["error"], "collection error")
                 else:
-                    validated_path = found.path
+                    # A Codex child validates itself, not the root transcript.
+                    # A Claude child establishes the session directory identity.
+                    if (
+                        isinstance(found.source.locator, ClaudeSession)
+                        or source.agent is None
+                    ):
+                        validated = ValidatedSource(found.source.locator)
                 work[task] = tuple(rest)
                 if rest:
                     queue.append(task)
@@ -101,5 +119,10 @@ def collect(
             "error": combined,
             "files": file_results.get(task, []),
         }
-        registry.attempted(task, combined, validated_path, found.host)
+        if validated is not None:
+            registry.attempted(task, Collected(validated, combined))
+        elif isinstance(found, Rejected):
+            registry.attempted(task, Rejected(combined or found.error))
+        else:
+            registry.attempted(task, Unchanged(combined))
     return results, native_error

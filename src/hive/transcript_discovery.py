@@ -7,16 +7,25 @@ from pathlib import Path
 from hive.claude_store import regular
 from hive.collection_registry import CollectionRegistry
 from hive.errors import HiveError
-from hive.identity import Host, ThreadId
+from hive.identity import ThreadId
 from hive.native_transcripts import NativeTranscripts
 from hive.thread_links import thread_id
+from hive.transcript_source import (
+    Candidate,
+    ClaudeSession,
+    CodexTranscript,
+    Rejected,
+    ValidatedSource,
+)
 
 
 @dataclass(frozen=True)
-class Discovery:
-    host: Host | None
-    path: Path | None
-    error: str | None
+class Found:
+    source: Candidate | ValidatedSource
+    error: str | None = None
+
+
+Discovery = Found | Rejected
 
 
 def probe(
@@ -46,20 +55,18 @@ def probe(
                     "Thread matches both Codex and Claude; collection refused"
                 )
             if native_error is not None:
-                host = registry.cached_host(task)
-                path = registry.cached_path(task) if host is not None else None
-                if path is not None:
-                    regular(path)
-                results[task] = Discovery(host, path, native_error)
+                cached = registry.cached_source(task)
+                if cached is None:
+                    results[task] = Rejected(native_error)
+                else:
+                    results[task] = Found(cached, native_error)
             elif task in paths:
                 regular(paths[task])
-                results[task] = Discovery(Host.CODEX, paths[task], None)
+                results[task] = Found(Candidate(CodexTranscript(paths[task])))
             elif matches:
-                results[task] = Discovery(Host.CLAUDE, matches[0], None)
+                results[task] = Found(Candidate(ClaudeSession(matches[0].parent, task)))
             else:
-                results[task] = Discovery(
-                    None, None, "No native transcript for this task"
-                )
+                results[task] = Rejected("No native transcript for this task")
         except (OSError, ValueError, HiveError) as error:
-            results[task] = Discovery(None, None, str(error))
+            results[task] = Rejected(str(error))
     return results, native_error

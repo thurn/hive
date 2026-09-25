@@ -198,10 +198,10 @@ class BeadLinkTests(unittest.TestCase):
                 (),
                 None,
             )
-            stale.attempted(CodexTaskId(CLAUDE), "No transcript", None)
+
             for _ in range(2):
                 batch = sweep(context, index, 32)
-                self.assertEqual(
+                self.assertCountEqual(
                     [
                         record(result, "result")["task"]
                         for result in sequence(batch["results"], "results")

@@ -16,7 +16,7 @@ from hive.cost_report import report
 from hive.errors import ErrorCode, HiveError
 from hive.identity import CodexTaskId, PricingTier
 from hive.launch_context import LaunchContext
-from hive.transcript_discovery import probe
+from hive.transcript_discovery import Found, probe
 from hive.usage_store import UsageStore
 
 
@@ -187,14 +187,22 @@ def main() -> int:
                         CodexTaskId(parsed.task),
                         None if parsed.tier is None else PricingTier(parsed.tier),
                         cursor=parsed.cursor,
-                        host_hint=found.host,
+                        host_hint=(
+                            found.source.locator.host
+                            if isinstance(found, Found)
+                            else None
+                        ),
                     )
                 else:
                     result = report(
                         store,
                         CodexTaskId(parsed.task),
                         None if parsed.tier is None else PricingTier(parsed.tier),
-                        host_hint=found.host,
+                        host_hint=(
+                            found.source.locator.host
+                            if isinstance(found, Found)
+                            else None
+                        ),
                     )
                 links, gaps, failure = None, None, None
                 try:
@@ -221,9 +229,7 @@ def main() -> int:
                     CodexTaskId(parsed.task)
                 )
                 result["association_gaps"] = registry.gaps()
-                result["usage_collectable"] = (
-                    found.host is not None and found.path is not None
-                )
+                result["usage_collectable"] = isinstance(found, Found)
                 if found.error:
                     result["collection_gap"] = found.error
         elif parsed.action == "reset-bead-events":
@@ -277,9 +283,12 @@ def main() -> int:
                         linked.append(
                             {
                                 **link.__dict__,
-                                "collected": found.host is not None
-                                and found.path is not None,
-                                "host": found.host,
+                                "collected": isinstance(found, Found),
+                                "host": (
+                                    found.source.locator.host
+                                    if isinstance(found, Found)
+                                    else None
+                                ),
                                 "collection_gap": found.error,
                             }
                         )
