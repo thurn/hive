@@ -9,7 +9,7 @@ from hive.claude_usage import Modifiers
 from hive.errors import ErrorCode, HiveError
 from hive.identity import CodexTaskId, Host, ModelId, PricingTier, ResponseId, UsdPicos
 from hive.jsonvalue import integer, parse, sequence, string
-from hive.price_evidence import apply_updates, usage_updates
+from hive.price_evidence import adopt_event_rates, apply_updates, usage_updates
 from hive.pricing import Quote, claude_quote, claude_reason, dollars, quote
 from hive.usage import Tokens, timestamp, tokens
 from hive.usage_store import UsageStore, row, source_status, stored_host
@@ -71,6 +71,8 @@ def price_response(
     flags: tuple[str, ...],
     tier: PricingTier,
 ) -> tuple[Quote | None, str | None]:
+    if "unjoinable" in flags:
+        return None, "unjoinable_event"
     if raw_usage is None:
         return None, "missing_usage"
     if raw_model is None:
@@ -104,11 +106,19 @@ def retain(store: UsageStore, fresh: list[tuple[str, str, str]]) -> int:
             # Keep the first writer's rates and use the latest committed tokens.
             for response, _, _ in fresh:
                 current: object = connection.execute(
-                    "SELECT host,usage FROM responses WHERE response=?", (response,)
+                    "SELECT host,usage,model,modifiers FROM responses WHERE response=?",
+                    (response,),
                 ).fetchone()
                 if current is not None:
-                    host, usage = row(current, 2)
+                    host, usage, model, modifiers = row(current, 4)
                     if host == Host.CLAUDE and usage is not None:
+                        adopt_event_rates(
+                            connection,
+                            ResponseId(response),
+                            string(model, "model"),
+                            Modifiers.read(parse(string(modifiers, "modifiers"))),
+                            tokens(parse(string(usage, "usage"))),
+                        )
                         apply_updates(
                             connection,
                             usage_updates(
@@ -243,10 +253,25 @@ def report(
                 groups[key] = count + 1, subtotal + quoted.amount
         health = source_status(connection, task)
         host_totals: dict[str, object] = {}
+        event_totals: dict[str, object] = {}
         if host == Host.CLAUDE:
             from hive.claude_cost_state import comparison
 
             host_totals = comparison(connection, task, amount, last_priced)
+            from hive.event_report import report as event_report
+
+            event_totals = event_report(
+                connection,
+                store.path.parent,
+                task,
+                fresh,
+                observed=observed,
+                priced=counts["priced"],
+                amount=amount,
+                partial=counts["possibly_partial_output"],
+                health=health,
+                host_totals=host_totals,
+            )
     unretained = retain(store, fresh)
     unpriced = observed - counts["priced"]
     return {
@@ -298,5 +323,6 @@ def report(
         "unpriced_examples": examples,
         "unretained_estimates": unretained,
         **host_totals,
+        **event_totals,
         **health,
     }

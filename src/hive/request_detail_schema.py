@@ -16,22 +16,26 @@ base AS (
  m.conflicted,
  CASE WHEN m.conflicted=1 OR EXISTS (SELECT 1 FROM json_each(r.flags) WHERE value='unsupported_iteration')
  THEN NULL ELSE e.quote END AS quote,
- a.agent_type
+ a.agent_type, ev.response AS event_response, ev.query_source,
+ ev.plugin, ev.mcp_tool, ev.effort, ev.host_usd,
+ CASE WHEN ev.response IS NOT NULL AND (ev.task<>r.task OR ev.model<>r.model OR ev.input<>r.input-r.cached-r.cache_write-r.cache_write_1h
+ OR ev.cached<>r.cached OR ev.writes<>r.cache_write+r.cache_write_1h OR ev.output<>r.output) THEN 1 ELSE 0 END AS join_mismatch
  FROM responses r
  JOIN tiers t ON r.host='codex' OR t.tier='standard'
+ LEFT JOIN claude_request_events ev ON r.host='claude' AND r.response=ev.request_id
  LEFT JOIN turn_models m ON r.host='codex' AND r.task=m.task AND r.turn=m.turn
  LEFT JOIN claude_agents a ON r.host='claude' AND r.task=a.task AND r.agent=a.agent
  LEFT JOIN response_estimates e ON r.response=e.response
  AND e.tier=CASE WHEN r.host='claude' THEN r.modifier_key ELSE t.tier END
 )
-SELECT host, task AS thread, response, NULL AS source, observed AS observed_at,
+SELECT host, task AS thread, response, CASE WHEN event_response IS NULL THEN 'transcript' ELSE 'both' END AS source, observed AS observed_at,
  CASE WHEN host='claude' THEN turn END AS prompt_id,
  CASE WHEN host='codex' THEN turn END AS turn,
- agent, agent_type, NULL AS parent_agent, NULL AS query_source, skill,
- NULL AS plugin, NULL AS mcp_tool, priced_model AS model,
+ agent, agent_type, NULL AS parent_agent, query_source, skill,
+ plugin, mcp_tool, priced_model AS model,
  CASE WHEN host='claude' THEN modifier_key ELSE selected_tier END AS modifier_key,
  CASE WHEN host='codex' THEN selected_tier END AS tier,
- NULL AS effort,
+ effort,
  input-cached-cache_write-cache_write_1h AS uncached_input,
  cached AS cache_read, cache_write AS cache_write_5m, cache_write_1h,
  output, reasoning AS thinking_output,
@@ -42,10 +46,24 @@ SELECT host, task AS thread, response, NULL AS source, observed AS observed_at,
  json_extract(quote,'$.components_usd.cache_write_1h') AS usd_cache_write_1h,
  json_extract(quote,'$.components_usd.output') AS usd_output,
  json_extract(quote,'$.components_usd.server_tools') AS usd_server_tools,
- json_extract(quote,'$.usd') AS usd, NULL AS host_cost_usd,
- CASE WHEN complete=0 THEN json_insert(flags,'$[#]','possibly_partial') ELSE flags END AS flags,
+ json_extract(quote,'$.usd') AS usd, host_usd AS host_cost_usd,
+ CASE WHEN join_mismatch=1 THEN json_insert(CASE WHEN complete=0 THEN json_insert(flags,'$[#]','possibly_partial') ELSE flags END,'$[#]','event_token_mismatch') WHEN complete=0 THEN json_insert(flags,'$[#]','possibly_partial') ELSE flags END AS flags,
  usage AS _usage, quote AS _quote, modifiers AS _modifiers, conflicted AS _conflicted
 FROM base
+UNION ALL
+SELECT 'claude', ev.task, ev.response, 'events', ev.observed, ev.prompt, NULL,
+ NULL, NULL, NULL, ev.query_source, ev.skill, ev.plugin, ev.mcp_tool,
+ ev.model, ev.modifier_key, NULL, ev.effort,
+ ev.input, ev.cached, json_extract(ev.usage,'$.cache_write_input_tokens'),
+ json_extract(ev.usage,'$.cache_write_1h_input_tokens'), ev.output, NULL, NULL,
+ json_extract(e.quote,'$.components_usd.input'), json_extract(e.quote,'$.components_usd.cache_read'),
+ json_extract(e.quote,'$.components_usd.cache_write_5m'), json_extract(e.quote,'$.components_usd.cache_write_1h'),
+ json_extract(e.quote,'$.components_usd.output'), json_extract(e.quote,'$.components_usd.server_tools'),
+ json_extract(e.quote,'$.usd'), ev.host_usd, ev.flags,
+ ev.usage, e.quote, ev.modifiers, NULL
+FROM claude_request_events ev
+LEFT JOIN response_estimates e ON ev.response=e.response AND ev.modifier_key=e.tier
+WHERE NOT EXISTS (SELECT 1 FROM responses r WHERE r.response=ev.request_id AND r.host='claude')
 """
 
 
@@ -72,4 +90,5 @@ def create(connection: sqlite3.Connection) -> None:
                 "UPDATE response_estimates SET quote=? WHERE response=? AND tier=?",
                 (json.dumps(quoted.value(parsed)), response, tier),
             )
+    connection.execute("DROP VIEW IF EXISTS request_detail")
     connection.execute(VIEW)

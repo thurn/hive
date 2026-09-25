@@ -10,6 +10,8 @@ from hive.beads_process import BeadsProcess
 from hive.claude_store import files, metadata
 from hive.collection_registry import CollectionRegistry
 from hive.errors import ErrorCode, HiveError
+from hive.event_ingest import ingest
+from hive.event_retention import retain as retain_events
 from hive.identity import Host
 from hive.jsonvalue import string
 from hive.launch_context import LaunchContext
@@ -38,6 +40,13 @@ def sweep(context: LaunchContext, index: Path, limit: int) -> dict[str, object]:
         except (HiveError, OSError) as error:
             registry_error = str(error)
         registry.refresh(links, gaps, registry_error)
+        event_health = retain_events(
+            usage,
+            context.state,
+            min(deadline, time.monotonic() + 0.25),
+            permitted=registry_error is None,
+        )
+        event_health.update(ingest(usage, context.state, deadline))
         selected = registry.next(limit)
         discoveries, native_error = probe(
             selected, index, context.claude_projects, registry
@@ -108,6 +117,7 @@ def sweep(context: LaunchContext, index: Path, limit: int) -> dict[str, object]:
             registry.attempted(task, combined, validated_path, collected_host)
         return {
             "code": "CollectionBatch",
+            **event_health,
             "source": context.commit,
             "registry_error": registry_error,
             "native_index_error": native_error,

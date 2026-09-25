@@ -31,7 +31,19 @@ def save(
 ) -> None:
     try:
         start = process_start(raw.get("startTime"))
-        observed = timestamp(raw.get("timestamp")).astimezone(UTC)
+        if "timestamp" in raw:
+            observed = timestamp(raw.get("timestamp")).astimezone(UTC)
+        else:
+            try:
+                observed = start + timedelta(
+                    milliseconds=integer(
+                        raw.get("totalDuration"), "cost-state totalDuration"
+                    )
+                )
+            except OverflowError as error:
+                raise HiveError(
+                    ErrorCode.INVALID_RECORD, "Invalid cost-state duration"
+                ) from error
         value = raw.get("totalCostUSD")
         if isinstance(value, bool) or not isinstance(value, (int, float)):
             raise HiveError(ErrorCode.INVALID_RECORD, "totalCostUSD must be numeric")
@@ -42,10 +54,17 @@ def save(
         if not isinstance(unknown, bool) or observed < start:
             raise HiveError(ErrorCode.INVALID_RECORD, "Invalid process total metadata")
         connection.execute(
-            "INSERT INTO claude_cost_states(task,start,observed,usd,unknown_model) VALUES (?,?,?,?,?) "
-            "ON CONFLICT(task,start) DO UPDATE SET observed=excluded.observed,usd=excluded.usd,unknown_model=excluded.unknown_model "
+            "INSERT INTO claude_cost_states(task,start,observed,usd,unknown_model,timestamp_known) VALUES (?,?,?,?,?,?) "
+            "ON CONFLICT(task,start) DO UPDATE SET observed=excluded.observed,usd=excluded.usd,unknown_model=excluded.unknown_model,timestamp_known=excluded.timestamp_known "
             "WHERE excluded.observed >= claude_cost_states.observed",
-            (task, start.isoformat(), observed.isoformat(), str(amount), int(unknown)),
+            (
+                task,
+                start.isoformat(),
+                observed.isoformat(),
+                str(amount),
+                int(unknown),
+                int("timestamp" in raw),
+            ),
         )
     except HiveError as error:
         raise HiveError(
@@ -60,7 +79,7 @@ def comparison(
     last_priced: datetime | None,
 ) -> dict[str, object]:
     values: object = connection.execute(
-        "SELECT start,observed,usd,unknown_model FROM claude_cost_states WHERE task=?",
+        "SELECT start,observed,usd,unknown_model,timestamp_known FROM claude_cost_states WHERE task=?",
         (task,),
     ).fetchall()
     states = sequence(values, "cost-state segments")
@@ -87,7 +106,7 @@ def comparison(
     elif last_priced is None:
         reason = "no_priced_requests"
     else:
-        start, observed, usd, unknown = row(states[0], 4)
+        start, observed, usd, unknown, timestamp_known = row(states[0], 5)
         # Read all timestamps as instants; ISO lexical ordering is unsafe when
         # source files use different UTC offsets.
         times: object = connection.execute(
@@ -101,7 +120,9 @@ def comparison(
         # instead of overstating the unrecorded lower bound.
         numerator, denominator = host_amount.as_integer_ratio()
         difference = numerator * 10**12 - amount * denominator
-        if timestamp(observed) <= last_priced:
+        if not integer(timestamp_known, "cost-state timestamp known"):
+            reason = "cost_state_timestamp_unavailable"
+        elif timestamp(observed) <= last_priced:
             reason = "cost_state_before_last_request"
         elif process_start(start) > first:
             reason = "process_starts_after_first_request"

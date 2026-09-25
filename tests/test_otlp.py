@@ -260,9 +260,6 @@ class WatcherOtlpTests(unittest.TestCase):
                     )
                     self.assertIsNone(process.poll(), errors.read_text())
                     self.assertEqual(asyncio.run(post(number, token)), 200)
-                    self.assertEqual(
-                        len(list((state / "otlp-spool").glob("*.json"))), 2
-                    )
                     self.assertNotIn(token, output.read_text() + errors.read_text())
                 finally:
                     process.terminate()

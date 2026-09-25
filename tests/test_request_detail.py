@@ -73,6 +73,7 @@ class RequestDetailTests(unittest.TestCase):
                 db.execute(
                     "UPDATE response_estimates SET quote=json_remove(quote,'$.components_usd')"
                 )
+                db.execute("ALTER TABLE claude_cost_states DROP COLUMN timestamp_known")
                 db.execute("PRAGMA user_version=3")
             store.collect(THREAD, path)
             with sqlite3.connect(store.path) as db:

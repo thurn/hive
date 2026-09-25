@@ -175,6 +175,19 @@ def main() -> int:
                 "-s",
                 "tests",
                 "-p",
+                "test_events.py",
+                "-v",
+            ]
+        )
+        commands.append(
+            [
+                python,
+                "-m",
+                "unittest",
+                "discover",
+                "-s",
+                "tests",
+                "-p",
                 "test_otlp.py",
                 "-v",
             ]

@@ -7,7 +7,7 @@ from hive.errors import ErrorCode, HiveError
 from hive.jsonvalue import integer, parse, sequence, string
 from hive.usage import tokens
 
-VERSION = 4
+VERSION = 5
 
 SCHEMA = (
     """CREATE TABLE IF NOT EXISTS sources (
@@ -119,12 +119,15 @@ def prepare(connection: sqlite3.Connection, *, write: bool) -> None:
                 )
             if current == VERSION:
                 return
-            if current in (1, 2, 3):
+            if current in (1, 2, 3, 4):
                 if current == 1:
                     add_claude(connection)
                 if current < 3:
                     add_cost_states(connection)
+                from hive.event_schema import create as create_events
                 from hive.request_detail_schema import create
+
+                create_events(connection)
 
                 create(connection)
                 connection.execute(f"PRAGMA user_version={VERSION}")
@@ -179,7 +182,10 @@ def prepare(connection: sqlite3.Connection, *, write: bool) -> None:
                     connection.execute(f"DROP TABLE legacy_{name}")
             add_claude(connection)
             add_cost_states(connection)
+            from hive.event_schema import create as create_events
             from hive.request_detail_schema import create
+
+            create_events(connection)
 
             create(connection)
             connection.execute(f"PRAGMA user_version={VERSION}")

@@ -347,7 +347,8 @@ def source_status(
 
 def stored_host(connection: sqlite3.Connection, task: CodexTaskId) -> Host | None:
     values: object = connection.execute(
-        "SELECT DISTINCT host FROM sources WHERE task=?", (task,)
+        "SELECT DISTINCT host FROM sources WHERE task=? UNION SELECT 'claude' FROM claude_request_events WHERE task=?",
+        (task, task),
     ).fetchall()
     hosts = {
         string(row(value, 1)[0], "source host")

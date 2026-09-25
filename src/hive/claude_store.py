@@ -98,8 +98,9 @@ def save(connection: sqlite3.Connection, event: ClaudeResponse) -> None:
             for flag in sequence(parse(string(raw_flags, "flags")), "flags")
         )
         complete |= bool(integer(old_complete, "complete response"))
-    from hive.price_evidence import apply_updates, usage_updates
+    from hive.price_evidence import adopt_event_rates, apply_updates, usage_updates
 
+    adopt_event_rates(connection, usage.response, event.model, event.modifiers, current)
     updates = usage_updates(connection, usage.response, current)
     connection.execute(
         "INSERT OR IGNORE INTO claude_response_counts(response,output,reasoning) VALUES (?,?,?)",
