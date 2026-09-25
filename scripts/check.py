@@ -73,7 +73,8 @@ def main() -> int:
         )
     )
     fast = "--fast" in sys.argv[1:]
-    deadline = time.monotonic() + (30 if fast else 240)
+    # Allow the expanded process-level suites to finish on a busy development host.
+    deadline = time.monotonic() + (60 if fast else 480)
     if boundary_rules():
         return 1
     python = sys.executable

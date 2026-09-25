@@ -10,7 +10,7 @@ import sys
 import tempfile
 import time
 import unittest
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from pathlib import Path
 
@@ -306,3 +306,143 @@ class DashboardServerTests(unittest.TestCase):
             self.assertEqual(
                 list((root / "local-state/dashboard-builds/tmp").iterdir()), []
             )
+
+    def test_serve_replaces_instances_concurrent_starts_and_stale_socket(self) -> None:
+        root: Path
+        environment: dict[str, str]
+        port: int
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary).resolve()
+            repository, environment = setup(root)
+            api_source = repository / "src/hive/dashboard_api.py"
+            api_source.write_text(
+                api_source.read_text().replace(
+                    "    envelope: dict[str, object] =",
+                    "    import time\n    from pathlib import Path\n    Path("
+                    + repr(str(root / "api-start"))
+                    + ").write_text('started')\n    time.sleep(12)\n    envelope: dict[str, object] =",
+                )
+            )
+            commit(repository, "test: replacement during slow API request")
+            (root / "tools/vite").write_text(
+                "#!/usr/bin/env python3\nimport os,time\nfrom pathlib import Path\nPath(os.environ['TEST_BUILDS']).write_text(str(os.getpid()))\ntime.sleep(60)\n"
+            )
+            processes: list[subprocess.Popen[bytes]] = []
+            logs: list[Path] = []
+            with (
+                server(root, environment) as port,
+                concurrent.futures.ThreadPoolExecutor(1) as pool,
+            ):
+
+                def start() -> subprocess.Popen[bytes]:
+                    path = root / f"replacement-{len(processes)}.log"
+                    with path.open("wb") as stream:
+                        process = subprocess.Popen(
+                            [
+                                sys.executable,
+                                str(ROOT / "scripts/hive.py"),
+                                "dashboard",
+                                "serve",
+                                "--port",
+                                str(port),
+                                "--json",
+                            ],
+                            env=environment,
+                            stdout=stream,
+                            stderr=stream,
+                        )
+                    processes.append(process)
+                    logs.append(path)
+                    return process
+
+                def wait_for(predicate: Callable[[], bool]) -> None:
+                    deadline = time.monotonic() + 10
+                    while not predicate():
+                        if time.monotonic() > deadline:
+                            self.fail(
+                                "Replacement did not settle: "
+                                + repr([p.read_text() for p in logs])
+                            )
+                        time.sleep(0.025)
+
+                try:
+                    get(port)
+                    wait_for(lambda: (root / "builds.txt").exists())
+                    build_pid = int((root / "builds.txt").read_text())
+                    os.kill(build_pid, 0)
+                    pending = pool.submit(get, port, "/api/status")
+                    wait_for(lambda: (root / "api-start").exists())
+                    began = time.monotonic()
+                    second = start()
+                    wait_for(
+                        lambda: "DashboardStopped" in (root / "server.log").read_text()
+                    )
+                    wait_for(lambda: self.listening(port))
+                    self.assertLess(time.monotonic() - began, 8)
+                    self.assertEqual(pending.result(timeout=1)[0], 400)
+                    self.assertIsNone(second.poll())
+                    with self.assertRaises(ProcessLookupError):
+                        os.kill(build_pid, 0)
+                    self.assertEqual(
+                        list((root / "local-state/dashboard-builds/tmp").iterdir()), []
+                    )
+                    self.assertEqual(get(port, "/unknown")[0], 404)
+                    third, fourth = start(), start()
+                    wait_for(
+                        lambda: sum(p.poll() is None for p in (second, third, fourth))
+                        == 1
+                    )
+                    wait_for(lambda: self.listening(port))
+                    self.assertEqual(get(port, "/unknown")[0], 404)
+                    survivors = [p for p in processes if p.poll() is None]
+                    self.assertEqual(len(survivors), 1)
+                    for p in processes:
+                        if p not in survivors:
+                            self.assertEqual(p.returncode, 0)
+                    # A hard crash leaves a socket, but no PID gets trusted on retry.
+                    survivors[0].kill()
+                    survivors[0].wait(timeout=5)
+                    recovered = start()
+                    wait_for(
+                        lambda: recovered.poll() is not None or self.listening(port)
+                    )
+                    self.assertIsNone(recovered.poll())
+                    self.assertEqual(get(port, "/unknown")[0], 404)
+                finally:
+                    for p in processes:
+                        if p.poll() is None:
+                            p.terminate()
+                        p.wait(timeout=8)
+
+    @staticmethod
+    def listening(port: int) -> bool:
+        try:
+            return get(port, "/unknown")[0] == 404
+        except OSError:
+            return False
+
+    def test_serve_preserves_unrelated_listener(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary, socket.socket() as occupied:
+            root = Path(temporary).resolve()
+            _, environment = setup(root)
+            occupied.bind(("127.0.0.1", 0))
+            occupied.listen()
+            port = occupied.getsockname()[1]
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    str(ROOT / "scripts/hive.py"),
+                    "dashboard",
+                    "serve",
+                    "--port",
+                    str(port),
+                    "--json",
+                ],
+                env=environment,
+                capture_output=True,
+                timeout=10,
+            )
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn(b"Cannot bind dashboard", result.stdout + result.stderr)
+            with socket.create_connection(("127.0.0.1", port), timeout=1):
+                pass

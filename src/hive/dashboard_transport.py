@@ -9,6 +9,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from hive.collection_transport import environment
+from hive.dashboard_instance import listener
 from hive.dashboard_routes import route
 from hive.dashboard_static import asset
 from hive.errors import ErrorCode, HiveError
@@ -260,25 +261,17 @@ async def serve(state: Path, launcher: Path, port: int) -> None:
     loop = asyncio.get_running_loop()
     signals = (signal.SIGINT, signal.SIGTERM)
     previous = {s: signal.getsignal(s) for s in signals}
-    try:
-        server = await asyncio.start_server(
-            receiver.connected, "127.0.0.1", port, limit=16384
-        )
-    except OSError as error:
-        raise HiveError(
-            ErrorCode.INVALID_INPUT,
-            f"Cannot bind dashboard to 127.0.0.1:{port}: {error}",
-        ) from error
-    try:
-        for s in signals:
-            loop.add_signal_handler(s, stopped.set)
-        async with server:
+    async with listener(port, receiver.connected, stopped) as server:
+        try:
+            for s in signals:
+                loop.add_signal_handler(s, stopped.set)
             await stopped.wait()
-    finally:
-        await receiver.close()
-        for s in signals:
-            loop.remove_signal_handler(s)
-            signal.signal(s, previous[s])
+        finally:
+            server.close()
+            await receiver.close()
+            for s in signals:
+                loop.remove_signal_handler(s)
+                signal.signal(s, previous[s])
 
 
 def run(state: Path, launcher: Path, port: int) -> dict[str, object]:
