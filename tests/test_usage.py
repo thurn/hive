@@ -11,6 +11,7 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from hive.identity import CodexTaskId
+from hive.jsonvalue import integer
 from hive.usage_store import UsageStore
 
 ROOT: Path = Path(__file__).resolve().parents[1]
@@ -167,6 +168,82 @@ class UsageTests(unittest.TestCase):
                 connection.execute("DROP TRIGGER fail_cursor")
             store.collect(TASK, path)
             self.assertEqual(store.report(TASK)["observed_responses"], 1)
+
+    def test_both_hosts_resume_replace_and_rollback_one_file_lifecycle(self) -> None:
+        from test_claude import THREAD, assistant
+
+        from hive.identity import Host
+
+        for host in (Host.CODEX, Host.CLAUDE):
+            with self.subTest(host=host), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                task = TASK if host == Host.CODEX else THREAD
+                path = root / (
+                    "native.jsonl" if host == Host.CODEX else f"{task}.jsonl"
+                )
+                store = UsageStore(root / "usage.sqlite3")
+                prefix = (
+                    header()
+                    if host == Host.CODEX
+                    else (
+                        json.dumps({"type": "user", "sessionId": task}) + "\n"
+                    ).encode()
+                )
+
+                def request(identity: str, host: Host = host) -> bytes:
+                    return (
+                        response(identity, counters())
+                        if host == Host.CODEX
+                        else assistant(identity)
+                    )
+
+                padding = (
+                    json.dumps({"type": "padding", "text": "x" * 140_000}) + "\n"
+                ).encode()
+                tail = request("tail")
+                path.write_bytes(prefix + padding * 3 + request("first") + tail[:-12])
+                positions: list[int] = []
+                for _ in range(5):
+                    batch = store.collect(task, path, budget=300_000)
+                    self.assertIsNone(batch["error"])
+                    self.assertLessEqual(integer(batch["read_bytes"], "bytes"), 300_000)
+                    positions.append(integer(batch["position"], "position"))
+                    if batch["incomplete_tail"]:
+                        break
+                self.assertGreater(len(positions), 1)
+                self.assertEqual(positions, sorted(positions))
+                self.assertTrue(store.report(task)["incomplete_tail"])
+                self.assertEqual(store.report(task)["observed_responses"], 1)
+                with path.open("ab") as stream:
+                    stream.write(tail[-12:])
+                self.assertFalse(store.collect(task, path)["incomplete_tail"])
+                self.assertEqual(store.report(task)["observed_responses"], 2)
+                replacement = root / "replacement"
+                replacement.write_bytes(
+                    prefix + request("tail") + request("replacement")
+                )
+                replacement.replace(path)
+                store.collect(task, path)
+                self.assertEqual(store.report(task)["observed_responses"], 3)
+                self.assertIn(
+                    "replaced or truncated", str(store.report(task)["recent_gaps"])
+                )
+                before = store.report(task)
+                with path.open("ab") as stream:
+                    stream.write(request("after_failure"))
+                with sqlite3.connect(store.path) as db:
+                    db.execute(
+                        "CREATE TRIGGER fail_cursor BEFORE INSERT ON sources BEGIN SELECT RAISE(ABORT, 'interrupted batch'); END"
+                    )
+                with self.assertRaises(sqlite3.IntegrityError):
+                    store.collect(task, path)
+                self.assertEqual(store.report(task)["observed_responses"], 3)
+                self.assertEqual(store.report(task)["last_scan"], before["last_scan"])
+                with sqlite3.connect(store.path) as db:
+                    db.execute("DROP TRIGGER fail_cursor")
+                store.collect(task, path)
+                store.collect(task, path, from_start=True)
+                self.assertEqual(store.report(task)["observed_responses"], 4)
 
     def test_independent_collectors_do_not_double_count_responses(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

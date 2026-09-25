@@ -1,20 +1,20 @@
 """Claude per-file cursors and monotonic request updates share one transaction."""
 
 import json
-import os
 import sqlite3
-import stat
-from dataclasses import replace
-from datetime import UTC, datetime
+from dataclasses import dataclass, replace
+from datetime import UTC
 from pathlib import Path
+from typing import BinaryIO
 
 from hive.claude_usage import ClaudeResponse, Modifiers, decode
 from hive.errors import ErrorCode, HiveError
 from hive.identity import Host, ThreadId
 from hive.jsonvalue import integer, parse, record, string
-from hive.transcript_chunks import MAX_BATCH, MAX_LINE, Line, Oversize, read
+from hive.telemetry_store import TelemetryStore, row
+from hive.transcript_batch import Batch, FileIdentity, regular
+from hive.transcript_chunks import MAX_LINE, Oversize
 from hive.usage import Tokens, timestamp, tokens
-from hive.usage_store import UsageStore, row
 
 
 def file_key(thread: ThreadId, path: Path) -> str:
@@ -31,13 +31,6 @@ def file_key(thread: ThreadId, path: Path) -> str:
     raise HiveError(
         ErrorCode.INVALID_RECORD, "Claude filename does not match thread or subagent"
     )
-
-
-def regular(path: Path, *, parents: int = 0) -> None:
-    if any(part.is_symlink() for part in (path, *list(path.parents)[:parents])):
-        raise ValueError("Transcript symlinks are not allowed")
-    if not stat.S_ISREG(path.stat().st_mode):
-        raise ValueError("A transcript must be a regular file")
 
 
 def save(connection: sqlite3.Connection, event: ClaudeResponse) -> None:
@@ -145,179 +138,102 @@ def save(connection: sqlite3.Connection, event: ClaudeResponse) -> None:
     apply_updates(connection, updates)
 
 
-def collect(
-    store: UsageStore,
-    thread: ThreadId,
-    path: Path,
-    *,
-    budget: int = MAX_BATCH,
-    from_start: bool = False,
-) -> dict[str, object]:
-    connection: sqlite3.Connection
-    device: int
-    inode: int
-    key: str = file_key(thread, path)
-    agent = key.removeprefix("agent-") if key else None
-    with store.connect() as connection:
-        previous: object = connection.execute(
-            "SELECT device,inode,position,skipping FROM sources WHERE task=? AND file=?",
-            (thread, key),
-        ).fetchone()
-        device, inode, position, skipping = (
-            (0, 0, 0, 0)
-            if previous is None
-            else tuple(integer(v, "source cursor") for v in row(previous, 4))
-        )
-        replay_requested = (
+@dataclass(frozen=True)
+class ClaudeFile:
+    task: ThreadId
+    path: Path
+
+    @property
+    def source(self) -> FileIdentity:
+        key = file_key(self.task, self.path)
+        return FileIdentity(self.task, key, self.path, Host.CLAUDE, 3 if key else 1)
+
+    def preflight(self, stream: BinaryIO) -> None:
+        # Claude identity is distributed across records, not a fixed header.
+        pass
+
+    def replay_requested(self, connection: sqlite3.Connection) -> bool:
+        return (
             connection.execute(
                 "SELECT 1 FROM claude_modifier_replays WHERE task=? AND file=?",
-                (thread, key),
+                (self.task, self.source.file),
             ).fetchone()
             is not None
         )
-        diagnostic_replay = (
-            connection.execute(
-                "SELECT 1 FROM diagnostic_replays WHERE task=? AND file=?",
-                (thread, key),
-            ).fetchone()
-            is not None
-        )
-        remaining: int | None = None
-        incomplete: bool | None = None
-        error: str | None = None
-        read_bytes = 0
-        mtime_ns = size = 0
 
-        def gap(offset: int, detail: str) -> None:
-            connection.execute(
-                "INSERT OR IGNORE INTO gaps(task,file,device,inode,position,detail) VALUES (?,?,?,?,?,?)",
-                (thread, key, device, inode, offset, detail),
+    def consume(self, connection: sqlite3.Connection, batch: Batch) -> None:
+        """Preflight the whole bounded chunk before persisting any request.
+
+        A pending/mismatched session or child leaves the cursor at the start
+        of the batch, including after inode replacement or an explicit replay.
+        """
+        thread, key = self.task, batch.source.file
+        agent = key.removeprefix("agent-") if key else None
+        device, inode = batch.cursor.device, batch.cursor.inode
+        valid_session = batch.cursor.position > 0
+        valid_agent = agent is None or batch.cursor.position > 0
+        records = batch.records(connection, "Claude record")
+        for item in records:
+            if isinstance(item, Oversize):
+                continue
+            raw = item.value
+            if "sessionId" in raw:
+                if raw["sessionId"] != thread:
+                    raise ValueError("Transcript is for another task")
+                valid_session = True
+            if agent is not None and "agentId" in raw:
+                if raw["agentId"] != agent:
+                    raise ValueError("Transcript is for another subagent")
+                valid_agent = True
+        if not valid_session or not valid_agent:
+            raise ValueError(
+                "Claude transcript identity not yet observed; cursor retained"
             )
+        connection.execute(
+            "DELETE FROM claude_modifier_replays WHERE task=? AND file=?", (thread, key)
+        )
+        for item in records:
+            from hive.tool_store import observe as observe_parts
 
-        facts_before = connection.total_changes
-        try:
-            regular(path, parents=3 if agent is not None else 1)
-            descriptor = os.open(path, os.O_RDONLY | os.O_NONBLOCK | os.O_NOFOLLOW)
-            with os.fdopen(descriptor, "rb") as stream:
-                info = os.fstat(stream.fileno())
-                mtime_ns, size = info.st_mtime_ns, info.st_size
-                if not stat.S_ISREG(info.st_mode):
-                    raise ValueError("A transcript must be a regular file")
-                if (device, inode) != (
-                    info.st_dev,
-                    info.st_ino,
-                ) or info.st_size < position:
-                    if previous is not None and position:
-                        gap(
-                            position,
-                            "Transcript replaced or truncated; earlier coverage may be missing",
-                        )
-                    device, inode, position, skipping = info.st_dev, info.st_ino, 0, 0
-                if from_start or replay_requested or diagnostic_replay:
-                    position, skipping = 0, 0
-                start = position
-                chunk = read(stream, position, bool(skipping), budget)
-                read_bytes = chunk.read_bytes
-                # Validate identity before persisting any request or advancing a cursor.
-                valid_session = position > 0
-                valid_agent = agent is None or position > 0
-                records: list[tuple[int, dict[str, object]] | Oversize] = []
-                for line in chunk.records:
-                    if not isinstance(line, Line):
-                        if line.first:
-                            gap(line.offset, "Oversized transcript record was skipped")
-                        records.append(line)
-                        continue
-                    try:
-                        raw = record(parse(line.data.decode("utf-8")), "Claude record")
-                    except (HiveError, UnicodeError) as failure:
-                        gap(line.offset, str(failure))
-                        continue
-                    if "sessionId" in raw:
-                        if raw["sessionId"] != thread:
-                            raise ValueError("Transcript is for another task")
-                        valid_session = True
-                    if agent is not None and "agentId" in raw:
-                        if raw["agentId"] != agent:
-                            raise ValueError("Transcript is for another subagent")
-                        valid_agent = True
-                    records.append((line.offset, raw))
-                if not valid_session or not valid_agent:
-                    raise ValueError(
-                        "Claude transcript identity not yet observed; cursor retained"
+            if isinstance(item, Oversize):
+                from hive.tool_store import oversized
+
+                oversized(connection, thread, key, item.offset, item.size)
+                continue
+            offset, raw = item.offset, item.value
+            try:
+                if agent is not None and (
+                    raw.get("isSidechain") is not True or raw.get("agentId") != agent
+                ):
+                    raise HiveError(
+                        ErrorCode.INVALID_RECORD,
+                        "Invalid Claude sidechain identity",
                     )
-                connection.execute(
-                    "DELETE FROM claude_modifier_replays WHERE task=? AND file=?",
-                    (thread, key),
-                )
-                connection.execute(
-                    "DELETE FROM diagnostic_replays WHERE task=? AND file=?",
-                    (thread, key),
-                )
-                for item in records:
-                    from hive.tool_store import observe as observe_parts
+                if agent is None and raw.get("type") == "cost-state":
+                    from hive.claude_cost_state import save as save_cost_state
 
-                    if isinstance(item, Oversize):
-                        from hive.tool_store import oversized
+                    save_cost_state(connection, thread, raw)
+                event = decode(raw, thread)
+                if event is not None:
+                    save(connection, event)
+                    # Repair only this exact record's prior conflict;
+                    # missing or replaced transcript evidence stays.
+                    connection.execute(
+                        "DELETE FROM gaps WHERE task=? AND file=? AND device=? AND inode=? AND position=? AND detail='Conflicting Claude response identity or usage'",
+                        (thread, key, device, inode, offset),
+                    )
+                from hive.agent_store import observe
 
-                        oversized(connection, thread, key, item.offset, item.size)
-                        continue
-                    offset, raw = item
-                    try:
-                        if agent is not None and (
-                            raw.get("isSidechain") is not True
-                            or raw.get("agentId") != agent
-                        ):
-                            raise HiveError(
-                                ErrorCode.INVALID_RECORD,
-                                "Invalid Claude sidechain identity",
-                            )
-                        if agent is None and raw.get("type") == "cost-state":
-                            from hive.claude_cost_state import save as save_cost_state
+                observe(connection, thread, raw)
+                observe_parts(connection, thread, key, offset, raw, event)
+                if event is not None:
+                    from hive.diagnostic_report import cache_event
+                    from hive.diagnostic_store import Location
+                    from hive.diagnostic_store import event as diagnostic_event
 
-                            save_cost_state(connection, thread, raw)
-                        event = decode(raw, thread)
-                        if event is not None:
-                            save(connection, event)
-                            # Repair only this exact record's prior conflict;
-                            # missing or replaced transcript evidence stays.
-                            connection.execute(
-                                "DELETE FROM gaps WHERE task=? AND file=? AND device=? AND inode=? AND position=? AND detail='Conflicting Claude response identity or usage'",
-                                (thread, key, device, inode, offset),
-                            )
-                        from hive.agent_store import observe
-
-                        observe(connection, thread, raw)
-                        observe_parts(connection, thread, key, offset, raw, event)
-                        if event is not None:
-                            from hive.diagnostic_report import cache_event
-                            from hive.diagnostic_store import Location
-                            from hive.diagnostic_store import event as diagnostic_event
-
-                            marker = cache_event(
-                                connection, thread, event.usage.response
-                            )
-                            if marker is not None:
-                                diagnostic_event(
-                                    connection,
-                                    Location(
-                                        Host.CLAUDE,
-                                        thread,
-                                        agent or "",
-                                        key,
-                                        offset,
-                                        device,
-                                        inode,
-                                    ),
-                                    marker[0],
-                                    marker[1],
-                                    ref=event.usage.response,
-                                )
-
-                        from hive.diagnostic_store import Location
-                        from hive.diagnostic_store import observe as observe_diagnostics
-
-                        observe_diagnostics(
+                    marker = cache_event(connection, thread, event.usage.response)
+                    if marker is not None:
+                        diagnostic_event(
                             connection,
                             Location(
                                 Host.CLAUDE,
@@ -328,67 +244,38 @@ def collect(
                                 device,
                                 inode,
                             ),
-                            raw,
+                            marker[0],
+                            marker[1],
+                            ref=event.usage.response,
                         )
-                    except HiveError as failure:
-                        gap(offset, str(failure))
-                position, skipping = chunk.position, int(chunk.skipping)
-                size = os.fstat(stream.fileno()).st_size
-                remaining = max(0, size - position)
-                incomplete = (
-                    chunk.incomplete or chunk.skipping
-                ) and size <= start + read_bytes
-        except (OSError, ValueError, HiveError) as failure:
-            error = str(failure)
-        facts_changed = connection.total_changes != facts_before
-        connection.execute(
-            "INSERT INTO sources(task,file,path,device,inode,position,skipping,scanned,remaining,incomplete,error,host) "
-            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(task,file) DO UPDATE SET "
-            "path=excluded.path,device=excluded.device,inode=excluded.inode,position=excluded.position,skipping=excluded.skipping,"
-            "scanned=excluded.scanned,remaining=excluded.remaining,incomplete=excluded.incomplete,error=excluded.error,host=excluded.host",
-            (
-                thread,
-                key,
-                str(path),
-                device,
-                inode,
-                position,
-                skipping,
-                datetime.now(UTC).isoformat(),
-                remaining,
-                None if incomplete is None else int(incomplete),
-                error,
-                Host.CLAUDE,
-            ),
-        )
-        from hive.tool_allocation_store import refresh as refresh_allocations
 
+                from hive.diagnostic_store import Location
+                from hive.diagnostic_store import observe as observe_diagnostics
+
+                observe_diagnostics(
+                    connection,
+                    Location(
+                        Host.CLAUDE,
+                        thread,
+                        agent or "",
+                        key,
+                        offset,
+                        device,
+                        inode,
+                    ),
+                    raw,
+                )
+            except HiveError as failure:
+                batch.gap(connection, offset, str(failure))
+
+    def finalize(self, connection: sqlite3.Connection, facts_changed: bool) -> None:
         if facts_changed:
-            refresh_allocations(connection, thread)
-        connection.execute(
-            "UPDATE sources SET mtime_ns=?,size=? WHERE task=? AND file=?",
-            (mtime_ns, size, thread, key),
-        )
-    if error is None:
-        metadata(store, thread, path)
-        with store.connect() as connection:
-            from hive.diagnostic_roles import finalize as finalize_roles
+            from hive.tool_allocation_store import refresh
 
-            finalize_roles(connection, thread)
-    return {
-        "code": "TranscriptCollected",
-        "task": thread,
-        "host": Host.CLAUDE,
-        "file": key,
-        "read_bytes": read_bytes,
-        "position": position,
-        "remaining_bytes": remaining,
-        "incomplete_tail": incomplete,
-        "error": error,
-    }
+            refresh(connection, self.task)
 
 
-def files(store: UsageStore, thread: ThreadId, main: Path) -> tuple[Path, ...]:
+def files(store: TelemetryStore, thread: ThreadId, main: Path) -> tuple[Path, ...]:
     candidates = [
         main,
         *sorted((main.parent / str(thread) / "subagents").glob("agent-*.jsonl")),
@@ -416,7 +303,7 @@ def files(store: UsageStore, thread: ThreadId, main: Path) -> tuple[Path, ...]:
     )
 
 
-def metadata(store: UsageStore, thread: ThreadId, path: Path) -> None:
+def metadata(store: TelemetryStore, thread: ThreadId, path: Path) -> None:
     key = file_key(thread, path)
     if not key:
         return

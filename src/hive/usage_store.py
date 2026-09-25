@@ -1,54 +1,19 @@
-"""Derived usage and incremental offsets commit together, outside task locks."""
+"""Public observation API over host-neutral persistence and collection."""
 
-import json
-import os
 import sqlite3
-import stat
-from collections.abc import Iterator
-from contextlib import contextmanager
-from dataclasses import dataclass, replace
-from datetime import UTC, datetime
+from dataclasses import dataclass
 from pathlib import Path
 
-from hive import telemetry_schema, turn_model
-from hive.errors import ErrorCode, HiveError
-from hive.identity import AgentId, CodexTaskId, Host
-from hive.jsonvalue import integer, parse, record, sequence, string
-from hive.transcript_chunks import MAX_BATCH, MAX_LINE, Line, read
-from hive.usage import MissingUsage, ResponseUsage, decode, tokens
-
-
-def row(value: object, length: int) -> tuple[object, ...]:
-    if not isinstance(value, tuple) or len(value) != length:
-        raise HiveError(ErrorCode.INVALID_RECORD, "Invalid telemetry row")
-    return tuple(value)
+from hive.identity import CodexTaskId, Host
+from hive.jsonvalue import integer, parse, sequence, string
+from hive.telemetry_store import TelemetryStore
+from hive.telemetry_store import row as row
+from hive.transcript_chunks import MAX_BATCH
+from hive.usage import tokens
 
 
 @dataclass(frozen=True)
-class UsageStore:
-    path: Path
-
-    @contextmanager
-    def connect(self, *, write: bool = True) -> Iterator[sqlite3.Connection]:
-        # Readers take no write lock. Contention that outlasts the bounded
-        # timeout, for readers or writers, is reported as Busy.
-        self.path.parent.mkdir(parents=True, exist_ok=True)
-        connection = sqlite3.connect(self.path, timeout=0.1)
-        try:
-            telemetry_schema.prepare(connection, write=write)
-            with connection:
-                connection.execute("BEGIN IMMEDIATE" if write else "BEGIN")
-                yield connection
-        except sqlite3.OperationalError as error:
-            if error.sqlite_errorcode & 0xFF not in (
-                sqlite3.SQLITE_BUSY,
-                sqlite3.SQLITE_LOCKED,
-            ):
-                raise
-            raise HiveError(ErrorCode.BUSY, "Telemetry database is busy") from error
-        finally:
-            connection.close()
-
+class UsageStore(TelemetryStore):
     def collect(
         self,
         task: CodexTaskId,
@@ -59,253 +24,17 @@ class UsageStore:
         host: Host | None = None,
         agent: CodexTaskId | None = None,
     ) -> dict[str, object]:
-        if not MAX_LINE < budget <= MAX_BATCH:
-            raise HiveError(ErrorCode.INVALID_INPUT, "Invalid transcript byte budget")
-        if host == Host.CLAUDE or (
-            host is None
-            and (path.name == f"{task}.jsonl" or path.parent.name == "subagents")
-        ):
-            from hive.claude_store import collect
+        """Compatibility entry point; host selection belongs to the boundary."""
+        from hive.transcript_collection import collect
 
-            return collect(self, task, path, budget=budget, from_start=from_start)
-        with self.connect() as mapping:
-            from hive.codex_folding import root
-
-            canonical = root(mapping, task)
-            if canonical != task:
-                agent, task = task, canonical
-        identity = agent or task
-        file: str = "" if agent is None else "codex-agent-" + agent
-        connection: sqlite3.Connection
-        device: int
-        inode: int
-        with self.connect() as connection:
-            previous: object = connection.execute(
-                "SELECT device, inode, position, skipping FROM sources WHERE task = ? AND file = ?",
-                (task, file),
-            ).fetchone()
-            device, inode, position, skipping = (
-                (0, 0, 0, 0)
-                if previous is None
-                else tuple(integer(v, "source cursor") for v in row(previous, 4))
-            )
-            diagnostic_replay = (
-                connection.execute(
-                    "SELECT 1 FROM diagnostic_replays WHERE task=? AND file=?",
-                    (task, file),
-                ).fetchone()
-                is not None
-            )
-            remaining: int | None = None
-            incomplete: bool | None = None
-            read_bytes = 0
-            mtime_ns = size = 0
-            error: str | None = None
-
-            def gap(offset: int, detail: str) -> None:
-                connection.execute(
-                    "INSERT OR IGNORE INTO gaps(task,file,device,inode,position,detail) VALUES (?, ?, ?, ?, ?, ?)",
-                    (task, file, device, inode, offset, detail),
-                )
-
-            try:
-                # Nonblocking open lets the regular-file check reject pipes.
-                descriptor = os.open(path, os.O_RDONLY | os.O_NONBLOCK | os.O_NOFOLLOW)
-                with os.fdopen(descriptor, "rb") as stream:
-                    info = os.fstat(stream.fileno())
-                    if not stat.S_ISREG(info.st_mode):
-                        raise ValueError("A transcript must be a regular file")
-                    header = stream.readline(MAX_LINE + 1)
-                    if len(header) > MAX_LINE or not header.endswith(b"\n"):
-                        raise ValueError(
-                            "Native session header is incomplete or oversized"
-                        )
-                    first = record(parse(header.decode("utf-8")), "session header")
-                    if first.get("type") != "session_meta":
-                        raise ValueError(
-                            "Transcript must start with native session metadata"
-                        )
-                    decode(first, identity)
-                    mtime_ns, size = info.st_mtime_ns, info.st_size
-                    if (device, inode) != (
-                        info.st_dev,
-                        info.st_ino,
-                    ) or info.st_size < position:
-                        if previous is not None and position:
-                            gap(
-                                position,
-                                "Transcript replaced or truncated; earlier coverage may be missing",
-                            )
-                        device, inode, position, skipping = (
-                            info.st_dev,
-                            info.st_ino,
-                            0,
-                            0,
-                        )
-                    if from_start or diagnostic_replay:
-                        position, skipping = 0, 0
-                    connection.execute(
-                        "DELETE FROM diagnostic_replays WHERE task=? AND file=?",
-                        (task, file),
-                    )
-                    chunk_start = position
-                    chunk = read(stream, position, bool(skipping), budget)
-                    for line in chunk.records:
-                        if not isinstance(line, Line):
-                            if line.first:
-                                gap(
-                                    line.offset,
-                                    "Oversized transcript record was skipped",
-                                )
-                            continue
-                        try:
-                            raw = record(
-                                parse(line.data.decode("utf-8")), "native record"
-                            )
-                            from hive.diagnostic_store import Location
-                            from hive.diagnostic_store import (
-                                observe as observe_diagnostics,
-                            )
-
-                            model = turn_model.decode(raw, identity)
-                            if model is not None:
-                                model = replace(
-                                    model,
-                                    owner=replace(
-                                        model.owner,
-                                        thread=task,
-                                        agent=None if agent is None else AgentId(agent),
-                                    ),
-                                )
-                                turn_model.save(connection, model)
-                            event = decode(raw, identity)
-                            if event is not None:
-                                event = replace(
-                                    event,
-                                    owner=replace(
-                                        event.owner,
-                                        thread=task,
-                                        agent=None if agent is None else AgentId(agent),
-                                    ),
-                                )
-                                self.save(connection, event)
-                            observe_diagnostics(
-                                connection,
-                                Location(
-                                    Host.CODEX,
-                                    task,
-                                    agent or "",
-                                    file,
-                                    line.offset,
-                                    device,
-                                    inode,
-                                ),
-                                raw,
-                            )
-                        except (HiveError, UnicodeError) as failure:
-                            gap(line.offset, str(failure))
-                    position, skipping = chunk.position, int(chunk.skipping)
-                    read_bytes = chunk.read_bytes
-                    size = os.fstat(stream.fileno()).st_size
-                    remaining = max(0, size - position)
-                    incomplete = (
-                        chunk.incomplete or chunk.skipping
-                    ) and size <= chunk_start + read_bytes
-            except (OSError, ValueError, HiveError) as failure:
-                error = str(failure)
-                remaining, incomplete = None, None
-            connection.execute(
-                "INSERT INTO sources(task,path,device,inode,position,skipping,scanned,remaining,incomplete,error,file,mtime_ns,size) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) "
-                "ON CONFLICT(task,file) DO UPDATE SET path=excluded.path, device=excluded.device, "
-                "inode=excluded.inode, position=excluded.position, skipping=excluded.skipping, "
-                "scanned=excluded.scanned, remaining=excluded.remaining, "
-                "incomplete=excluded.incomplete, error=excluded.error, mtime_ns=excluded.mtime_ns,size=excluded.size",
-                (
-                    task,
-                    str(path),
-                    device,
-                    inode,
-                    position,
-                    skipping,
-                    datetime.now(UTC).isoformat(),
-                    remaining,
-                    None if incomplete is None else int(incomplete),
-                    error,
-                    file,
-                    mtime_ns,
-                    size,
-                ),
-            )
-            from hive.diagnostic_roles import finalize as finalize_roles
-
-            finalize_roles(connection, task)
-        return {
-            "code": "TranscriptCollected",
-            "task": task,
-            "read_bytes": read_bytes,
-            "position": position,
-            "remaining_bytes": remaining,
-            "incomplete_tail": incomplete,
-            "error": error,
-        }
-
-    @staticmethod
-    def save(connection: sqlite3.Connection, event: ResponseUsage) -> None:
-        observed_tokens = event.tokens
-        usage = (
-            None
-            if isinstance(observed_tokens, MissingUsage)
-            else json.dumps(observed_tokens.value(), sort_keys=True)
-        )
-        previous: object = connection.execute(
-            "SELECT task, turn, usage, host, agent FROM responses WHERE response = ?",
-            (event.response,),
-        ).fetchone()
-        if previous is not None:
-            old_task, old_turn, old_usage, old_host, old_agent = row(previous, 5)
-            if (old_task, old_turn, old_host, old_agent) != (
-                event.owner.task,
-                event.owner.turn,
-                event.owner.host,
-                event.owner.agent,
-            ) or (
-                old_usage is not None
-                and usage is not None
-                and tokens(parse(string(old_usage, "stored usage"))) != observed_tokens
-            ):
-                raise HiveError(
-                    ErrorCode.INVALID_RECORD,
-                    "Conflicting native response identity or usage",
-                )
-            if old_usage is not None or usage is None:
-                return
-        counters: tuple[int | None, ...] = (
-            (None,) * 5 + (0,)
-            if isinstance(observed_tokens, MissingUsage)
-            else (
-                observed_tokens.input,
-                observed_tokens.cached_input,
-                observed_tokens.cache_write_input,
-                observed_tokens.output,
-                observed_tokens.reasoning_output,
-                observed_tokens.cache_write_1h_input,
-            )
-        )
-        connection.execute(
-            "INSERT INTO responses(response,task,turn,observed,usage,input,cached,cache_write,output,reasoning,cache_write_1h,host,agent) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) "
-            "ON CONFLICT(response) DO UPDATE SET usage=excluded.usage, input=excluded.input, "
-            "cached=excluded.cached, cache_write=excluded.cache_write, "
-            "output=excluded.output, reasoning=excluded.reasoning, cache_write_1h=excluded.cache_write_1h",
-            (
-                event.response,
-                event.owner.task,
-                event.owner.turn,
-                event.observed.isoformat(),
-                usage,
-                *counters,
-                event.owner.host,
-                event.owner.agent,
-            ),
+        return collect(
+            self,
+            task,
+            path,
+            budget=budget,
+            from_start=from_start,
+            host=host,
+            agent=agent,
         )
 
     def report(self, task: CodexTaskId) -> dict[str, object]:
