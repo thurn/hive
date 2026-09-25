@@ -8,6 +8,16 @@ These are design references, not implemented screens or live application data.
 Titles, values, counts, and timelines are illustrative; interactions and
 responsive behavior have not been tested.
 
+Read the [screen specification](screen-spec.md) for a complete textual description
+of the layouts, information hierarchy, visible content, proposed interactions,
+and treatment of data not shown in the images. It also identifies generated
+details that must not be copied literally. Agents should use that document
+instead of inferring requirements from the PNGs.
+
+The work list and card grid are alternatives for the same Newsfeed; the detail
+screen complements either. The recommendation is the work list plus the detail
+screen, not three new top-level destinations.
+
 ## Work list — recommended direction
 
 Aligned task titles, projects, states, and costs make a large collection of work
