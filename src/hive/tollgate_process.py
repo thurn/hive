@@ -46,18 +46,24 @@ class TollgateProcess:
                 )
             try:
                 if result.returncode:
-                    try:
-                        failure = record(parse(data.decode())).get("error")
-                        if (
-                            isinstance(failure, dict)
-                            and record(failure).get("code") == "not-found"
-                        ):
+                    errors.seek(0)
+                    error_data = errors.read(65537)
+                    for content in (
+                        data,
+                        error_data if len(error_data) <= 65536 else b"",
+                    ):
+                        try:
+                            failure = record(parse(content.decode())).get("error")
+                            missing = (
+                                isinstance(failure, dict)
+                                and record(failure).get("code") == "not-found"
+                            )
+                        except (HiveError, UnicodeError):
+                            continue
+                        if missing:
                             raise HiveError(
                                 ErrorCode.INVALID_INPUT, "tollgate_candidate_not_found"
                             )
-                    except HiveError as error:
-                        if error.detail == "tollgate_candidate_not_found":
-                            raise
                     raise HiveError(
                         ErrorCode.PROVIDER_UNAVAILABLE, "tollgate_unavailable"
                     )

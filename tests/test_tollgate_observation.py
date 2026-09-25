@@ -103,7 +103,7 @@ else:
  assert '--repository' in sys.argv
  value=values.get(sys.argv[-1])
  if value is None:
-  print(json.dumps({"error":{"code":"not-found"},"ok":False}))
+  print(json.dumps({"error":{"code":"not-found"},"ok":False}),file=sys.stderr)
   raise SystemExit(2)
  print(json.dumps(value))
 """)
@@ -415,6 +415,60 @@ class TollgateTests(unittest.TestCase):
             with store.connect(write=False) as db:
                 self.assertEqual(len(candidates(db)), 5)
             self.assertNotIn(CANDIDATE, (root / "calls.jsonl").read_text())
+
+    def test_missing_native_candidate_on_stderr_is_not_an_outage(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            fake(
+                root,
+                {
+                    "repositories": [
+                        dict(
+                            state=dict(id=REPO, path=str(root)),
+                            queue=[],
+                            checks=[],
+                            history_items=[],
+                        )
+                    ]
+                },
+            )
+            at = datetime.now(UTC)
+            path = root / "native.jsonl"
+            path.write_bytes(
+                native("session_meta", {"id": PARENT}, at)
+                + native(
+                    "response_item",
+                    {
+                        "type": "function_call",
+                        "name": "Bash",
+                        "call_id": "missing",
+                        "arguments": json.dumps({"command": "tg status " + BAD}),
+                    },
+                    at,
+                )
+            )
+            command(
+                root,
+                "telemetry",
+                "collect",
+                "--task",
+                PARENT,
+                "--transcript",
+                str(path),
+            )
+            context = launch(root, root)
+            store = UsageStore(context.state / "telemetry.sqlite3")
+            with patch.dict(
+                os.environ, {"PATH": str(root) + os.pathsep + os.environ["PATH"]}
+            ):
+                health = poll(store, context, time.monotonic() + 2)
+                self.assertFalse(health["tollgate_unavailable"])
+                self.assertIsNone(health["tollgate_error"])
+                before = (root / "calls.jsonl").read_text()
+                poll(store, context, time.monotonic() + 2)
+                self.assertEqual((root / "calls.jsonl").read_text(), before)
+            with store.connect(write=False) as connection:
+                self.assertEqual(candidates(connection), [])
 
     def test_native_timeout_respects_poll_allowance(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
