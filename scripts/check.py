@@ -166,6 +166,19 @@ def main() -> int:
         ]
     )
     if not fast:
+        commands.append(
+            [
+                python,
+                "-m",
+                "unittest",
+                "discover",
+                "-s",
+                "tests",
+                "-p",
+                "test_otlp.py",
+                "-v",
+            ]
+        )
         commands.extend(
             (
                 [

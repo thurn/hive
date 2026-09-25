@@ -52,6 +52,9 @@ def main() -> int:
         usage = actions.add_parser("usage")
         usage.add_argument("--task", required=True)
         actions.add_parser("status")
+        otlp_config = actions.add_parser("otlp-config")
+        otlp_config.add_argument("--port", type=int, default=4319)
+        otlp_config.add_argument("--secret-file")
         links_parser = actions.add_parser("links")
         links_parser.add_argument(
             "--native-index", default=str(Path.home() / ".codex/state_5.sqlite")
@@ -64,6 +67,7 @@ def main() -> int:
             )
             if name == "watch":
                 operation.add_argument("--interval-seconds", type=int, default=5)
+                operation.add_argument("--otlp-port", type=int, nargs="?", const=4319)
         structured = "--json" in arguments
         parsed = parser.parse_args([arg for arg in arguments if arg != "--json"])
         context.release()
@@ -125,6 +129,14 @@ def main() -> int:
             )
             if found.error:
                 result["collection_gap"] = found.error
+        elif parsed.action == "otlp-config":
+            from hive.otlp_storage import config
+
+            result = config(
+                context.state,
+                parsed.port,
+                None if parsed.secret_file is None else Path(parsed.secret_file),
+            )
         elif parsed.action == "collect":
             result = UsageStore(context.state / "telemetry.sqlite3").collect(
                 CodexTaskId(parsed.task),
@@ -180,6 +192,7 @@ def main() -> int:
                 Path(parsed.native_index),
                 parsed.batch_size,
                 parsed.interval_seconds,
+                otlp_port=parsed.otlp_port,
             )
         if parsed.group != "telemetry" or parsed.action != "watch":
             print(

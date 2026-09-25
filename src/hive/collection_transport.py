@@ -8,7 +8,9 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from hive.collection_output import send
+from hive.errors import ErrorCode, HiveError
 from hive.locking import file_lock
+from hive.otlp_listener import listen
 
 
 def environment() -> dict[str, str]:
@@ -137,8 +139,24 @@ async def watch(launcher: Path, index: Path, limit: int, interval: int) -> None:
             signal.signal(value, previous[value])
 
 
-def run(state: Path, index: Path, limit: int, interval: int) -> dict[str, object]:
+async def serve(
+    state: Path,
+    launcher: Path,
+    index: Path,
+    limit: int,
+    interval: int,
+    port: int | None,
+) -> None:
+    async with listen(state, port):
+        await watch(launcher, index, limit, interval)
+
+
+def run(
+    state: Path, index: Path, limit: int, interval: int, *, otlp_port: int | None = None
+) -> dict[str, object]:
+    if otlp_port is not None and not 1 <= otlp_port <= 65535:
+        raise HiveError(ErrorCode.INVALID_INPUT, "OTLP port must be 1 through 65535")
     launcher = Path(os.environ["HIVE_REPOSITORY_DIRECTORY"]) / "scripts/hive.py"
     with file_lock(state / "collection-watch.lock", timeout=0):
-        asyncio.run(watch(launcher, index, limit, interval))
+        asyncio.run(serve(state, launcher, index, limit, interval, otlp_port))
     return {"code": "CollectorStopped"}

@@ -9,6 +9,7 @@ from pathlib import Path
 
 from hive.identity import CodexTaskId, Host
 from hive.jsonvalue import integer, sequence, string
+from hive.otlp_storage import status as otlp_status
 from hive.thread_links import ThreadLink
 from hive.usage_store import UsageStore, row
 
@@ -163,6 +164,7 @@ class CollectionRegistry:
             ).fetchone()
             return {
                 "code": "CollectorStatus",
+                **otlp_status(self.usage.path.parent),
                 "linked_threads": integer(total, "linked threads"),
                 "database_bytes": self.usage.path.stat().st_size,
                 "never_attempted": integer(total, "linked threads")
