@@ -6,6 +6,7 @@ import os
 from dataclasses import asdict, dataclass
 from enum import StrEnum
 from pathlib import Path
+from typing import Literal
 from uuid import uuid4
 
 from hive.jsonvalue import parse, record, string
@@ -95,7 +96,9 @@ class ExecutorStore:
                 )
             )
 
-    def stop(self, reason: str, *, new_input: str | None = None) -> None:
+    def stop(
+        self, reason: str, *, new_input: str | None = None
+    ) -> Literal["disarmed", "continuation-preserved", "unbound"]:
         with file_lock(self.lock_path, timeout=0.2):
             previous = self.read()
             if previous is not None:
@@ -104,7 +107,7 @@ class ExecutorStore:
                     and previous.continuation
                     and new_input == previous.continuation
                 ):
-                    return
+                    return "continuation-preserved"
                 self.save(
                     ExecutorState(
                         previous.project,
@@ -114,6 +117,8 @@ class ExecutorStore:
                         str(uuid4()),
                     )
                 )
+                return "disarmed"
+            return "unbound"
 
 
 def _private(path: str, flags: int) -> int:

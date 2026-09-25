@@ -57,3 +57,31 @@ reported by the launcher as a hook failure. Other hooks may also affect terminat
 
 The native hook contract and trust requirements are documented in
 [OpenAI's hooks reference](https://learn.chatgpt.com/docs/hooks#stop).
+
+## Diagnostic receipts
+
+`bin/hive executor diagnostics --json` reads the last 128 receipts across all
+sessions; add `--session NATIVE_UUID` to filter that bounded history. The private
+`executor-diagnostics.json` file in configured Hive state is capped at 256 KiB.
+Atomic replacement and a separate 50 ms lock keep diagnostics independent of
+activation and native Beads operations. Logging failures add a visible warning
+without changing a decision or preventing start, stop or new-input disarming.
+
+Each receipt contains its UTC timestamp, selected source commit, native session
+and turn UUID when valid, event, fixed outcome code and intentional stop category.
+Activation and intentional stop receipts survive resume until aged out of the
+global ring. A handler invocation is recorded before native reads and a decision
+afterward: unbound, inactive, drained, correction, warning, superseded, disarmed,
+continuation-preserved or unavailable. No prompt, assistant response, provider
+payload or free-form stop/recovery text is copied into this diagnostic log.
+Malformed identity fields are omitted. The activation file still holds the latest
+explicit stop reason until resumed, as before.
+
+A host that never launches the command cannot produce a receipt. An invocation
+without a later decision can mean interruption, timeout or a diagnostic failure;
+absence can also mean retention expiry, storage failure or a launcher failure
+before the handler starts. Direct calls produce receipts too, so receipts alone
+cannot establish host provenance. Correlate session/turn/time with a supported
+host-driven exercise and its output. Installed, currently trusted and actually
+invoked are separate claims; none proves historical invocation. Inspect current
+trust through Codex `/hooks`, never by writing trust hashes or using bypass flags.

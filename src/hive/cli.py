@@ -50,6 +50,8 @@ def main() -> int:
         executor_stop.add_argument("--recovery")
         executor_actions.add_parser("hook")
         executor_actions.add_parser("hook-config")
+        executor_diagnostics = executor_actions.add_parser("diagnostics")
+        executor_diagnostics.add_argument("--session")
         cost = groups.add_parser("cost")
         cost_target = cost.add_mutually_exclusive_group(required=True)
         cost_target.add_argument("--task")
@@ -110,6 +112,12 @@ def main() -> int:
                 )
             elif parsed.action == "hook-config":
                 result = configuration(context)
+            elif parsed.action == "diagnostics":
+                from hive.executor_diagnostics import identity, read
+
+                if parsed.session is not None and identity(parsed.session) is None:
+                    raise ValueError("Diagnostics session must be a native UUID")
+                result = read(context, parsed.session)
             else:
                 result = handle(context, sys.stdin.read(1_048_577))
         elif parsed.group == "dashboard":

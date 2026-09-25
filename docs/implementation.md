@@ -127,3 +127,26 @@ The first hv-79m Tollgate attempt passed every completed test, including the exe
 Full validation also caught an eager import of executor configuration during basic `hive source` parsing. Stop categories now live in the lightweight executor state module, preserving the existing source-command test's minimal-bootstrap contract; the test remains unchanged.
 
 The executor candidate passed the complete Tollgate suite before integration encountered the concurrent hv-rcg documentation/deadline changes; fresh validation of the reconciled source remains required.
+
+## Executor diagnostic receipts (hv-48p)
+
+The executor retains a private global ring of 128 lifecycle and handler receipts,
+bounded to 256 KiB, readable through `executor diagnostics [--session UUID]`.
+Receipts identify source commit, timestamp, native session/turn, event, fixed
+outcome and stop category without copying prompts or provider/recovery text.
+Invocation precedes native reads; final decisions distinguish inactivity, no work,
+correction, exhausted correction, new-input supersession and unavailable evidence.
+A separate short lock and best-effort warnings keep diagnostics from deciding
+execution or becoming a Beads write prerequisite. Prior stops survive resume
+until the bounded ring ages them out; this is not an observation registry.
+
+The native disposable lifecycle journey checks retained start/stop/resume and
+input/interrupt history, source changes, outage and supersession decisions,
+128-receipt retention, private permissions, prompt exclusion and graceful failure
+when the diagnostic path is unavailable. Codex CLI 0.154.0's supported `/hooks`
+browser showed Stop, UserPromptSubmit and Interrupt each installed, active and
+Trusted on 2026-09-25; no hook trust or definitions were changed. At this commit,
+command tests establish handler behavior and the native UI establishes current
+trust, not host invocation. Post-promotion live exercise results belong in the
+native hv-48p acceptance record, including any concrete host activation gap;
+missing receipts never establish historical non-invocation.

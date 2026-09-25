@@ -120,7 +120,7 @@ class ExecutorHookTests(unittest.TestCase):
             payload: dict[str, object] = {
                 "hook_event_name": "Stop",
                 "session_id": THREAD,
-                "turn_id": "turn-1",
+                "turn_id": "01a0d688-285b-7990-9cc0-b828aa12bac8",
                 "stop_hook_active": False,
                 "cwd": str(root / "removed-worktree"),
             }
@@ -310,6 +310,36 @@ class ExecutorHookTests(unittest.TestCase):
                 pending.communicate(timeout=5)
             environment["PATH"] = environment["PATH"].split(os.pathsep, 1)[1]
             invoke("start", "--project", "hive")
+            receipts = sequence(
+                invoke("diagnostics", "--session", THREAD)["receipts"], "receipts"
+            )
+            events = [record(row) for row in receipts]
+            for event, outcome in (
+                ("start", "activated"),
+                ("stop", "disarmed"),
+                ("hook-invoked", "Stop"),
+                ("Stop", "unbound"),
+                ("Stop", "inactive"),
+                ("Stop", "correction"),
+                ("Stop", "warning"),
+                ("Stop", "drained"),
+                ("UserPromptSubmit", "disarmed"),
+                ("UserPromptSubmit", "continuation-preserved"),
+                ("Interrupt", "disarmed"),
+                ("Stop", "superseded"),
+            ):
+                self.assertTrue(
+                    any(
+                        row["event"] == event and row["outcome"] == outcome
+                        for row in events
+                    ),
+                    (event, outcome),
+                )
+            self.assertTrue(any(row["stop_kind"] == "blocked" for row in events))
+            self.assertTrue(any(row["turn"] == payload["turn_id"] for row in events))
+            self.assertGreater(len({str(row["source_commit"]) for row in events}), 1)
+            self.assertNotIn("User paused measurements", json.dumps(events))
+            self.assertNotIn(str(first["reason"]), json.dumps(events))
             server.terminate()
             server.wait(timeout=5)
             failed = invoke("hook", payload=payload)
@@ -318,3 +348,39 @@ class ExecutorHookTests(unittest.TestCase):
             self.assertFalse((root / "wrong").exists())
             malformed = invoke("hook", payload={**payload, "session_id": "../escape"})
             self.assertIn("systemMessage", malformed)
+
+            events = sequence(
+                invoke("diagnostics", "--session", THREAD)["receipts"], "receipts"
+            )
+            self.assertEqual(record(events[-1])["outcome"], "unavailable")
+            # The global public log bounds sessions as well as events and does
+            # not retain user prompts, including while execution is inactive.
+            invoke(
+                "hook",
+                payload={
+                    **payload,
+                    "hook_event_name": "UserPromptSubmit",
+                    "prompt": "PRIVATE-PROMPT-SENTINEL",
+                },
+            )
+            for _ in range(70):
+                self.assertEqual(invoke("hook", payload=payload), {})
+            diagnostic = invoke("diagnostics")
+            self.assertEqual(len(sequence(diagnostic["receipts"], "receipts")), 128)
+            self.assertNotIn("PRIVATE-PROMPT-SENTINEL", json.dumps(diagnostic))
+            log = Path(str(settings["state"])) / "executor-diagnostics.json"
+            self.assertLess(log.stat().st_size, 262_144)
+            self.assertEqual(log.stat().st_mode & 0o777, 0o600)
+            saved = log.with_suffix(".saved")
+            log.rename(saved)
+            log.mkdir()
+            unavailable = invoke("hook", payload=payload)
+            self.assertNotIn("decision", unavailable)
+            self.assertIn("diagnostics unavailable", str(unavailable["systemMessage"]))
+            log.rmdir()
+            saved.rename(log)
+            malformed = invoke(
+                "hook", payload={"hook_event_name": [], "session_id": "SECRET"}
+            )
+            self.assertIn("systemMessage", malformed)
+            self.assertNotIn("SECRET", json.dumps(invoke("diagnostics")))

@@ -9,6 +9,7 @@ from uuid import uuid4
 from hive.beads_connection import BeadsConnection
 from hive.beads_process import BeadsProcess
 from hive.errors import HiveError
+from hive.executor_diagnostics import Receipt, append, identity
 from hive.executor_state import ExecutorStore, StopKind
 from hive.jsonvalue import parse, record, sequence, string
 from hive.launch_context import LaunchContext
@@ -22,7 +23,11 @@ def start(context: LaunchContext, project: str) -> dict[str, object]:
         raise ValueError("Executor project must be registered in bootstrap settings")
     store = ExecutorStore(context.state, os.environ.get("CODEX_THREAD_ID", ""))
     store.start(project)
-    return {"code": "ExecutorStarted", "project": project, "session": store.session}
+    return _receipt(
+        context,
+        Receipt("start", "activated", store.session),
+        {"code": "ExecutorStarted", "project": project, "session": store.session},
+    )
 
 
 def stop(
@@ -48,31 +53,76 @@ def stop(
     if recovery is not None:
         evidence += f"\nJusticiar recovery: {recovery}"
     store = ExecutorStore(context.state, os.environ.get("CODEX_THREAD_ID", ""))
-    store.stop(evidence)
+    outcome = store.stop(evidence)
+    return _receipt(
+        context,
+        Receipt("stop", outcome, store.session, stop_kind=kind.value),
+        {
+            "code": "ExecutorStopped",
+            "kind": kind.value,
+            "reason": reason,
+            "recovery": recovery,
+        },
+    )
+
+
+def _receipt(
+    context: LaunchContext, receipt: Receipt, response: dict[str, object]
+) -> dict[str, object]:
+    warning = append(context, receipt)
+    if warning is None:
+        return response
+    message = str(response.get("systemMessage", ""))
     return {
-        "code": "ExecutorStopped",
-        "kind": kind.value,
-        "reason": reason,
-        "recovery": recovery,
+        **response,
+        "systemMessage": (
+            message if warning in message else f"{message} {warning}".strip()
+        ),
     }
 
 
 def handle(context: LaunchContext, payload: str) -> dict[str, object]:
-    """Always emit valid hook JSON; unavailable evidence warns without looping."""
+    """Retain invocation before native reads and its decision afterward."""
+    value: dict[str, object] = {}
     try:
-        return _handle(context, record(parse(payload), "hook input"))
+        value = record(parse(payload), "hook input")
+    except (HiveError, ValueError):
+        pass
+    session = identity(value.get("session_id"))
+    turn = identity(value.get("turn_id"))
+    event = value.get("hook_event_name")
+    name = (
+        event
+        if isinstance(event, str) and event in {"Stop", "Interrupt", "UserPromptSubmit"}
+        else "invalid"
+    )
+    # Do not retain arbitrary event names, prompt text, error details or reasons.
+    receipt = Receipt("hook-invoked", str(name), session, turn)
+    warning = append(context, receipt)
+    response: dict[str, object]
+    try:
+        response, outcome = _handle(context, value)
     except (HiveError, OSError, ValueError) as error:
-        return {"systemMessage": f"Hive executor stop check unavailable: {error}"}
+        response = {"systemMessage": f"Hive executor stop check unavailable: {error}"}
+        outcome = "unavailable"
+    if warning is not None:
+        response = {
+            **response,
+            "systemMessage": f"{response.get('systemMessage', '')} {warning}".strip(),
+        }
+    return _receipt(context, Receipt(str(name), outcome, session, turn), response)
 
 
-def _handle(context: LaunchContext, value: dict[str, object]) -> dict[str, object]:
+def _handle(
+    context: LaunchContext, value: dict[str, object]
+) -> tuple[dict[str, object], str]:
     event = string(value.get("hook_event_name"), "hook event")
     if event not in {"Stop", "Interrupt", "UserPromptSubmit"}:
-        return {}
+        return {}, "ignored"
     # Native hook identity is authoritative, never the inherited shell identity.
     store = ExecutorStore(context.state, string(value.get("session_id"), "session"))
     if event != "Stop":
-        store.stop(
+        outcome = store.stop(
             f"{event}: executor must explicitly opt in again",
             new_input=(
                 string(value.get("prompt"), "prompt")
@@ -80,10 +130,12 @@ def _handle(context: LaunchContext, value: dict[str, object]) -> dict[str, objec
                 else None
             ),
         )
-        return {}
+        return {}, outcome
     state = store.read()
-    if state is None or not state.active:
-        return {}
+    if state is None:
+        return {}, "unbound"
+    if not state.active:
+        return {}, "inactive"
     turn = string(value.get("turn_id"), "turn")
     active = value.get("stop_hook_active")
     if not isinstance(active, bool):
@@ -92,7 +144,7 @@ def _handle(context: LaunchContext, value: dict[str, object]) -> dict[str, objec
     assigned = _ids(process.assigned(store.session), state.project, store.session)
     ready = _ids(process.ready(state.project, store.session), state.project, None)
     if not assigned and not ready:
-        return {}
+        return {}, "drained"
     stop_command = _command(
         context, "stop", "--kind", "KIND", "--reason", "CONCRETE EVIDENCE"
     )
@@ -123,17 +175,17 @@ def _handle(context: LaunchContext, value: dict[str, object]) -> dict[str, objec
     # Interrupt/new input must win over a slow read of Beads.
     with file_lock(store.lock_path, timeout=0.2):
         if store.read() != state:
-            return {}
+            return {}, "superseded"
         if active or state.corrected_turn:
             return {
                 "systemMessage": "Hive executor still has unresolved work. " + message
-            }
+            }, "warning"
         store.save(
             replace(
                 state, corrected_turn=turn, revision=str(uuid4()), continuation=message
             )
         )
-    return {"decision": "block", "reason": message}
+    return {"decision": "block", "reason": message}, "correction"
 
 
 def _ids(value: object, project: str, owner: str | None) -> tuple[str, ...]:
