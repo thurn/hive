@@ -7,7 +7,7 @@ from hive.errors import ErrorCode, HiveError
 from hive.jsonvalue import integer, parse, sequence, string
 from hive.usage import tokens
 
-VERSION = 8
+VERSION = 9
 
 SCHEMA = (
     """CREATE TABLE IF NOT EXISTS sources (
@@ -119,7 +119,7 @@ def prepare(connection: sqlite3.Connection, *, write: bool) -> None:
                 )
             if current == VERSION:
                 return
-            if current in (1, 2, 3, 4, 5, 6, 7):
+            if current in (1, 2, 3, 4, 5, 6, 7, 8):
                 if current == 1:
                     add_claude(connection)
                 if current < 3:
@@ -139,7 +139,11 @@ def prepare(connection: sqlite3.Connection, *, write: bool) -> None:
                     create_beads(connection)
                 from hive.bead_interval_schema import create as create_intervals
 
-                create_intervals(connection)
+                if current < 8:
+                    create_intervals(connection)
+                from hive.tool_schema import create as create_tools
+
+                create_tools(connection)
                 create(connection)
                 connection.execute(f"PRAGMA user_version={VERSION}")
                 return
@@ -206,6 +210,9 @@ def prepare(connection: sqlite3.Connection, *, write: bool) -> None:
             from hive.bead_interval_schema import create as create_intervals
 
             create_intervals(connection)
+            from hive.tool_schema import create as create_tools
+
+            create_tools(connection)
             create(connection)
             connection.execute(f"PRAGMA user_version={VERSION}")
     finally:

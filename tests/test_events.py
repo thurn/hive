@@ -509,6 +509,13 @@ class EventTests(unittest.TestCase):
                 db.execute("DROP VIEW claude_agent_parents")
                 db.execute("DROP TABLE claude_tool_owners")
                 for table in (
+                    "tool_oversized",
+                    "allocation_seen",
+                    "allocation_cursor",
+                    "allocation_responses",
+                    "pending_parts",
+                    "segment_parts",
+                    "response_blocks",
                     "bead_replays",
                     "bead_intervals",
                     "bead_seen_owners",

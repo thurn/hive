@@ -105,6 +105,11 @@ class BreakdownTests(unittest.TestCase):
             self.assertEqual(indexed["inline"]["parent_agent"], "unknown")
             self.assertEqual(indexed["missing"]["unpriced_responses"], 1)
             self.assertIsNone(indexed["missing"]["usd"])
+            self.assertEqual(report["unallocated_usd"], "0.000000000000")
+            tools = [record(item) for item in sequence(report["by_tool"], "tools")]
+            agent_tool = next(item for item in tools if item["tool"] == "Agent")
+            self.assertEqual(agent_tool["delegated_subagent_usd"], "0.000876000000")
+            self.assertEqual(agent_tool["invocation_usd"], "0.000400000000")
             for name in ("by_agent", "by_skill"):
                 rows = [record(item) for item in sequence(report[name], name)]
                 total = sum(
@@ -182,6 +187,13 @@ class BreakdownTests(unittest.TestCase):
                 db.execute("DROP VIEW claude_agent_parents")
                 db.execute("DROP TABLE claude_tool_owners")
                 for table in (
+                    "tool_oversized",
+                    "allocation_seen",
+                    "allocation_cursor",
+                    "allocation_responses",
+                    "pending_parts",
+                    "segment_parts",
+                    "response_blocks",
                     "bead_replays",
                     "bead_intervals",
                     "bead_seen_owners",

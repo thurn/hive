@@ -160,6 +160,7 @@ class BeadCostTests(unittest.TestCase):
                 "agent",
                 "skill",
                 "query_source",
+                "tool",
             ):
                 self.assertEqual(
                     total(report["by_" + dimension]),

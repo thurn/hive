@@ -89,6 +89,9 @@ def report(
         evidence = Evidence.read(connection)
         if history_error is not None:
             evidence = replace(evidence, caught_up=False)
+        from hive.tool_beads import allocations, breakdown
+
+        allocated = allocations(connection) if bead is not None else {}
         assignments = tuple(
             evidence.assign(request) for request in requests(connection, selected)
         )
@@ -178,7 +181,8 @@ def report(
             if interval.bead == bead
         ],
         **{"by_" + name: grouped(name) for name in dimensions},
-        "by_tool": None,
+        "by_tool": breakdown(assignments, bead, allocated),
+        "tool_allocation": "Estimated transcript tool shares; Codex and event-only costs remain explicit buckets.",
         "shared_requests": shared,
         "near_boundary_requests": near,
         "bead_events_caught_up": evidence.caught_up,

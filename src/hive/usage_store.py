@@ -130,7 +130,11 @@ class UsageStore:
                     chunk = read(stream, position, bool(skipping), budget)
                     for line in chunk.records:
                         if not isinstance(line, Line):
-                            gap(line.offset, "Oversized transcript record was skipped")
+                            if line.first:
+                                gap(
+                                    line.offset,
+                                    "Oversized transcript record was skipped",
+                                )
                             continue
                         try:
                             raw = parse(line.data.decode("utf-8"))

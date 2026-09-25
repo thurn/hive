@@ -16,6 +16,8 @@ class Line:
 @dataclass(frozen=True)
 class Oversize:
     offset: int
+    size: int
+    first: bool = True
 
 
 @dataclass(frozen=True)
@@ -41,16 +43,19 @@ def read(stream: BinaryIO, position: int, skipping: bool, budget: int) -> Chunk:
         ending = content.find(b"\n", cursor)
         if ending < 0:
             if skipping or len(content) - cursor > MAX_LINE:
-                if not skipping:
-                    records.append(Oversize(position + cursor))
+                records.append(
+                    Oversize(position + cursor, len(content) - cursor, not skipping)
+                )
                 skipping = True
                 cursor = len(content)
             else:
                 incomplete = True
             break
-        if not skipping:
+        if skipping:
+            records.append(Oversize(position + cursor, ending - cursor, False))
+        else:
             records.append(
-                Oversize(position + cursor)
+                Oversize(position + cursor, ending - cursor)
                 if ending - cursor > MAX_LINE
                 else Line(position + cursor, content[cursor:ending])
             )

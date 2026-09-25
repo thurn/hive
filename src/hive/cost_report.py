@@ -173,6 +173,7 @@ def report(
         observed_modifiers: Counter[Modifiers] = Counter()
         agents: dict[str | None, Subtotal] = {}
         skills: dict[str | None, Subtotal] = {}
+        allocation_quotes: dict[str, Quote] = {}
         while True:
             fetched: object = cursor.fetchmany(256)
             batch = sequence(fetched, "cost batch")
@@ -254,6 +255,8 @@ def report(
                 observed_time = timestamp(observed_at)
                 if last_priced is None or observed_time > last_priced:
                     last_priced = observed_time
+                if request_host == Host.CLAUDE:
+                    allocation_quotes[response] = quoted
                 counts["priced"] += 1
                 amount += quoted.amount
                 server_fees += (
@@ -288,6 +291,11 @@ def report(
 
             breakdowns = breakdown_report(
                 connection, task, agents, skills, event_totals
+            )
+            from hive.tool_report import report as allocation_report
+
+            breakdowns.update(
+                allocation_report(connection, task, allocation_quotes).details
             )
     unretained = retain(store, fresh)
     unpriced = observed - counts["priced"]

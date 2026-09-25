@@ -11,7 +11,7 @@ from hive.claude_usage import ClaudeResponse, decode
 from hive.errors import ErrorCode, HiveError
 from hive.identity import Host, ThreadId
 from hive.jsonvalue import integer, parse, record, string
-from hive.transcript_chunks import MAX_BATCH, MAX_LINE, Line, read
+from hive.transcript_chunks import MAX_BATCH, MAX_LINE, Line, Oversize, read
 from hive.usage import Tokens, timestamp, tokens
 from hive.usage_store import UsageStore, row
 
@@ -97,6 +97,8 @@ def save(connection: sqlite3.Connection, event: ClaudeResponse) -> None:
             string(flag, "usage flag")
             for flag in sequence(parse(string(raw_flags, "flags")), "flags")
         )
+        if "thinking_unmeasured" not in event.flags:
+            flags.discard("thinking_unmeasured")
         complete |= bool(integer(old_complete, "complete response"))
     from hive.price_evidence import adopt_event_rates, apply_updates, usage_updates
 
@@ -196,10 +198,12 @@ def collect(
                 # Validate identity before persisting any request or advancing a cursor.
                 valid_session = position > 0
                 valid_agent = agent is None or position > 0
-                records: list[tuple[int, dict[str, object]]] = []
+                records: list[tuple[int, dict[str, object]] | Oversize] = []
                 for line in chunk.records:
                     if not isinstance(line, Line):
-                        gap(line.offset, "Oversized transcript record was skipped")
+                        if line.first:
+                            gap(line.offset, "Oversized transcript record was skipped")
+                        records.append(line)
                         continue
                     try:
                         raw = record(parse(line.data.decode("utf-8")), "Claude record")
@@ -219,7 +223,15 @@ def collect(
                     raise ValueError(
                         "Claude transcript identity not yet observed; cursor retained"
                     )
-                for offset, raw in records:
+                for item in records:
+                    from hive.tool_store import observe as observe_parts
+
+                    if isinstance(item, Oversize):
+                        from hive.tool_store import oversized
+
+                        oversized(connection, thread, key, item.offset, item.size)
+                        continue
+                    offset, raw = item
                     try:
                         if agent is not None and (
                             raw.get("isSidechain") is not True
@@ -239,6 +251,7 @@ def collect(
                         from hive.agent_store import observe
 
                         observe(connection, thread, raw)
+                        observe_parts(connection, thread, key, offset, raw, event)
                     except HiveError as failure:
                         gap(offset, str(failure))
                 position, skipping = chunk.position, int(chunk.skipping)
