@@ -35,7 +35,9 @@ def cards(connection: sqlite3.Connection, now: datetime) -> list[dict[str, objec
         latest_ci[string(item["key"], "key")] = string(item["state"], "state")
     result = rows(
         connection,
-        "SELECT c.*,b.bead,b.title,b.status,b.subtitle,b.created,b.closed,b.assignee,b.blockers,b.resolution,b.deferred_until,r.status AS interval_status,r.deleted FROM card_summaries c LEFT JOIN bead_rows b ON c.key='bead:'||b.bead LEFT JOIN bead_replays r ON c.key='bead:'||r.bead ORDER BY c.last_activity DESC,c.key",
+        # Keep the joined primary keys bare so SQLite can use their indexes;
+        # concatenating them scans every bead for every card on each feed read.
+        "SELECT c.*,b.bead,b.title,b.status,b.subtitle,b.created,b.closed,b.assignee,b.blockers,b.resolution,b.deferred_until,r.status AS interval_status,r.deleted FROM card_summaries c LEFT JOIN bead_rows b ON b.bead=substr(c.key,6) AND substr(c.key,1,5)='bead:' LEFT JOIN bead_replays r ON r.bead=substr(c.key,6) AND substr(c.key,1,5)='bead:' ORDER BY c.last_activity DESC,c.key",
     )
     primary_roles = {}
     for span in rows(

@@ -6,6 +6,12 @@ python_command=${HIVE_PYTHON:-python3.12}
 if [ ! -x "$check_venv/bin/python" ]; then
   "$python_command" -m venv "$check_venv"
 fi
+required_python=$(cat "$repo_root/.python-version")
+actual_python=$("$check_venv/bin/python" -c 'import platform; print(platform.python_version())')
+if [ "$actual_python" != "$required_python" ]; then
+  echo "Checks require Python $required_python; found $actual_python in $check_venv." >&2
+  exit 1
+fi
 "$check_venv/bin/python" -m pip install --disable-pip-version-check \
   --requirement "$repo_root/requirements-dev.lock"
 "$check_venv/bin/python" -m pip install --disable-pip-version-check \

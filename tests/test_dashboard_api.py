@@ -388,6 +388,7 @@ class DashboardTests(unittest.TestCase):
             start = time.monotonic()
             first = api(root, "feed", "--project", "sample", "--role", "executor")
             elapsed = time.monotonic() - start
+            print(f"7,000-card feed: {elapsed:.3f}s (limit 0.500s)", flush=True)
             self.assertLess(elapsed, 0.5)
             self.assertEqual(len(objects(first["cards"])), 50)
             self.assertEqual(objects(first["cards"])[0]["amount_picos"], str(amount))

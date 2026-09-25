@@ -17,12 +17,11 @@ jobs:
           cache-dependency-path: dashboard/package-lock.json
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version-file: .python-version
           cache: pip
           cache-dependency-path: requirements-dev.lock
       - uses: actions/cache@v4
         with:
           path: .test-tools
           key: test-tools-${{ runner.os }}-${{ runner.arch }}-beads-1.2.2-dolt-2.2.0
-      - run: scripts/prepare-check
-      - run: scripts/check
+      - run: scripts/prepare-check && scripts/check

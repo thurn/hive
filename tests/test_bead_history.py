@@ -190,7 +190,7 @@ class BeadHistoryTests(unittest.TestCase):
 
     def test_uuid_time_handles_fall_back_and_explicit_null_assignee(self) -> None:
         with (
-            private_server() as (connection, _),
+            private_server(timezone="America/Los_Angeles") as (connection, _),
             tempfile.TemporaryDirectory() as temporary,
         ):
             identity = str(bd(connection, "create", "Clock")["id"])

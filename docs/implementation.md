@@ -150,3 +150,13 @@ command tests establish handler behavior and the native UI establishes current
 trust, not host invocation. Post-promotion live exercise results belong in the
 native hv-48p acceptance record, including any concrete host activation gap;
 missing receipts never establish historical non-invocation.
+
+## Local and hosted validation parity (hv-gog)
+
+The 25 consecutive Linux failures after `242daef2` had two causes: 17 runs rejected a history fixture's hard-coded Pacific repeated hour under a UTC Dolt server, then eight runs stopped earlier at the 500 ms dashboard feed limit (512–935 ms). Tollgate's retained log for the exact `b9c3f075` commit passed both tests on macOS. Identical commands had inherited different environments; local certification did not establish Linux acceptance.
+
+Both gates now use the same preparation/check command and `.python-version` pin (3.12.14), alongside the existing Node, Beads, Dolt and dependency pins. The shared check runner establishes UTC, C locale, UTF-8 I/O and a fixed hash seed. Disposable Dolt fixtures default explicitly to UTC, while the repeated-hour fixture starts its server in America/Los_Angeles. This preserves daylight-saving coverage without depending on the launching machine's timezone.
+
+Feed profiling exposed full scans of `bead_rows` and `bead_replays` for each summary card: concatenating their primary keys in the join prevented indexed lookup. Extracting the bead ID from the summary key instead preserves matching semantics and lets SQLite use both existing primary-key indexes, without migration or cached result changes. The 7,000-card test retains its 500 ms end-to-end limit and now prints measured latency in both gates. Neither performance acceptance nor Tollgate's independent promotion policy is relaxed. Native OS/hardware differences remain; this change controls validation inputs and fixes the observed portability/performance defects, not arbitrary host contention.
+
+At this implementation checkpoint, the UTC-launched repeated-hour regression and dashboard API suite passed; final cold review, full Tollgate certification and the delivered commit's GitHub result remain to be recorded in the native task.

@@ -61,4 +61,6 @@ scripts/check
 ```
 
 The fast gate checks style, strict typing, boundaries, and retained accounting/link behavior. The full gate adds native Beads history/attribution, Claude events/tool allocation, source selection and observer routing integration. Tollgate runs the full gate against the actual integration candidate before promotion. New source commits are selected on the next call; existing calls retain their snapshot. Dependency or state maintenance is explicit.
+
+Tollgate and GitHub both run `scripts/prepare-check && scripts/check`. Validation requires the exact Python version in `.python-version` and Node version in `dashboard/.nvmrc`, with locked Python/npm dependencies and pinned Beads/Dolt tools. The shared check runner sets UTC, the C locale, UTF-8 Python I/O and a fixed Python hash seed; timezone-specific fixtures explicitly select their own timezone. These checks run natively on macOS and Linux, so wall-clock speed still depends on the machine; the same performance limits apply on both. GitHub remains an independent check after push, with no remote wait in Tollgate.
 The executor workflow can be exercised end to end by filing, claiming and delivering a trivial bead.

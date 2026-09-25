@@ -13,7 +13,9 @@ from hive.beads_connection import BeadsConnection
 
 
 @contextmanager
-def private_server() -> Iterator[tuple[BeadsConnection, subprocess.Popen[bytes]]]:
+def private_server(
+    *, timezone: str = "UTC"
+) -> Iterator[tuple[BeadsConnection, subprocess.Popen[bytes]]]:
     with tempfile.TemporaryDirectory(prefix="hive-server-test-") as temporary:
         root = Path(temporary).resolve()
         data, project = root / "data", root / "project"
@@ -24,7 +26,7 @@ def private_server() -> Iterator[tuple[BeadsConnection, subprocess.Popen[bytes]]
             for key, value in os.environ.items()
             if not key.startswith(("BEADS_", "BD_", "DOLT_", "GIT_"))
         }
-        environment.update(BD_NON_INTERACTIVE="1", DO_NOT_TRACK="1")
+        environment.update(BD_NON_INTERACTIVE="1", DO_NOT_TRACK="1", TZ=timezone)
         for args in (
             ["init", "-q"],
             ["config", "user.name", "Hive Test"],

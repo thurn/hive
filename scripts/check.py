@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import ast
 import os
+import platform
 import signal
 import subprocess
 import sys
@@ -64,6 +65,18 @@ def run(command: list[str], deadline: float) -> int:
 
 
 def main() -> int:
+    required_python = (ROOT / ".python-version").read_text().strip()
+    if platform.python_version() != required_python:
+        print(
+            f"Checks require Python {required_python}; run scripts/prepare-check.",
+            file=sys.stderr,
+        )
+        return 1
+    # Both gates use the same defaults, regardless of the launching host/session.
+    # Tests for other timezones must configure their own disposable processes.
+    os.environ.update(TZ="UTC", LC_ALL="C", PYTHONUTF8="1", PYTHONHASHSEED="0")
+    time.tzset()
+    print(f"Check environment: Python {required_python}, TZ=UTC, LC_ALL=C", flush=True)
     os.environ["PYTHONPATH"] = str(ROOT / "src")
     os.environ["PATH"] = os.pathsep.join(
         (
