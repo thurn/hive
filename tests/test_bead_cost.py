@@ -1,6 +1,7 @@
 """Native claims, handoffs and repairs drive public cost reconciliation."""
 
 import json
+import sqlite3
 import subprocess
 import tempfile
 import unittest
@@ -11,7 +12,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from server_fixture import private_server
-from test_bead_history import sql
+from test_bead_history import sql, uuid7
 from test_claude import OTHER, THREAD, assistant
 from test_contention import held, hive
 from test_events import captured, change, logs, replace_logs, spool
@@ -241,6 +242,104 @@ class BeadCostTests(unittest.TestCase):
                 deferred = command(root, "cost", "--reconcile")
             self.assertIsNone(deferred["balanced"])
             self.assertGreater(int(str(deferred["unretained_estimates"])), 0)
+
+    def test_event_timestamp_controls_detail_handoff_hour_and_upgrade(self) -> None:
+        with (
+            private_server() as (connection, _),
+            tempfile.TemporaryDirectory() as temporary,
+        ):
+            root = Path(temporary)
+            setup(root, connection)
+            first = str(bd(connection, "create", "Before hour")["id"])
+            bd(connection, "--actor", THREAD, "update", first, "--claim")
+            bd(connection, "close", first)
+            boundary = last(connection, first).replace(
+                minute=0, second=0, microsecond=0
+            )
+            close_id = read(BeadsProcess(connection).bead_events(first))[-1].identity
+            second = str(bd(connection, "create", "After hour")["id"])
+            bd(connection, "--actor", THREAD, "update", second, "--claim")
+            claim_id = read(BeadsProcess(connection).bead_events(second))[-1].identity
+            for bead_number, bead in enumerate((first, second)):
+                for index, event in enumerate(
+                    read(BeadsProcess(connection).bead_events(bead))
+                ):
+                    event_time = (
+                        boundary
+                        if event.identity in (close_id, claim_id)
+                        else boundary - timedelta(seconds=4 - index)
+                    )
+                    sql(
+                        connection,
+                        "UPDATE events SET id='"
+                        + uuid7(
+                            int(event_time.timestamp() * 1000), bead_number * 10 + index
+                        )
+                        + "',created_at='"
+                        + event_time.astimezone().strftime("%Y-%m-%d %H:%M:%S")
+                        + "' WHERE id='"
+                        + event.identity
+                        + "'",
+                    )
+            at = boundary + timedelta(milliseconds=1)
+            export = captured()
+            spool(
+                root,
+                replace_logs(
+                    export,
+                    [
+                        change(
+                            value,
+                            **{"event.timestamp": at.isoformat(), "duration_ms": 1591},
+                        )
+                        for value in logs(export)
+                    ],
+                ),
+            )
+            command(root, "telemetry", "sweep", "--native-index", str(root / "missing"))
+            page = command(root, "cost", "--task", THREAD, "--requests")
+            detail = record(sequence(page["requests"], "requests")[0])
+            self.assertEqual(datetime.fromisoformat(str(detail["observed_at"])), at)
+            self.assertEqual(
+                command(root, "cost", "--bead", first)["attributed_usd"],
+                "0.000000000000",
+            )
+            charged = command(root, "cost", "--bead", second)
+            self.assertEqual(charged["attributed_usd"], detail["usd"], charged)
+            self.assertEqual(charged["near_boundary_requests"], 1)
+            self.assertIn(boundary.strftime("%Y-%m-%dT%H"), str(charged["by_hour"]))
+            balance = command(root, "cost", "--reconcile")
+            self.assertTrue(balance["balanced"])
+            database = root / "state/telemetry.sqlite3"
+            with sqlite3.connect(database) as db:
+                prices = db.execute(
+                    "SELECT * FROM response_estimates ORDER BY response,tier"
+                ).fetchall()
+                db.execute(
+                    "UPDATE claude_request_events SET observed=?",
+                    ((at - timedelta(milliseconds=1591)).isoformat(),),
+                )
+                db.execute("PRAGMA user_version=9")
+            # The collector migrates stored timestamps without rereading the export.
+            for path in (root / "state/otlp-spool").glob("*.json"):
+                path.unlink()
+            command(root, "telemetry", "sweep", "--native-index", str(root / "missing"))
+            migrated = command(root, "cost", "--task", THREAD, "--requests")
+            self.assertEqual(migrated["requests"], page["requests"])
+            self.assertEqual(
+                command(root, "cost", "--reconcile")["thread_total_usd"],
+                balance["thread_total_usd"],
+            )
+            self.assertEqual(
+                command(root, "cost", "--bead", second)["by_hour"], charged["by_hour"]
+            )
+            with sqlite3.connect(database) as db:
+                self.assertEqual(
+                    db.execute(
+                        "SELECT * FROM response_estimates ORDER BY response,tier"
+                    ).fetchall(),
+                    prices,
+                )
 
     def test_missing_middle_event_is_unknown_until_rebuild_recovers(self) -> None:
         with (

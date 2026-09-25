@@ -1,7 +1,7 @@
 """Allow-listed OTLP/JSON events cross one typed, immutable source boundary."""
 
 from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 
 from hive.claude_usage import counter, optional_text
 from hive.errors import ErrorCode, HiveError
@@ -138,12 +138,6 @@ def request(log: Log) -> Request:
     if len(identity) > 512:
         raise HiveError(ErrorCode.INVALID_RECORD, "Oversized event request identity")
     duration = counter(values.get("duration_ms"), "request duration")
-    try:
-        observed = log.occurred - timedelta(milliseconds=duration)
-    except OverflowError as error:
-        raise HiveError(
-            ErrorCode.INVALID_RECORD, "Invalid event request time"
-        ) from error
     return Request(
         log=log,
         response=ResponseId(identity),
@@ -151,7 +145,7 @@ def request(log: Log) -> Request:
         client_id=client_id,
         model=ModelId(string(values.get("model"), "event model")),
         prompt=optional_text(values.get("prompt.id"), "prompt ID"),
-        observed=observed,
+        observed=log.occurred,
         input=counter(values.get("input_tokens"), "input_tokens"),
         cached=counter(values.get("cache_read_tokens"), "cache_read_tokens"),
         writes=counter(values.get("cache_creation_tokens"), "cache_creation_tokens"),

@@ -46,9 +46,9 @@ def prepare(
 
 def requests(connection: sqlite3.Connection, tier: PricingTier) -> tuple[Request, ...]:
     fetched: object = connection.execute(
-        "SELECT d.response,d.thread,d.host,CASE WHEN d.source='events' THEN e.occurred ELSE d.observed_at END,"
+        "SELECT d.response,d.thread,d.host,d.observed_at,"
         "d.model,d.agent,d.skill,d.query_source,d.source,d._quote "
-        "FROM request_detail d LEFT JOIN claude_request_events e ON d.source='events' AND d.response=e.response "
+        "FROM request_detail d "
         "WHERE d.tier IS NULL OR d.tier=? ORDER BY d.thread,d.response",
         (tier,),
     ).fetchall()
