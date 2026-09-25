@@ -328,7 +328,14 @@ class SchemaMigrationTests(unittest.TestCase):
             self.assertIsNotNone(evidence)
             if evidence is None:
                 raise AssertionError("Missing historical quote")
-            value = {**evidence.value(), "usd": "0.123456789012"}
+            value = {
+                **evidence.value(),
+                "rates_picos_per_token": {
+                    **evidence.rates.value(),
+                    "input": 1_234_567_890,
+                },
+                "usd": "0.123456789000",
+            }
             with sqlite3.connect(store.path) as db:
                 db.execute(
                     "INSERT INTO response_estimates VALUES (?,?,?)",
@@ -346,9 +353,9 @@ class SchemaMigrationTests(unittest.TestCase):
             result = report(store, TASK, PricingTier.STANDARD)
             self.assertEqual(result["observed_responses"], 1)
             self.assertEqual(result["parse_gaps"], 0)
-            self.assertEqual(result["observed_estimate_usd"], "0.123456789012")
+            self.assertEqual(result["observed_estimate_usd"], "0.123456789000")
             with sqlite3.connect(store.path) as db:
-                self.assertEqual(db.execute("PRAGMA user_version").fetchone(), (17,))
+                self.assertEqual(db.execute("PRAGMA user_version").fetchone(), (18,))
                 self.assertEqual(
                     db.execute("SELECT host,cache_write_1h FROM responses").fetchone(),
                     ("codex", 0),

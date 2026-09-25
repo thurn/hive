@@ -1,6 +1,5 @@
 """Persist exact rate evidence and report assumptions separately from observation."""
 
-import json
 from collections import Counter
 from dataclasses import replace
 from datetime import datetime
@@ -11,148 +10,14 @@ from hive.errors import ErrorCode, HiveError
 from hive.identity import (
     CodexTaskId,
     Host,
-    ModelId,
     PricingTier,
     ResponseId,
-    ThreadId,
-    UsdPicos,
 )
 from hive.jsonvalue import integer, parse, sequence, string
-from hive.price_evidence import adopt_event_rates, apply_updates, usage_updates
-from hive.pricing import Quote, claude_quote, claude_reason, dollars, quote
-from hive.usage import Tokens, timestamp, tokens
+from hive.pricing import Priced, PricedUsage, Pricing, Unpriced, dollars, pricing_value
+from hive.request_pricing import price_response, request_context, retain
+from hive.usage import timestamp
 from hive.usage_store import UsageStore, row, source_status, stored_host
-
-
-def estimate(
-    fresh: list[tuple[str, str, str]],
-    response: ResponseId,
-    model: ModelId,
-    tier: PricingTier,
-    usage: Tokens,
-    cached: object,
-) -> Quote | None:
-    if cached is not None:
-        result = Quote.read(parse(string(cached, "stored estimate")))
-        if result.model != model or result.tier != tier or result.host != Host.CODEX:
-            raise HiveError(ErrorCode.INVALID_RECORD, "Stored price identity disagrees")
-        return result
-    result = quote(model, tier, usage)
-    if result is not None:
-        fresh.append((response, tier, json.dumps(result.value(usage))))
-    return result
-
-
-def estimate_claude(
-    fresh: list[tuple[str, str, str]],
-    response: ResponseId,
-    model: ModelId,
-    modifiers: Modifiers,
-    usage: Tokens,
-    cached: object,
-) -> tuple[Quote | None, str | None]:
-    if cached is not None:
-        result = Quote.read(parse(string(cached, "stored estimate")))
-        if (
-            result.host != Host.CLAUDE
-            or result.model != model
-            or result.modifiers != modifiers
-        ):
-            raise HiveError(
-                ErrorCode.INVALID_RECORD, "Stored Claude price identity disagrees"
-            )
-        return result.with_usage(usage), None
-    result = claude_quote(model, modifiers, usage)
-    if result is not None:
-        fresh.append((response, modifiers.key, json.dumps(result.value(usage))))
-    return result, claude_reason(model, modifiers)
-
-
-def price_response(
-    fresh: list[tuple[str, str, str]],
-    response: ResponseId,
-    raw_usage: object,
-    raw_model: object,
-    conflicted: object,
-    cached: object,
-    host: Host,
-    modifiers: Modifiers | None,
-    flags: tuple[str, ...],
-    tier: PricingTier,
-) -> tuple[Quote | None, str | None]:
-    if "unjoinable" in flags:
-        return None, "unjoinable_event"
-    if raw_usage is None:
-        return None, "missing_usage"
-    if raw_model is None:
-        return None, "missing_model_context"
-    if host == Host.CODEX and integer(conflicted, "model conflict") != 0:
-        return None, "conflicting_model_context"
-    if "unsupported_iteration" in flags:
-        return None, "unsupported_iteration"
-    model = ModelId(string(raw_model, "configured model"))
-    usage = tokens(parse(string(raw_usage, "stored usage")))
-    if modifiers is not None:
-        return estimate_claude(fresh, response, model, modifiers, usage, cached)
-    quoted = estimate(fresh, response, model, tier, usage, cached)
-    return quoted, "unknown_model_price" if quoted is None else None
-
-
-def retain(store: UsageStore, fresh: list[tuple[str, str, str]]) -> int:
-    """Return how many new estimates contention left unretained."""
-    # Retention is best effort: contention defers it to a later report, which
-    # may reprice if the catalog changed meanwhile, instead of blocking or
-    # failing this one. The first writer wins if reports race.
-    if not fresh:
-        return 0
-    try:
-        with store.connect() as connection:
-            connection.executemany(
-                "INSERT OR IGNORE INTO response_estimates(response,tier,quote) VALUES (?, ?, ?)",
-                fresh,
-            )
-            # Collection may have completed a stream since the read snapshot.
-            # Keep the first writer's rates and use the latest committed tokens.
-            for response, _, _ in fresh:
-                current: object = connection.execute(
-                    "SELECT host,usage,model,modifiers FROM responses WHERE response=?",
-                    (response,),
-                ).fetchone()
-                if current is not None:
-                    host, usage, model, modifiers = row(current, 4)
-                    if host == Host.CLAUDE and usage is not None:
-                        adopt_event_rates(
-                            connection,
-                            ResponseId(response),
-                            string(model, "model"),
-                            Modifiers.read(parse(string(modifiers, "modifiers"))),
-                            tokens(parse(string(usage, "usage"))),
-                        )
-                        apply_updates(
-                            connection,
-                            usage_updates(
-                                connection,
-                                ResponseId(response),
-                                tokens(parse(string(usage, "usage"))),
-                            ),
-                        )
-            from hive.tool_allocation_store import refresh as refresh_allocations
-
-            tasks: set[ThreadId] = set()
-            for response, _, _ in fresh:
-                owner: object = connection.execute(
-                    "SELECT task FROM responses WHERE response=? AND host='claude'",
-                    (response,),
-                ).fetchone()
-                if owner is not None:
-                    tasks.add(ThreadId(string(row(owner, 1)[0], "allocation task")))
-            for task in sorted(tasks):
-                refresh_allocations(connection, task)
-    except HiveError as error:
-        if error.code != ErrorCode.BUSY:
-            raise
-        return len(fresh)
-    return 0
 
 
 def report(
@@ -183,8 +48,8 @@ def report(
             (selected_tier, task),
         )
         counts: Counter[str] = Counter()
-        # A zero-amount quote identifies the rate schedule, not a response.
-        groups: dict[Quote, tuple[int, int]] = {}
+        # Immutable rate evidence identifies a schedule independently of usage.
+        groups: dict[Pricing, tuple[int, int]] = {}
         examples: list[dict[str, object]] = []
         amount = 0
         server_fees = 0
@@ -193,7 +58,7 @@ def report(
         observed_modifiers: Counter[Modifiers] = Counter()
         agents: dict[str | None, Subtotal] = {}
         skills: dict[str | None, Subtotal] = {}
-        allocation_quotes: dict[str, Quote] = {}
+        allocation_quotes: dict[str, PricedUsage] = {}
         while True:
             fetched: object = cursor.fetchmany(256)
             batch = sequence(fetched, "cost batch")
@@ -239,25 +104,24 @@ def report(
                         )
                 response = ResponseId(string(identity, "response"))
                 observed += 1
-                quoted, reason = price_response(
+                outcome = price_response(
                     fresh,
                     response,
                     raw_usage,
                     raw_model,
-                    conflicted,
                     cached,
-                    request_host,
-                    modifiers,
+                    request_context(request_host, modifiers, conflicted, selected_tier),
                     flags,
-                    selected_tier,
                 )
+                quoted = outcome.usage if isinstance(outcome, Priced) else None
                 if request_host == Host.CLAUDE:
                     agent = None if raw_agent is None else string(raw_agent, "agent")
                     skill = None if raw_skill is None else string(raw_skill, "skill")
                     subtotal = None if quoted is None else int(quoted.amount)
                     agents[agent] = agents.get(agent, Subtotal()).add(subtotal)
                     skills[skill] = skills.get(skill, Subtotal()).add(subtotal)
-                if reason is not None:
+                if isinstance(outcome, Unpriced):
+                    reason = outcome.reason
                     counts[reason] += 1
                     if len(examples) < 20:
                         examples.append(
@@ -282,7 +146,7 @@ def report(
                 server_fees += (
                     0 if quoted.modifiers is None else quoted.modifiers.web_searches
                 ) * quoted.web_search_picos
-                key = replace(quoted, amount=UsdPicos(0))
+                key = quoted.evidence
                 count, subtotal = groups.get(key, (0, 0))
                 groups[key] = count + 1, subtotal + quoted.amount
         health = source_status(connection, task)
@@ -293,19 +157,22 @@ def report(
             from hive.claude_cost_state import comparison
 
             host_totals = comparison(connection, task, amount, last_priced)
+            from hive.event_evidence import read as event_evidence
             from hive.event_report import report as event_report
 
             event_totals = event_report(
-                connection,
-                store.path.parent,
-                task,
-                fresh,
-                observed=observed,
-                priced=counts["priced"],
-                amount=amount,
-                partial=counts["possibly_partial_output"],
-                health=health,
-                host_totals=host_totals,
+                event_evidence(
+                    connection,
+                    store.path.parent,
+                    task,
+                    fresh,
+                    observed=observed,
+                    priced=counts["priced"],
+                    amount=amount,
+                    partial=counts["possibly_partial_output"],
+                    health=health,
+                    host_totals=host_totals,
+                )
             )
             from hive.cost_breakdown import report as breakdown_report
 
@@ -314,9 +181,7 @@ def report(
             )
             from hive.tool_report import report as allocation_report
 
-            breakdowns.update(
-                allocation_report(connection, task, allocation_quotes).details
-            )
+            breakdowns.update(allocation_report(connection, task, allocation_quotes))
     unretained = retain(store, fresh)
     unpriced = observed - counts["priced"]
     return {
@@ -362,7 +227,7 @@ def report(
             else "API-equivalent estimate, not billing. Configured model and assumed tier; thread association is not a token allocation. Excludes tool fees and regional uplifts."
         ),
         "rate_groups": [
-            {**card.value(), "usd": dollars(subtotal), "responses": count}
+            {**pricing_value(card), "usd": dollars(subtotal), "responses": count}
             for card, (count, subtotal) in groups.items()
         ],
         "unpriced_examples": examples,

@@ -7,7 +7,7 @@ from hive.errors import ErrorCode, HiveError
 from hive.jsonvalue import integer, parse, sequence, string
 from hive.usage import tokens
 
-VERSION = 17
+VERSION = 18
 
 SCHEMA = (
     """CREATE TABLE IF NOT EXISTS sources (
@@ -121,6 +121,13 @@ def tables(connection: sqlite3.Connection) -> set[str]:
     return names
 
 
+def finish(connection: sqlite3.Connection) -> None:
+    from hive.tool_allocation_store import migrate_basis
+
+    migrate_basis(connection)
+    connection.execute(f"PRAGMA user_version={VERSION}")
+
+
 def prepare(connection: sqlite3.Connection, *, write: bool) -> None:
     current = version(connection)
     if current > VERSION:
@@ -146,16 +153,19 @@ def prepare(connection: sqlite3.Connection, *, write: bool) -> None:
                 )
             if current == VERSION:
                 return
+            if current == 17:
+                finish(connection)
+                return
             if current == 16:
                 migrate_sources(connection)
-                connection.execute(f"PRAGMA user_version={VERSION}")
+                finish(connection)
                 return
             if current == 15:
                 from hive.dashboard_schema import create as create_dashboard
 
                 create_dashboard(connection)
                 migrate_sources(connection)
-                connection.execute(f"PRAGMA user_version={VERSION}")
+                finish(connection)
                 return
             if current == 14:
                 from hive.tollgate_schema import create as create_tollgate
@@ -165,7 +175,7 @@ def prepare(connection: sqlite3.Connection, *, write: bool) -> None:
 
                 create_dashboard(connection)
                 migrate_sources(connection)
-                connection.execute(f"PRAGMA user_version={VERSION}")
+                finish(connection)
                 return
             if current == 13:
                 from hive.diagnostic_schema import create as create_diagnostics
@@ -178,7 +188,7 @@ def prepare(connection: sqlite3.Connection, *, write: bool) -> None:
 
                 create_dashboard(connection)
                 migrate_sources(connection)
-                connection.execute(f"PRAGMA user_version={VERSION}")
+                finish(connection)
                 return
             if current == 12:
                 from hive.project_schema import create as create_projects
@@ -194,7 +204,7 @@ def prepare(connection: sqlite3.Connection, *, write: bool) -> None:
 
                 create_dashboard(connection)
                 migrate_sources(connection)
-                connection.execute(f"PRAGMA user_version={VERSION}")
+                finish(connection)
                 return
             if current in (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11):
                 if current == 1:
@@ -244,7 +254,7 @@ def prepare(connection: sqlite3.Connection, *, write: bool) -> None:
 
                 create_dashboard(connection)
                 migrate_sources(connection)
-                connection.execute(f"PRAGMA user_version={VERSION}")
+                finish(connection)
                 return
             existing = tables(connection)
             for name in ("sources", "responses", "gaps"):
@@ -330,6 +340,6 @@ def prepare(connection: sqlite3.Connection, *, write: bool) -> None:
 
             create_dashboard(connection)
             migrate_sources(connection)
-            connection.execute(f"PRAGMA user_version={VERSION}")
+            finish(connection)
     finally:
         connection.execute("PRAGMA busy_timeout=100")

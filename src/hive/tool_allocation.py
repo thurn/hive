@@ -2,7 +2,8 @@
 
 from dataclasses import dataclass
 
-from hive.pricing import Quote
+from hive.errors import ErrorCode, HiveError
+from hive.pricing import PricedUsage
 from hive.tool_parts import Part
 from hive.usage import Tokens
 
@@ -21,6 +22,17 @@ class Charge:
     ref: str | None
     phase: str
     amount: int
+    method: str
+    component: str
+    tokens: int
+
+
+@dataclass(frozen=True)
+class TokenShare:
+    bucket: str
+    tool: str | None
+    ref: str | None
+    phase: str
     method: str
     component: str
     tokens: int
@@ -81,26 +93,24 @@ def weighted(segment: Segment) -> tuple[tuple[Part, ...], tuple[int, ...], str]:
     return values, weights, method
 
 
-def allocate(
+def basis(
     usage: Tokens,
-    quote: Quote,
     segments: tuple[Segment, ...],
     blocks: tuple[Part, ...],
     names: dict[str, str],
     *,
     thinking_measured: bool,
-) -> tuple[Charge, ...]:
-    charges: list[Charge] = []
+) -> tuple[TokenShare, ...]:
+    charges: list[TokenShare] = []
     bands = (
-        (usage.cached_input, quote.rates.cached, "cache_read"),
-        (usage.cache_write_1h_input, quote.rates.cache_write_1h, "cache_write_1h"),
-        (usage.cache_write_input, quote.rates.cache_write, "cache_write_5m"),
+        (usage.cached_input, "cache_read"),
+        (usage.cache_write_1h_input, "cache_write_1h"),
+        (usage.cache_write_input, "cache_write_5m"),
         (
             usage.input
             - usage.cached_input
             - usage.cache_write_1h_input
             - usage.cache_write_input,
-            quote.rates.input,
             "input",
         ),
     )
@@ -108,7 +118,7 @@ def allocate(
     for segment in segments:
         parts, weights, method = weighted(segment)
         band_start = 0
-        for count, rate, component in bands:
+        for count, component in bands:
             overlap = max(
                 0,
                 min(segment_start + segment.size, band_start + count)
@@ -118,12 +128,11 @@ def allocate(
                 bucket, tool = label(part, names)
                 if tokens:
                     charges.append(
-                        Charge(
+                        TokenShare(
                             bucket,
                             tool,
                             part.ref,
                             "carrying",
-                            tokens * rate,
                             method,
                             component,
                             tokens,
@@ -134,12 +143,11 @@ def allocate(
     thinking = usage.reasoning_output if thinking_measured else 0
     if thinking:
         charges.append(
-            Charge(
+            TokenShare(
                 "thinking",
                 None,
                 None,
                 "invocation",
-                thinking * quote.rates.output,
                 "exact",
                 "output",
                 thinking,
@@ -155,24 +163,64 @@ def allocate(
     ):
         bucket, tool = label(part, names)
         charges.append(
-            Charge(
+            TokenShare(
                 bucket,
                 tool,
                 part.ref,
                 "invocation",
-                count * quote.rates.output,
                 "exact" if len(output) == 1 else "bytes",
                 "output",
                 count,
             )
         )
-    fees = (
-        0 if quote.modifiers is None else quote.modifiers.web_searches
-    ) * quote.web_search_picos
+    return tuple(charges)
+
+
+def price(quote: PricedUsage, shares: tuple[TokenShare, ...]) -> tuple[Charge, ...]:
+    """Apply retained rates to token partitions validated against the bound usage."""
+    usage = quote.usage
+    expected = {
+        "input": usage.input
+        - usage.cached_input
+        - usage.cache_write_input
+        - usage.cache_write_1h_input,
+        "cache_read": usage.cached_input,
+        "cache_write_5m": usage.cache_write_input,
+        "cache_write_1h": usage.cache_write_1h_input,
+        "output": usage.output,
+    }
+    actual = {
+        key: sum(s.tokens for s in shares if s.component == key) for key in expected
+    }
+    if actual != expected or any(s.component not in expected for s in shares):
+        raise HiveError(
+            ErrorCode.INVALID_RECORD, "Allocation basis differs from priced usage"
+        )
+    rates = {
+        "input": quote.rates.input,
+        "cache_read": quote.rates.cached,
+        "cache_write_5m": quote.rates.cache_write,
+        "cache_write_1h": quote.rates.cache_write_1h,
+        "output": quote.rates.output,
+    }
+    charges = tuple(
+        Charge(
+            s.bucket,
+            s.tool,
+            s.ref,
+            s.phase,
+            s.tokens * rates[s.component],
+            s.method,
+            s.component,
+            s.tokens,
+        )
+        for s in shares
+    )
+    fees = quote.components()["server_tools"]
     if fees:
-        charges.append(
+        charges += (
             Charge(
                 "server_tool_fees", None, None, "fee", fees, "exact", "server_tools", 0
-            )
+            ),
         )
-    return tuple(charges)
+    return charges

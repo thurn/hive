@@ -41,6 +41,10 @@ class DashboardBudgetTests(unittest.TestCase):
                     f"WITH RECURSIVE n(n) AS (VALUES(1) UNION ALL SELECT n+1 FROM n WHERE n<5000) INSERT INTO responses SELECT {fields} FROM responses,n WHERE response='seed'"
                 )
                 connection.execute(
+                    "INSERT INTO allocation_responses(response,task,agent,previous,reset) "
+                    "SELECT response,task,'',NULL,0 FROM responses WHERE response LIKE 'copy-%' ORDER BY response"
+                )
+                connection.execute(
                     "INSERT INTO response_estimates SELECT r.response,e.tier,e.quote FROM responses r JOIN response_estimates e ON e.response='seed' WHERE r.response<>'seed' AND r.task=?",
                     (THREAD,),
                 )

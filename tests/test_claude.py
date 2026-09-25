@@ -92,7 +92,7 @@ class ClaudeTests(unittest.TestCase):
                 record(json.loads(result.stdout))["priced_subset_usd"], "0.000438000000"
             )
             with sqlite3.connect(state / "telemetry.sqlite3") as db:
-                self.assertEqual(db.execute("PRAGMA user_version").fetchone(), (17,))
+                self.assertEqual(db.execute("PRAGMA user_version").fetchone(), (18,))
 
     def test_host_totals_replay_old_cursors_and_reject_late_output(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -1047,7 +1047,8 @@ class ClaudePricingTests(unittest.TestCase):
         from test_usage import ROOT
 
         from hive.cost_report import report
-        from hive.pricing import Quote
+        from hive.pricing import PricedUsage
+        from hive.usage import tokens
 
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -1059,12 +1060,17 @@ class ClaudePricingTests(unittest.TestCase):
                 report(store, THREAD)["observed_estimate_usd"], "0.000258000000"
             )
             with sqlite3.connect(store.path) as db:
-                old = Quote.read(
+                old = PricedUsage.read(
                     json.loads(
                         db.execute("SELECT quote FROM response_estimates").fetchone()[0]
-                    )
+                    ),
+                    tokens(
+                        json.loads(
+                            db.execute("SELECT usage FROM responses").fetchone()[0]
+                        )
+                    ),
                 )
-            self.assertEqual(Quote.read(old.value()), old)
+            self.assertEqual(PricedUsage.read(old.value(), old.usage), old)
             changed = root / "changed"
             shutil.copytree(ROOT / "src/hive", changed / "hive")
             pricing = changed / "hive/pricing.py"
@@ -1095,12 +1101,19 @@ class ClaudePricingTests(unittest.TestCase):
                 "0.004818000000",
             )
             with sqlite3.connect(store.path) as db:
-                kept = Quote.read(
+                kept = PricedUsage.read(
                     json.loads(
                         db.execute(
                             "SELECT quote FROM response_estimates WHERE response='req_retained'"
                         ).fetchone()[0]
-                    )
+                    ),
+                    tokens(
+                        json.loads(
+                            db.execute(
+                                "SELECT usage FROM responses WHERE response='req_retained'"
+                            ).fetchone()[0]
+                        )
+                    ),
                 )
             with sqlite3.connect(store.path) as db:
                 allocations = db.execute(
@@ -1128,10 +1141,10 @@ class ClaudePricingTests(unittest.TestCase):
         self,
     ) -> None:
         from hive.claude_usage import Modifiers
-        from hive.cost_report import retain
         from hive.identity import ModelId
-        from hive.pricing import Quote, claude_quote
-        from hive.usage import Tokens
+        from hive.pricing import PricedUsage, claude_quote
+        from hive.request_pricing import retain
+        from hive.usage import Tokens, tokens
 
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -1157,9 +1170,14 @@ class ClaudePricingTests(unittest.TestCase):
                 0,
             )
             with sqlite3.connect(store.path) as db:
-                value = Quote.read(
+                value = PricedUsage.read(
                     json.loads(
                         db.execute("SELECT quote FROM response_estimates").fetchone()[0]
-                    )
+                    ),
+                    tokens(
+                        json.loads(
+                            db.execute("SELECT usage FROM responses").fetchone()[0]
+                        )
+                    ),
                 )
             self.assertEqual(value.amount, 438_000_000)

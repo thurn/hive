@@ -1,6 +1,7 @@
 """Exact API-equivalent arithmetic; prices are observations, never billing truth."""
 
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
+from typing import Literal
 
 from hive.claude_usage import Modifiers
 from hive.errors import ErrorCode, HiveError
@@ -30,27 +31,186 @@ class Rates:
 
 
 @dataclass(frozen=True)
-class Quote:
+class PriceableModifiers:
+    """Validated Claude rate identity; raw unknown observations cannot enter it."""
+
+    speed: Literal["standard", "fast"]
+    inference_geo: Literal["global", "not_available", "us"]
+    web_searches: int
+
+    @classmethod
+    def read(cls, raw: Modifiers) -> "PriceableModifiers":
+        if (
+            raw.service_tier != "standard"
+            or raw.speed not in ("standard", "fast")
+            or raw.inference_geo not in ("global", "not_available", "us")
+        ):
+            raise HiveError(ErrorCode.INVALID_RECORD, "Unpriceable Claude modifiers")
+        return cls(raw.speed, raw.inference_geo, raw.web_searches)
+
+    @property
+    def observed(self) -> Modifiers:
+        return Modifiers(self.speed, "standard", self.inference_geo, self.web_searches)
+
+
+@dataclass(frozen=True)
+class RateEvidence:
+    """An observed rate card, independent of any request's materialized total."""
+
     model: ModelId
-    tier: Tier | None
     long_context: bool
     rates: Rates
     price_observed: str
     source: str
-    amount: UsdPicos
-    host: Host = Host.CODEX
-    modifiers: Modifiers | None = None
-    web_search_picos: int = 0
+
+
+@dataclass(frozen=True)
+class CodexPricing:
+    card: RateEvidence
+    tier: Tier
+
+    @property
+    def host(self) -> Host:
+        return Host.CODEX
+
+
+@dataclass(frozen=True)
+class ClaudePricing:
+    card: RateEvidence
+    modifiers: PriceableModifiers
+    web_search_picos: int
+
+    @property
+    def host(self) -> Host:
+        return Host.CLAUDE
+
+
+Pricing = CodexPricing | ClaudePricing
+
+
+def pricing_value(evidence: Pricing) -> dict[str, object]:
+    card = evidence.card
+    modifiers = (
+        evidence.modifiers.observed if isinstance(evidence, ClaudePricing) else None
+    )
+    tier = evidence.tier if isinstance(evidence, CodexPricing) else None
+    return {
+        "host": evidence.host,
+        "modifier_key": modifiers.key if modifiers is not None else tier,
+        "modifiers": None if modifiers is None else modifiers.value(),
+        "server_tool_fees": {
+            "web_search_picos": (
+                evidence.web_search_picos if isinstance(evidence, ClaudePricing) else 0
+            )
+        },
+        "model": card.model,
+        "tier": tier,
+        "long_context": card.long_context,
+        "rates_picos_per_token": card.rates.value(),
+        "price_observed": card.price_observed,
+        "source": card.source,
+    }
+
+
+def read_pricing(value: object) -> Pricing:
+    """Decode retained evidence; persisted totals are query projections, not rates."""
+    data = record(value, "stored price estimate")
+    rates = record(data.get("rates_picos_per_token"), "stored rates")
+    band = data.get("long_context")
+    if not isinstance(band, bool):
+        raise HiveError(ErrorCode.INVALID_RECORD, "Unknown stored context band")
+    card = RateEvidence(
+        ModelId(string(data.get("model"), "stored model")),
+        band,
+        Rates(
+            *(
+                integer(rates.get(k), k)
+                for k in ("input", "cached", "cache_write", "output")
+            ),
+            cache_write_1h=integer(
+                rates.get("cache_write_1h", 0), "1h cache write rate"
+            ),
+        ),
+        string(data.get("price_observed"), "price observation"),
+        string(data.get("source"), "price source"),
+    )
+    try:
+        host = Host(string(data.get("host", "codex"), "stored host"))
+        if host == Host.CODEX:
+            tier = Tier(string(data.get("tier"), "stored tier"))
+            if data.get("modifier_key", tier) != tier:
+                raise HiveError(
+                    ErrorCode.INVALID_RECORD, "Invalid stored tier identity"
+                )
+            return CodexPricing(card, tier)
+    except ValueError as error:
+        raise HiveError(
+            ErrorCode.INVALID_RECORD, "Unknown stored host or tier"
+        ) from error
+    modifiers = PriceableModifiers.read(Modifiers.read(data.get("modifiers")))
+    if (
+        data.get("modifier_key") != modifiers.observed.key
+        or data.get("tier") is not None
+    ):
+        raise HiveError(ErrorCode.INVALID_RECORD, "Invalid stored modifier identity")
+    fees = record(data.get("server_tool_fees", {}), "stored server fees")
+    return ClaudePricing(
+        card, modifiers, integer(fees.get("web_search_picos", 0), "web search fee")
+    )
+
+
+@dataclass(frozen=True)
+class PricedUsage:
+    """Bind validated usage once; total, components and allocation share this value."""
+
+    evidence: Pricing
+    usage: Tokens
+
+    @property
+    def model(self) -> ModelId:
+        return self.evidence.card.model
+
+    @property
+    def host(self) -> Host:
+        return self.evidence.host
+
+    @property
+    def tier(self) -> Tier | None:
+        return self.evidence.tier if isinstance(self.evidence, CodexPricing) else None
+
+    @property
+    def modifiers(self) -> Modifiers | None:
+        return (
+            self.evidence.modifiers.observed
+            if isinstance(self.evidence, ClaudePricing)
+            else None
+        )
 
     @property
     def modifier_key(self) -> str:
-        if self.host == Host.CLAUDE and self.modifiers is not None:
-            return self.modifiers.key
-        if self.host == Host.CODEX and self.tier is not None:
-            return self.tier.value
-        raise HiveError(ErrorCode.INVALID_RECORD, "Missing quote modifier identity")
+        evidence = self.evidence
+        if isinstance(evidence, ClaudePricing):
+            return evidence.modifiers.observed.key
+        return evidence.tier.value
 
-    def components(self, usage: Tokens) -> dict[str, int]:
+    @property
+    def rates(self) -> Rates:
+        return self.evidence.card.rates
+
+    @property
+    def web_search_picos(self) -> int:
+        return (
+            self.evidence.web_search_picos
+            if isinstance(self.evidence, ClaudePricing)
+            else 0
+        )
+
+    @property
+    def amount(self) -> UsdPicos:
+        return UsdPicos(sum(self.components().values()))
+
+    def components(self) -> dict[str, int]:
+        usage = self.usage
         return {
             "input": (
                 usage.input
@@ -69,100 +229,47 @@ class Quote:
             * self.web_search_picos,
         }
 
-    def with_usage(self, usage: Tokens) -> "Quote":
-        return replace(self, amount=UsdPicos(sum(self.components(usage).values())))
-
-    def value(self, usage: Tokens | None = None) -> dict[str, object]:
+    def value(self) -> dict[str, object]:
         return {
-            **(
-                {
-                    "components_usd": {
-                        key: dollars(value)
-                        for key, value in self.components(usage).items()
-                    }
-                }
-                if usage is not None
-                else {}
-            ),
-            "host": self.host,
-            "modifier_key": self.modifier_key,
-            "modifiers": None if self.modifiers is None else self.modifiers.value(),
-            "server_tool_fees": {"web_search_picos": self.web_search_picos},
-            "model": self.model,
-            "tier": self.tier,
-            "long_context": self.long_context,
-            "rates_picos_per_token": self.rates.value(),
-            "price_observed": self.price_observed,
-            "source": self.source,
+            **pricing_value(self.evidence),
             "usd": dollars(self.amount),
+            "components_usd": {
+                key: dollars(value) for key, value in self.components().items()
+            },
         }
 
     @classmethod
-    def read(cls, value: object) -> "Quote":
-        data = record(value, "stored price estimate")
-        rates = record(data.get("rates_picos_per_token"), "stored rates")
-        amount = string(data.get("usd"), "stored USD estimate")
-        whole, separator, fraction = amount.partition(".")
-        if (
-            not separator
-            or not whole.isascii()
-            or not whole.isdigit()
-            or len(fraction) != 12
-            or not fraction.isascii()
-            or not fraction.isdigit()
-        ):
-            raise HiveError(ErrorCode.INVALID_RECORD, "Invalid stored USD amount")
-        band = data.get("long_context")
-        if not isinstance(band, bool):
-            raise HiveError(ErrorCode.INVALID_RECORD, "Unknown stored context band")
-        try:
-            host = Host(string(data.get("host", "codex"), "stored host"))
-            tier = (
-                Tier(string(data.get("tier"), "stored tier"))
-                if host == Host.CODEX
-                else None
-            )
-        except ValueError as error:
-            raise HiveError(
-                ErrorCode.INVALID_RECORD, "Unknown stored host or tier"
-            ) from error
-        modifiers = (
-            Modifiers.read(data.get("modifiers")) if host == Host.CLAUDE else None
-        )
-        key = string(data.get("modifier_key", tier), "stored modifier key")
-        if (host == Host.CODEX and key != tier) or (
-            modifiers is not None
-            and (
-                key != modifiers.key
-                or modifiers.speed not in {"standard", "fast"}
-                or modifiers.service_tier != "standard"
-                or modifiers.inference_geo not in {"global", "not_available", "us"}
-            )
-        ):
-            raise HiveError(
-                ErrorCode.INVALID_RECORD, "Invalid stored modifier identity"
-            )
-        fees = record(data.get("server_tool_fees", {}), "stored server fees")
-        return cls(
-            ModelId(string(data.get("model"), "stored model")),
-            tier,
-            band,
-            Rates(
-                *(
-                    integer(rates.get(k), k)
-                    for k in ("input", "cached", "cache_write", "output")
-                ),
-                cache_write_1h=integer(
-                    rates.get("cache_write_1h", 0), "1h cache write rate"
-                ),
-            ),
-            string(data.get("price_observed"), "price observation"),
-            string(data.get("source"), "price source"),
-            UsdPicos(int(whole) * 10**12 + int(fraction)),
-            host,
-            modifiers,
-            integer(fees.get("web_search_picos", 0), "web search fee"),
-        )
+    def read(cls, value: object, usage: Tokens) -> "PricedUsage":
+        return cls(read_pricing(value), usage)
+
+
+@dataclass(frozen=True)
+class Priced:
+    usage: PricedUsage
+
+
+@dataclass(frozen=True)
+class Unpriced:
+    reason: str
+
+
+Price = Priced | Unpriced
+
+
+def picos(value: object) -> int:
+    """Read a materialized decimal projection without SQLite floating point."""
+    amount = string(value, "stored USD estimate")
+    whole, separator, fraction = amount.partition(".")
+    if (
+        not separator
+        or not whole.isascii()
+        or not whole.isdigit()
+        or len(fraction) != 12
+        or not fraction.isascii()
+        or not fraction.isdigit()
+    ):
+        raise HiveError(ErrorCode.INVALID_RECORD, "Invalid stored USD amount")
+    return int(whole) * 10**12 + int(fraction)
 
 
 def dollars(value: int) -> str:
@@ -170,7 +277,7 @@ def dollars(value: int) -> str:
     return f"{whole}.{fraction:012d}"
 
 
-def quote(model: ModelId, tier: Tier, usage: Tokens) -> Quote | None:
+def quote(model: ModelId, tier: Tier, usage: Tokens) -> PricedUsage | None:
     # Exact model IDs only. Unknown aliases and future models stay unpriced.
     # Official model pages specify >272K input, including cached input, for
     # full-request 2x input/cache and 1.5x output pricing. Rates checked 2026-09-23.
@@ -191,20 +298,18 @@ def quote(model: ModelId, tier: Tier, usage: Tokens) -> Quote | None:
         base.cache_write * input_factor * numerator // denominator,
         base.output * (3 if long_context else 2) * numerator // (2 * denominator),
     )
-    amount = (
-        (usage.input - usage.cached_input - usage.cache_write_input) * rates.input
-        + usage.cached_input * rates.cached
-        + usage.cache_write_input * rates.cache_write
-        + usage.output * rates.output
-    )
-    return Quote(
-        model,
-        tier,
-        long_context,
-        rates,
-        "2026-09-23",
-        "https://developers.openai.com/api/docs/pricing",
-        UsdPicos(amount),
+    return PricedUsage(
+        CodexPricing(
+            RateEvidence(
+                model,
+                long_context,
+                rates,
+                "2026-09-23",
+                "https://developers.openai.com/api/docs/pricing",
+            ),
+            tier,
+        ),
+        usage,
     )
 
 
@@ -249,7 +354,9 @@ def claude_reason(model: ModelId, modifiers: Modifiers) -> str | None:
     return None
 
 
-def claude_quote(model: ModelId, modifiers: Modifiers, usage: Tokens) -> Quote | None:
+def claude_quote(
+    model: ModelId, modifiers: Modifiers, usage: Tokens
+) -> PricedUsage | None:
     if claude_reason(model, modifiers) is not None:
         return None
     base = next(rates for name, rates in CLAUDE_RATES if name == model)
@@ -268,16 +375,17 @@ def claude_quote(model: ModelId, modifiers: Modifiers, usage: Tokens) -> Quote |
             )
         )
     )
-    evidence = Quote(
-        model,
-        None,
-        False,
-        rates,
-        "2026-09-24",
-        "https://platform.claude.com/docs/en/about-claude/pricing",
-        UsdPicos(0),
-        Host.CLAUDE,
-        modifiers,
-        10_000_000_000,
+    return PricedUsage(
+        ClaudePricing(
+            RateEvidence(
+                model,
+                False,
+                rates,
+                "2026-09-24",
+                "https://platform.claude.com/docs/en/about-claude/pricing",
+            ),
+            PriceableModifiers.read(modifiers),
+            10_000_000_000,
+        ),
+        usage,
     )
-    return evidence.with_usage(usage)

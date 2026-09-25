@@ -5,9 +5,9 @@ import sqlite3
 
 from hive.claude_usage import Modifiers
 from hive.errors import ErrorCode, HiveError
-from hive.identity import Host, ResponseId
+from hive.identity import ResponseId
 from hive.jsonvalue import parse, sequence, string
-from hive.pricing import Quote
+from hive.pricing import ClaudePricing, PriceableModifiers, PricedUsage, read_pricing
 from hive.usage import Tokens
 from hive.usage_store import row
 
@@ -21,14 +21,17 @@ def usage_updates(
     updates: list[tuple[str, str, str]] = []
     for raw in sequence(fetched, "retained response estimates"):
         key, value = row(raw, 2)
-        quoted = Quote.read(parse(string(value, "retained price")))
-        if quoted.host != Host.CLAUDE or quoted.modifier_key != key:
+        quoted = read_pricing(parse(string(value, "retained price")))
+        if (
+            not isinstance(quoted, ClaudePricing)
+            or quoted.modifiers.observed.key != key
+        ):
             raise HiveError(
                 ErrorCode.INVALID_RECORD, "Retained Claude price identity disagrees"
             )
         updates.append(
             (
-                json.dumps(quoted.with_usage(usage).value(usage)),
+                json.dumps(PricedUsage(quoted, usage).value()),
                 response,
                 string(key, "modifier key"),
             )
@@ -65,9 +68,11 @@ def adopt_event_rates(
     if event is None:
         return
     value, old_key = row(event, 2)
-    quoted = Quote.read(parse(string(value, "event price evidence")))
-    old = quoted.modifiers
-    if quoted.model != model:
+    quoted = read_pricing(parse(string(value, "event price evidence")))
+    if not isinstance(quoted, ClaudePricing):
+        raise HiveError(ErrorCode.INVALID_RECORD, "Non-Claude event price")
+    old = quoted.modifiers.observed
+    if quoted.card.model != model:
         # This evidence priced an incorrect event model, not the observed
         # request. Keep the conflicting event for audit, discard its quote.
         connection.execute(
@@ -77,10 +82,6 @@ def adopt_event_rates(
         return
     if claude_reason(ModelId(model), modifiers) is not None:
         return
-    if quoted.host != Host.CLAUDE or old is None:
-        raise HiveError(
-            ErrorCode.INVALID_RECORD, "Event price identity disagrees with transcript"
-        )
     if old_key != modifiers.key:
         existing: object = connection.execute(
             "SELECT 1 FROM response_estimates WHERE response=? AND tier=?",
@@ -100,17 +101,24 @@ def adopt_event_rates(
         *(
             rate * new_factor // old_factor
             for rate in (
-                quoted.rates.input,
-                quoted.rates.cached,
-                quoted.rates.cache_write,
-                quoted.rates.output,
-                quoted.rates.cache_write_1h,
+                quoted.card.rates.input,
+                quoted.card.rates.cached,
+                quoted.card.rates.cache_write,
+                quoted.card.rates.output,
+                quoted.card.rates.cache_write_1h,
             )
         )
     )
-    corrected = replace(quoted, modifiers=modifiers, rates=rates).with_usage(usage)
+    corrected = PricedUsage(
+        replace(
+            quoted,
+            modifiers=PriceableModifiers.read(modifiers),
+            card=replace(quoted.card, rates=rates),
+        ),
+        usage,
+    )
     connection.execute(
         "INSERT INTO response_estimates(response,tier,quote) VALUES (?,?,?) "
         "ON CONFLICT(response,tier) DO UPDATE SET quote=excluded.quote",
-        (response, modifiers.key, json.dumps(corrected.value(usage))),
+        (response, modifiers.key, json.dumps(corrected.value())),
     )

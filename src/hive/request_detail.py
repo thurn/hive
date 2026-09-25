@@ -5,12 +5,11 @@ import binascii
 import json
 
 from hive.claude_usage import Modifiers
-from hive.cost_report import price_response, retain
 from hive.errors import ErrorCode, HiveError
 from hive.identity import Host, PricingTier, ResponseId, ThreadId
 from hive.jsonvalue import parse, record, sequence, string
-from hive.pricing import dollars
-from hive.usage import tokens
+from hive.pricing import Priced, dollars
+from hive.request_pricing import price_response, request_context, retain
 from hive.usage_store import UsageStore, row, stored_host
 
 PAGE_SIZE = 500
@@ -98,26 +97,27 @@ def report(
                 if request_host == Host.CLAUDE
                 else None
             )
-            quoted, reason = price_response(
+            outcome = price_response(
                 fresh,
                 response,
                 detail["_usage"],
                 detail["model"],
-                detail["_conflicted"],
                 detail["_quote"],
-                request_host,
-                modifiers,
+                request_context(
+                    request_host, modifiers, detail["_conflicted"], selected_tier
+                ),
                 flags,
-                selected_tier,
             )
+            quoted = outcome.usage if isinstance(outcome, Priced) else None
             detail["flags"] = list(flags)
-            detail["unpriced_reason"] = reason
+            detail["unpriced_reason"] = (
+                None if isinstance(outcome, Priced) else outcome.reason
+            )
             if quoted is not None:
-                usage = tokens(parse(string(detail["_usage"], "request usage")))
                 detail.update(
                     {
                         "usd_" + key: dollars(amount)
-                        for key, amount in quoted.components(usage).items()
+                        for key, amount in quoted.components().items()
                     }
                 )
                 detail["usd"] = dollars(quoted.amount)

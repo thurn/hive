@@ -6,11 +6,11 @@ from collections import Counter
 
 from hive.bead_assignment import Evidence
 from hive.claude_usage import Modifiers
-from hive.cost_report import price_response
 from hive.dashboard_accounting import facts, project, unattributable_projects
 from hive.dashboard_values import packed, rows
 from hive.identity import Host, PricingTier, ResponseId
 from hive.jsonvalue import integer, parse, record, sequence, string
+from hive.request_pricing import persist, price_response, request_context
 from hive.usage_store import UsageStore
 
 PAGE = 128
@@ -58,25 +58,25 @@ def price(connection: sqlite3.Connection, identities: tuple[str, ...]) -> None:
             ResponseId(string(value["response"], "response")),
             value["_usage"],
             value["model"],
-            value["_conflicted"],
             None,
-            host,
-            (
-                Modifiers.read(parse(string(value["_modifiers"], "modifiers")))
-                if host == Host.CLAUDE
-                else None
+            request_context(
+                host,
+                (
+                    Modifiers.read(parse(string(value["_modifiers"], "modifiers")))
+                    if host == Host.CLAUDE
+                    else None
+                ),
+                value["_conflicted"],
+                PricingTier.STANDARD,
             ),
             tuple(
                 string(v, "flag")
                 for v in sequence(parse(string(value["flags"], "flags")), "flags")
             ),
-            PricingTier.STANDARD,
         )
     # This exclusive transaction cannot race streamed usage. Use the shared
     # quote builder and keep first-observation evidence; no whole-root pricing.
-    connection.executemany(
-        "INSERT OR IGNORE INTO response_estimates VALUES (?,?,?)", fresh
-    )
+    persist(connection, fresh)
 
 
 def batch(connection: sqlite3.Connection, thread: str) -> bool:

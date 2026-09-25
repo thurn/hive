@@ -5,12 +5,13 @@ from dataclasses import replace
 
 from hive.bead_assignment import Assignment, Evidence, hour
 from hive.bead_queries import BEAD
-from hive.bead_requests import prepare, requests
-from hive.codex_folding import root
+from hive.bead_requests import owners, prepare, requests
 from hive.errors import ErrorCode, HiveError
 from hive.identity import PricingTier
 from hive.jsonvalue import sequence, string
 from hive.pricing import dollars
+from hive.request_coverage import Coverage
+from hive.request_coverage import read as coverage
 from hive.usage_store import UsageStore, row
 
 
@@ -77,7 +78,7 @@ def report(
     if bead is not None and BEAD.fullmatch(bead) is None:
         raise HiveError(ErrorCode.INVALID_INPUT, "Invalid bead ID")
     selected = tier or PricingTier.STANDARD
-    reports, unretained = prepare(store, selected)
+    unretained = prepare(store, selected, bead)
     if unretained:
         return {
             "code": "CostReconciliation" if bead is None else "BeadCost",
@@ -92,9 +93,15 @@ def report(
             evidence = replace(evidence, caught_up=False)
         from hive.tool_beads import allocations, breakdown
 
-        allocated = allocations(connection) if bead is not None else {}
+        scope = owners(connection, bead)
+        allocated = allocations(connection, scope) if scope is not None else {}
+        reports = {
+            task: coverage(connection, store.path.parent, task, selected)
+            for task in scope or ()
+        }
         assignments = tuple(
-            evidence.assign(request) for request in requests(connection, selected)
+            evidence.assign(request)
+            for request in requests(connection, selected, scope)
         )
         if bead is None:
             return {
@@ -116,13 +123,7 @@ def report(
             "SELECT task FROM collection_links WHERE bead=? AND relation='creator' ORDER BY task",
             (bead,),
         ).fetchall()
-        owners: object = connection.execute(
-            "SELECT thread FROM bead_seen_owners WHERE bead=?", (bead,)
-        ).fetchall()
-        threads = {
-            root(connection, string(row(value, 1)[0], "owner"))
-            for value in sequence(owners, "bead owners")
-        }
+        threads = scope or ()
         creators = [
             string(row(value, 1)[0], "creator")
             for value in sequence(creator_rows, "creators")
@@ -171,7 +172,10 @@ def report(
             {
                 "thread": interval.thread,
                 "host": hosts.get(
-                    interval.ordinal, reports.get(interval.thread, {}).get("host")
+                    interval.ordinal,
+                    reports.get(
+                        interval.thread, Coverage(None, False, True, False)
+                    ).host,
                 ),
                 "start": interval.start.isoformat(),
                 "end": None if interval.end is None else interval.end.isoformat(),
@@ -197,30 +201,13 @@ def report(
         "renamed_to": renamed,
         "coverage": {
             "threads_with_unpriced": sorted(
-                task
-                for task in threads
-                if reports.get(task, {}).get("unpriced_responses")
-                or reports.get(task, {}).get("event_only_unpriced_requests")
+                task for task in threads if reports[task].unpriced
             ),
             "threads_with_source_gaps": sorted(
-                task
-                for task in threads
-                if task not in reports
-                or any(
-                    reports[task].get(key)
-                    for key in (
-                        "parse_gaps",
-                        "source_error",
-                        "remaining_bytes",
-                        "incomplete_tail",
-                    )
-                )
-                or reports[task].get("remaining_bytes") is None
+                task for task in threads if reports[task].source_gaps
             ),
             "threads_without_complete_estimate": sorted(
-                task
-                for task in threads
-                if reports.get(task, {}).get("complete_estimate_usd") is None
+                task for task in threads if not reports[task].complete
             ),
         },
         "not_captured": "Codex spawned reviewers without their own intervals are included through their root parent; unrelated threads that never held the bead are excluded.",

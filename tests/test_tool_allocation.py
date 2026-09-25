@@ -205,6 +205,20 @@ class ToolAllocationTests(unittest.TestCase):
                     ).fetchall(),
                     quotes,
                 )
+            # The v17 upgrade derives token partitions from saved context facts,
+            # with no transcript available and without repricing retained evidence.
+            with sqlite3.connect(root / "state/telemetry.sqlite3") as db:
+                db.execute("DROP TABLE allocation_basis")
+                db.execute("PRAGMA user_version=17")
+            command(root, "telemetry", "sweep", "--native-index", str(root / "missing"))
+            self.assertEqual(allocation_rows(root), after)
+            with sqlite3.connect(root / "state/telemetry.sqlite3") as db:
+                self.assertEqual(
+                    db.execute(
+                        "SELECT * FROM response_estimates ORDER BY response,tier"
+                    ).fetchall(),
+                    quotes,
+                )
             spool(root, captured())
             command(root, "telemetry", "sweep", "--native-index", str(root / "missing"))
             report(root)

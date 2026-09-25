@@ -7,7 +7,7 @@ from datetime import UTC, datetime, timedelta
 
 from hive.diagnostic_roles import at as role_at
 from hive.jsonvalue import integer, parse, sequence, string
-from hive.pricing import Quote
+from hive.pricing import read_pricing
 from hive.usage import timestamp
 from hive.usage_store import row
 
@@ -24,13 +24,13 @@ def cache_amount(connection: sqlite3.Connection, response: str) -> int | None:
     write, hour, read, previous, quote = row(value, 5)
     if quote is None:
         return None
-    price = Quote.read(parse(string(quote, "retained quote")))
+    price = read_pricing(parse(string(quote, "retained quote")))
     rewrite = max(0, integer(previous, "previous input") - integer(read, "read tokens"))
     long_write = min(rewrite, integer(hour, "hour writes"))
     short_write = min(rewrite - long_write, integer(write, "short writes"))
     return long_write * (
-        price.rates.cache_write_1h - price.rates.cached
-    ) + short_write * (price.rates.cache_write - price.rates.cached)
+        price.card.rates.cache_write_1h - price.card.rates.cached
+    ) + short_write * (price.card.rates.cache_write - price.card.rates.cached)
 
 
 def events(connection: sqlite3.Connection, thread: str) -> list[dict[str, object]]:

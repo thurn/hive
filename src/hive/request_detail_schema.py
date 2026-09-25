@@ -5,7 +5,7 @@ import sqlite3
 
 from hive.errors import ErrorCode, HiveError
 from hive.jsonvalue import parse, sequence, string
-from hive.pricing import Quote
+from hive.pricing import PricedUsage
 from hive.usage import tokens
 
 VIEW = """CREATE VIEW request_detail AS
@@ -84,11 +84,18 @@ def create(connection: sqlite3.Connection) -> None:
             if not isinstance(raw, tuple) or len(raw) != 4:
                 raise HiveError(ErrorCode.INVALID_RECORD, "Invalid price component row")
             response, tier, value, usage = raw
-            quoted = Quote.read(parse(string(value, "retained price")))
             parsed = tokens(parse(string(usage, "retained usage")))
             connection.execute(
                 "UPDATE response_estimates SET quote=? WHERE response=? AND tier=?",
-                (json.dumps(quoted.value(parsed)), response, tier),
+                (
+                    json.dumps(
+                        PricedUsage.read(
+                            parse(string(value, "retained price")), parsed
+                        ).value()
+                    ),
+                    response,
+                    tier,
+                ),
             )
     connection.execute("DROP VIEW IF EXISTS request_detail")
     connection.execute(VIEW)

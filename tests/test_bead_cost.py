@@ -178,6 +178,220 @@ class BeadCostTests(unittest.TestCase):
                 Decimal(str(report["attributed_usd"])),
             )
 
+    def test_mixed_pricing_survives_contention_stream_completion_and_source_change(
+        self,
+    ) -> None:
+        import shutil
+
+        from test_contention import ROOT
+        from test_tool_allocation import allocation_rows
+
+        with (
+            private_server() as (connection, _),
+            tempfile.TemporaryDirectory() as temporary,
+        ):
+            root: Path = Path(temporary)
+            setup(root, connection)
+            bead: str = str(bd(connection, "create", "Pricing boundary journey")["id"])
+            bd(connection, "--actor", EXECUTOR, "update", bead, "--claim")
+            first = last(connection, bead) + timedelta(milliseconds=1)
+            bd(connection, "update", bead, "--assignee", THREAD)
+            second: datetime = last(connection, bead) + timedelta(milliseconds=1)
+            codex = root / "codex.jsonl"
+            codex.write_bytes(header(EXECUTOR))
+            command(
+                root,
+                "telemetry",
+                "collect",
+                "--task",
+                EXECUTOR,
+                "--transcript",
+                str(codex),
+            )
+            empty = command(root, "cost", "--bead", bead)
+            self.assertIn(
+                EXECUTOR,
+                sequence(record(empty["coverage"])["threads_with_source_gaps"], "gaps"),
+            )
+            observed = record(
+                json.loads(
+                    line(
+                        "token_usage_record",
+                        {
+                            "thread_id": EXECUTOR,
+                            "session_id": EXECUTOR,
+                            "turn_id": "turn",
+                            "response_id": "codex-priced",
+                            "usage": counters(100),
+                        },
+                    )
+                )
+            )
+            observed["timestamp"] = first.isoformat()
+            codex.write_bytes(
+                header(EXECUTOR)
+                + line("turn_context", {"turn_id": "turn", "model": "gpt-6-astra"})
+                + (json.dumps(observed) + "\n").encode()
+            )
+            command(
+                root,
+                "telemetry",
+                "collect",
+                "--task",
+                EXECUTOR,
+                "--transcript",
+                str(codex),
+            )
+            path: Path = root / f"{THREAD}.jsonl"
+
+            def append(
+                identity: str,
+                output: int,
+                *,
+                complete: bool = True,
+                unknown: bool = False,
+            ) -> None:
+                value = record(
+                    json.loads(
+                        assistant(
+                            identity,
+                            output,
+                            complete=complete,
+                            usage_changes=(
+                                dict[str, object](speed="warp") if unknown else None
+                            ),
+                        )
+                    )
+                )
+                value["timestamp"] = second.isoformat()
+                with path.open("a") as stream:
+                    stream.write(json.dumps(value) + "\n")
+                command(
+                    root,
+                    "telemetry",
+                    "collect",
+                    "--task",
+                    THREAD,
+                    "--transcript",
+                    str(path),
+                )
+
+            append("stream", 1, complete=False)
+            append("unknown", 10, unknown=True)
+            database = root / "state/telemetry.sqlite3"
+            with held(database, "IMMEDIATE"):
+                for task in (EXECUTOR, THREAD):
+                    page = command(root, "cost", "--task", task, "--requests")
+                    self.assertEqual(page["unretained_estimates"], 1)
+                    priced = next(
+                        record(v)
+                        for v in sequence(page["requests"], "requests")
+                        if record(v)["usd"] is not None
+                    )
+                    self.assertIn("unretained", sequence(priced["flags"], "flags"))
+                pending = command(root, "cost", "--bead", bead)
+                self.assertEqual(pending["reason"], "Price retention is incomplete")
+
+            def check(expected: str) -> dict[str, dict[str, object]]:
+                # A bead-first read must retain prices and materialize tool shares.
+                bead_report = command(root, "cost", "--bead", bead)
+                self.assertEqual(bead_report["attributed_usd"], expected, bead_report)
+                self.assertEqual(total(bead_report["by_tool"]), Decimal(expected))
+                self.assertEqual(
+                    record(bead_report["coverage"])["threads_with_unpriced"], [THREAD]
+                )
+                details: dict[str, dict[str, object]] = {}
+                overall = Decimal(0)
+                for task in (EXECUTOR, THREAD):
+                    page = command(root, "cost", "--task", task, "--requests")
+                    thread = command(root, "cost", "--task", task)
+                    subtotal = Decimal(0)
+                    for item in sequence(page["requests"], "requests"):
+                        value = record(item)
+                        details[string(value["response"], "response")] = value
+                        if value["usd"] is None:
+                            self.assertEqual(
+                                value["unpriced_reason"], "unknown_modifier"
+                            )
+                            continue
+                        components = sum(
+                            (
+                                Decimal(str(amount))
+                                for key, amount in value.items()
+                                if key.startswith("usd_")
+                            ),
+                            Decimal(0),
+                        )
+                        self.assertEqual(components, Decimal(str(value["usd"])))
+                        subtotal += components
+                    self.assertEqual(
+                        subtotal, Decimal(str(thread["priced_subset_usd"]))
+                    )
+                    overall += subtotal
+                self.assertEqual(overall, Decimal(expected))
+                reconciliation = command(root, "cost", "--reconcile")
+                self.assertTrue(reconciliation["balanced"])
+                self.assertEqual(reconciliation["thread_total_usd"], expected)
+                self.assertEqual(reconciliation["attributed_usd"], expected)
+                for identity, detail in details.items():
+                    if detail["host"] != "claude" or detail["usd"] is None:
+                        continue
+                    charges = [r for r in allocation_rows(root) if r[0] == identity]
+                    for component in (
+                        "input",
+                        "cache_read",
+                        "cache_write_5m",
+                        "cache_write_1h",
+                        "output",
+                        "server_tools",
+                    ):
+                        self.assertEqual(
+                            sum(
+                                (
+                                    Decimal(str(r[6]))
+                                    for r in charges
+                                    if r[4] == component
+                                ),
+                                Decimal(0),
+                            ),
+                            Decimal(str(detail["usd_" + component])),
+                        )
+                return details
+
+            before = check("0.001258000000")
+            self.assertIn(
+                "possibly_partial", sequence(before["stream"]["flags"], "flags")
+            )
+            changed = root / "changed"
+            shutil.copytree(ROOT / "src", changed / "src")
+            pricing = changed / "src/hive/pricing.py"
+            source = pricing.read_text()
+            old = "Rates(4_000_000, 200_000, 5_000_000, 20_000_000, 8_000_000)"
+            self.assertIn(old, source)
+            pricing.write_text(
+                source.replace(
+                    old,
+                    "Rates(40_000_000, 2_000_000, 50_000_000, 200_000_000, 80_000_000)",
+                )
+            )
+            with patch("test_contention.ROOT", changed):
+                append("stream", 10)
+                append("new-rate", 10)
+                after = check("0.005818000000")
+                self.assertEqual(after["stream"]["usd"], "0.000438000000")
+                self.assertEqual(after["new-rate"]["usd"], "0.004380000000")
+                self.assertNotIn(
+                    "possibly_partial", sequence(after["stream"]["flags"], "flags")
+                )
+                self.assertEqual(after["codex-priced"], before["codex-priced"])
+                fast = command(root, "cost", "--bead", bead, "--tier", "fast")
+                self.assertEqual(fast["attributed_usd"], "0.006818000000")
+                rejected = hive(root, "cost", "--task", THREAD, "--tier", "fast")
+                self.assertEqual(rejected.returncode, 1)
+                self.assertEqual(
+                    record(json.loads(rejected.stderr))["code"], "InvalidInput"
+                )
+
     def test_shared_picodollar_remainders_event_time_and_contended_retention(
         self,
     ) -> None:
