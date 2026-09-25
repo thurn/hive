@@ -38,7 +38,7 @@ def main() -> int:
             "--native-index", default=str(Path.home() / ".codex/state_5.sqlite")
         )
         cost.add_argument(
-            "--tier", choices=[tier.value for tier in PricingTier], default="standard"
+            "--tier", choices=[tier.value for tier in PricingTier], default=None
         )
         telemetry = groups.add_parser("telemetry")
         actions = telemetry.add_subparsers(dest="action", required=True)
@@ -73,8 +73,20 @@ def main() -> int:
             }
         elif parsed.group == "cost":
             store = UsageStore(context.state / "telemetry.sqlite3")
-            result = report(store, CodexTaskId(parsed.task), PricingTier(parsed.tier))
             registry = CollectionRegistry(store)
+            discoveries, _ = probe(
+                (CodexTaskId(parsed.task),),
+                Path(parsed.native_index),
+                context.claude_projects,
+                registry,
+            )
+            found = discoveries[CodexTaskId(parsed.task)]
+            result = report(
+                store,
+                CodexTaskId(parsed.task),
+                None if parsed.tier is None else PricingTier(parsed.tier),
+                host_hint=found.host,
+            )
             links, gaps, failure = None, None, None
             try:
                 links, gaps = read(
@@ -93,14 +105,6 @@ def main() -> int:
             result["association_stale"] = failure is not None
             result["associated_beads"] = registry.associations(CodexTaskId(parsed.task))
             result["association_gaps"] = registry.gaps()
-            discoveries, _ = probe(
-                (CodexTaskId(parsed.task),),
-                Path(parsed.native_index),
-                context.claude_projects,
-                registry,
-            )
-            found = discoveries[CodexTaskId(parsed.task)]
-            result["host"] = found.host
             result["usage_collectable"] = (
                 found.host is not None and found.path is not None
             )

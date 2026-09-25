@@ -26,6 +26,16 @@ class Modifiers:
     inference_geo: str | None
     web_searches: int
 
+    @classmethod
+    def read(cls, value: object) -> "Modifiers":
+        data = record(value, "request modifiers")
+        return cls(
+            optional_text(data.get("speed"), "speed"),
+            optional_text(data.get("service_tier"), "service tier"),
+            optional_text(data.get("inference_geo"), "inference geography"),
+            counter(data.get("web_searches", 0), "web searches"),
+        )
+
     @property
     def key(self) -> str:
         return "/".join(

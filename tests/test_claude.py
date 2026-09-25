@@ -430,3 +430,233 @@ class ClaudeTests(unittest.TestCase):
             store.collect(THREAD, main)
             self.assertEqual(store.report(THREAD)["observed_responses"], 1)
             self.assertEqual(CollectionRegistry(store).cached_host(OTHER), Host.CODEX)
+
+
+class ClaudePricingTests(unittest.TestCase):
+    def test_each_model_and_modifier_is_exact_and_server_fees_are_separate(
+        self,
+    ) -> None:
+        from hive.cost_report import report
+        from hive.pricing import dollars
+
+        # Hand-calculated for uncached=2, cw5=10, cw1h=20, cached=100, output=10.
+        expected = (
+            ("claude-fable-5-1", 1_070_000_000),
+            ("claude-fable-5", 1_145_000_000),
+            ("claude-opus-5-5", 438_000_000),
+            ("claude-opus-5", 572_500_000),
+            ("claude-opus-4-8", 572_500_000),
+            ("claude-opus-4-7", 572_500_000),
+            ("claude-opus-4-6", 572_500_000),
+            ("claude-sonnet-5", 229_000_000),
+            ("claude-sonnet-4-6", 343_500_000),
+            ("claude-haiku-4-5", 114_500_000),
+        )
+        for model, base in expected:
+            for speed in ("standard", "fast"):
+                for geo in ("not_available", "global", "us"):
+                    with (
+                        self.subTest(model=model, speed=speed, geo=geo),
+                        tempfile.TemporaryDirectory() as temporary,
+                    ):
+                        root = Path(temporary)
+                        path = root / f"{THREAD}.jsonl"
+                        raw = record(
+                            json.loads(
+                                assistant(
+                                    "req_price",
+                                    usage_changes={
+                                        "speed": speed,
+                                        "inference_geo": geo,
+                                        "server_tool_use": {"web_search_requests": 2},
+                                        "output_tokens_details": {"thinking_tokens": 6},
+                                    },
+                                )
+                            )
+                        )
+                        message = record(raw["message"])
+                        message["model"] = model
+                        raw["message"] = message
+                        path.write_text(json.dumps(raw) + "\n")
+                        store = UsageStore(root / "usage.sqlite3")
+                        store.collect(THREAD, path)
+                        result = report(store, THREAD)
+                        supported = (
+                            speed == "standard"
+                            or model
+                            in {"claude-opus-5-5", "claude-opus-5", "claude-opus-4-8"}
+                        ) and not (geo == "us" and model == "claude-haiku-4-5")
+                        if supported:
+                            amount = (
+                                base
+                                * (2 if speed == "fast" else 1)
+                                * (11 if geo == "us" else 10)
+                                // 10
+                                + 20_000_000_000
+                            )
+                            self.assertEqual(
+                                result["observed_estimate_usd"], dollars(amount)
+                            )
+                            self.assertEqual(
+                                result["server_tool_fees_usd"], "0.020000000000"
+                            )
+                            self.assertEqual(report(store, THREAD), result)
+                        else:
+                            self.assertEqual(result["unknown_modifier"], 1)
+                            self.assertIsNone(result["observed_estimate_usd"])
+                        self.assertIsNone(result["pricing_tier_assumption"])
+                        self.assertIn("lower bound", str(result["coverage"]))
+
+    def test_unknowns_partial_streams_and_explicit_tiers_are_visible(self) -> None:
+        from hive.cost_report import report
+
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            path = root / f"{THREAD}.jsonl"
+            lines = [
+                assistant("req_partial", complete=False),
+                assistant("req_tier", usage_changes={"service_tier": "priority"}),
+                assistant("req_speed", usage_changes={"speed": "future"}),
+                assistant("req_geo", usage_changes={"inference_geo": "eu"}),
+                assistant(
+                    "req_iteration",
+                    usage_changes={"iterations": [{"type": "fallback"}]},
+                ),
+            ]
+            for model in (
+                "claude-opus-5-5-20260101",
+                "claude-opus-5-5[1m]",
+                "bedrock/claude-opus-5-5",
+            ):
+                raw = record(json.loads(assistant(model)))
+                message = record(raw["message"])
+                message["model"] = model
+                raw["message"] = message
+                lines.append((json.dumps(raw) + "\n").encode())
+            path.write_bytes(b"".join(lines))
+            store = UsageStore(root / "state/telemetry.sqlite3")
+            store.collect(THREAD, path)
+            result = report(store, THREAD)
+            self.assertEqual(result["priced_responses"], 1)
+            self.assertEqual(result["possibly_partial_output"], 1)
+            self.assertEqual(result["unknown_service_tier"], 1)
+            self.assertEqual(result["unknown_modifier"], 2)
+            self.assertEqual(result["unsupported_iteration"], 1)
+            self.assertEqual(result["unknown_model_price"], 3)
+            self.assertEqual(result["priced_subset_usd"], "0.000438000000")
+            self.assertIsNone(result["observed_estimate_usd"])
+            normal = hive(root, "cost", "--task", THREAD)
+            self.assertEqual(normal.returncode, 0, normal.stderr)
+            self.assertEqual(record(json.loads(normal.stdout))["host"], "claude")
+            explicit = hive(root, "cost", "--task", THREAD, "--tier", "standard")
+            self.assertEqual(explicit.returncode, 1)
+            self.assertEqual(
+                record(json.loads(explicit.stderr))["code"], "InvalidInput"
+            )
+
+    def test_retained_rate_evidence_survives_source_edit_and_later_output(self) -> None:
+        import os
+        import shutil
+        import subprocess
+        import sys
+
+        from test_usage import ROOT
+
+        from hive.cost_report import report
+        from hive.pricing import Quote
+
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            path = root / f"{THREAD}.jsonl"
+            path.write_bytes(assistant("req_retained", 1, complete=False))
+            store = UsageStore(root / "usage.sqlite3")
+            store.collect(THREAD, path)
+            self.assertEqual(
+                report(store, THREAD)["observed_estimate_usd"], "0.000258000000"
+            )
+            with sqlite3.connect(store.path) as db:
+                old = Quote.read(
+                    json.loads(
+                        db.execute("SELECT quote FROM response_estimates").fetchone()[0]
+                    )
+                )
+            self.assertEqual(Quote.read(old.value()), old)
+            changed = root / "changed"
+            shutil.copytree(ROOT / "src/hive", changed / "hive")
+            pricing = changed / "hive/pricing.py"
+            source = pricing.read_text()
+            self.assertIn(
+                "Rates(4_000_000, 200_000, 5_000_000, 20_000_000, 8_000_000)", source
+            )
+            pricing.write_text(
+                source.replace(
+                    "Rates(4_000_000, 200_000, 5_000_000, 20_000_000, 8_000_000)",
+                    "Rates(40_000_000, 2_000_000, 50_000_000, 200_000_000, 80_000_000)",
+                )
+            )
+            with path.open("ab") as stream:
+                stream.write(assistant("req_retained", 10) + assistant("req_new", 10))
+            script = "import json,sys; from pathlib import Path; from hive.usage_store import UsageStore; from hive.identity import ThreadId; from hive.cost_report import report; s=UsageStore(Path(sys.argv[1])); t=ThreadId(sys.argv[2]); s.collect(t,Path(sys.argv[3])); print(json.dumps(report(s,t)))"
+            completed = subprocess.run(
+                [sys.executable, "-c", script, str(store.path), THREAD, str(path)],
+                env={**os.environ, "PYTHONPATH": str(changed)},
+                cwd=changed,
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
+            self.assertEqual(completed.returncode, 0, completed.stderr)
+            self.assertEqual(
+                record(json.loads(completed.stdout))["observed_estimate_usd"],
+                "0.004818000000",
+            )
+            with sqlite3.connect(store.path) as db:
+                kept = Quote.read(
+                    json.loads(
+                        db.execute(
+                            "SELECT quote FROM response_estimates WHERE response='req_retained'"
+                        ).fetchone()[0]
+                    )
+                )
+            self.assertEqual(kept.rates, old.rates)
+            self.assertEqual(kept.amount, 438_000_000)
+
+    def test_late_quote_retention_uses_latest_committed_output_and_old_rates(
+        self,
+    ) -> None:
+        from hive.claude_usage import Modifiers
+        from hive.cost_report import retain
+        from hive.identity import ModelId
+        from hive.pricing import Quote, claude_quote
+        from hive.usage import Tokens
+
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            path = root / f"{THREAD}.jsonl"
+            store = UsageStore(root / "usage.sqlite3")
+            path.write_bytes(assistant("req_race", 1, complete=False))
+            store.collect(THREAD, path)
+            pending = claude_quote(
+                ModelId("claude-opus-5-5"),
+                Modifiers("standard", "standard", "not_available", 0),
+                Tokens(132, 100, 10, 1, 0, 20),
+            )
+            if pending is None:
+                self.fail("Known quote missing")
+            with path.open("ab") as stream:
+                stream.write(assistant("req_race", 10))
+            store.collect(THREAD, path)
+            self.assertEqual(
+                retain(
+                    store,
+                    [("req_race", pending.modifier_key, json.dumps(pending.value()))],
+                ),
+                0,
+            )
+            with sqlite3.connect(store.path) as db:
+                value = Quote.read(
+                    json.loads(
+                        db.execute("SELECT quote FROM response_estimates").fetchone()[0]
+                    )
+                )
+            self.assertEqual(value.amount, 438_000_000)
