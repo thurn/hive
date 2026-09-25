@@ -31,10 +31,26 @@ follow-ups and explicit pauses. An interrupt disarms without restarting work.
 Concurrent new input invalidates a slow stop check before it can request continuation.
 New authorized executor turns explicitly opt in again.
 
-Before intentionally ending, reconcile acceptance, delivery and the ready queue,
-then use `bin/hive executor stop --reason 'CONCRETE EVIDENCE' --json`. This records
-why the agent stopped and disarms the hook; it does not settle or release beads.
-Scope judgments and the truth of the reason remain the agent's responsibility.
+Before intentionally ending, reconcile acceptance, delivery and the ready queue.
+For a perceived blocker, retry cutoff, timing miss or pressure, first invoke
+justiciar in the same task using the [recovery protocol](../skills/shared/repair.md#executor-recovery-before-stopping).
+Inspect evidence and requirement authority; repair or record an authorized relaxation
+of agent-imposed constraints, then resume executor work. Explicit user acceptance,
+pauses and approval holds remain binding. Exhausting identical retries does not
+exhaust useful diagnosis. Only an unresolved external dependency or capacity limit
+after recovery permits checkpointing, settling writers and considering independent work.
+
+Use `bin/hive executor stop --kind KIND --reason 'CONCRETE EVIDENCE' --json`.
+Kinds are `pause`, `approval`, `drained`, `scope`, `blocked` and `pressure`.
+The last two also require `--recovery 'EVIDENCE, REPAIR/RELAXATION, REMAINING LIMIT'`.
+A missing category or empty required recovery account fails before disarming, so
+the old free-form blocker command cannot bypass recovery. Valid stops record the
+category, reason and recovery account in local activation state and disarm the hook;
+they do not settle or release beads. New input and interrupts still disarm immediately.
+This is an agent attestation, not proof that justiciar ran: truthful classification,
+adequacy of recovery and permission to relax a requirement remain agent judgments.
+The handler does not parse transcripts or mutate Beads to enforce them. Correction
+remains bounded even if an agent ignores the protocol.
 A missing or malformed binding, Beads outage or lock contention produces a warning
 without a forced retry. A source-selection failure before the handler starts is
 reported by the launcher as a hook failure. Other hooks may also affect termination.

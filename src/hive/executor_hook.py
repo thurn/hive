@@ -9,7 +9,7 @@ from uuid import uuid4
 from hive.beads_connection import BeadsConnection
 from hive.beads_process import BeadsProcess
 from hive.errors import HiveError
-from hive.executor_state import ExecutorStore
+from hive.executor_state import ExecutorStore, StopKind
 from hive.jsonvalue import parse, record, sequence, string
 from hive.launch_context import LaunchContext
 from hive.locking import file_lock
@@ -25,12 +25,36 @@ def start(context: LaunchContext, project: str) -> dict[str, object]:
     return {"code": "ExecutorStarted", "project": project, "session": store.session}
 
 
-def stop(context: LaunchContext, reason: str) -> dict[str, object]:
+def stop(
+    context: LaunchContext, reason: str, kind: StopKind, recovery: str | None = None
+) -> dict[str, object]:
+    """Require a recovery attestation for impediments, without judging its truth.
+
+    Validation precedes disarming: a legacy free-form blocker stop cannot disable
+    continuation. Native input/interrupt hooks still disarm immediately.
+    """
     if not reason.strip():
         raise ValueError("Stopping requires a concrete reason")
+    if kind in {StopKind.BLOCKED, StopKind.PRESSURE} and (
+        recovery is None or not recovery.strip()
+    ):
+        raise ValueError(
+            "Enter justiciar recovery in this task before stopping for a blocker "
+            "or resource pressure; --recovery must record inspected evidence, "
+            "attempted repair or authorized relaxation, and the remaining external "
+            "dependency or capacity limit. Resume executor work when recovery succeeds."
+        )
+    evidence = f"{kind.value}: {reason}"
+    if recovery is not None:
+        evidence += f"\nJusticiar recovery: {recovery}"
     store = ExecutorStore(context.state, os.environ.get("CODEX_THREAD_ID", ""))
-    store.stop(reason)
-    return {"code": "ExecutorStopped", "reason": reason}
+    store.stop(evidence)
+    return {
+        "code": "ExecutorStopped",
+        "kind": kind.value,
+        "reason": reason,
+        "recovery": recovery,
+    }
 
 
 def handle(context: LaunchContext, payload: str) -> dict[str, object]:
@@ -69,7 +93,9 @@ def _handle(context: LaunchContext, value: dict[str, object]) -> dict[str, objec
     ready = _ids(process.ready(state.project, store.session), state.project, None)
     if not assigned and not ready:
         return {}
-    stop_command = _command(context, "stop", "--reason", "CONCRETE EVIDENCE")
+    stop_command = _command(
+        context, "stop", "--kind", "KIND", "--reason", "CONCRETE EVIDENCE"
+    )
     message = (
         f"Hive executor {state.project}: unfinished assignments: "
         f"{', '.join(assigned) or 'none'}; unclaimed ready candidates: "
@@ -77,9 +103,20 @@ def _handle(context: LaunchContext, value: dict[str, object]) -> dict[str, objec
         "Reconcile remaining acceptance, writers and delivery before stopping; "
         "promotion alone does not complete acceptance. Inspect candidate scope, "
         "prerequisite outcomes, approvals, ownership and resource pressure before "
-        "claiming. Continue eligible work under the executor skill, or record a "
-        f"concrete stop reason with `{stop_command}` and explain "
-        "it to the user. Honor explicit pauses and approval waits; unanswered "
+        "claiming. Continue eligible work under the executor skill. Before treating "
+        "a blocker, retry cutoff, timing miss or resource pressure as a reason to "
+        "end work, invoke the justiciar skill in this same task: inspect evidence, "
+        "repair or relax agent-imposed constraints within existing authority, "
+        "record changes and consequences, then resume executor work. Never waive "
+        "explicit user acceptance or broaden authorization. A retry limit ends "
+        "identical retries, not useful recovery. For a genuine remaining external "
+        "dependency or capacity limit, checkpoint and settle writers/delivery, "
+        "then consider independent eligible work. Record an intentional stop with "
+        f"`{stop_command}`; blocked/pressure kinds also require `--recovery` "
+        "with evidence of that recovery and what remains beyond your authority. "
+        "Other kinds are pause, approval, drained and scope; classify truthfully "
+        "and explain unfinished work to the user. Honor explicit pauses and "
+        "approval waits immediately; unanswered "
         "optional feedback alone is not a blocker. Never release an assignment "
         "until its writers and external effects are settled."
     )

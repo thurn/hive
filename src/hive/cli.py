@@ -41,7 +41,13 @@ def main() -> int:
         executor_start = executor_actions.add_parser("start")
         executor_start.add_argument("--project", required=True)
         executor_stop = executor_actions.add_parser("stop")
+        from hive.executor_state import StopKind
+
         executor_stop.add_argument("--reason", required=True)
+        executor_stop.add_argument(
+            "--kind", choices=[kind.value for kind in StopKind], required=True
+        )
+        executor_stop.add_argument("--recovery")
         executor_actions.add_parser("hook")
         executor_actions.add_parser("hook-config")
         cost = groups.add_parser("cost")
@@ -99,7 +105,9 @@ def main() -> int:
             if parsed.action == "start":
                 result = start(context, parsed.project)
             elif parsed.action == "stop":
-                result = stop(context, parsed.reason)
+                result = stop(
+                    context, parsed.reason, StopKind(parsed.kind), parsed.recovery
+                )
             elif parsed.action == "hook-config":
                 result = configuration(context)
             else:

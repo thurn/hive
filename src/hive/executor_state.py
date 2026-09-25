@@ -4,12 +4,22 @@ from __future__ import annotations
 
 import os
 from dataclasses import asdict, dataclass
+from enum import StrEnum
 from pathlib import Path
 from uuid import uuid4
 
 from hive.jsonvalue import parse, record, string
 from hive.locking import file_lock
 from hive.thread_links import thread_id
+
+
+class StopKind(StrEnum):
+    PAUSE = "pause"
+    APPROVAL = "approval"
+    DRAINED = "drained"
+    SCOPE = "scope"
+    BLOCKED = "blocked"
+    PRESSURE = "pressure"
 
 
 @dataclass(frozen=True)

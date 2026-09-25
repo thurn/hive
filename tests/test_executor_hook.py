@@ -63,7 +63,9 @@ class ExecutorHookTests(unittest.TestCase):
             )
 
             def invoke(
-                *args: str, payload: dict[str, object] | None = None
+                *args: str,
+                payload: dict[str, object] | None = None,
+                success: bool = True,
             ) -> dict[str, object]:
                 result = subprocess.run(
                     [
@@ -80,8 +82,8 @@ class ExecutorHookTests(unittest.TestCase):
                     capture_output=True,
                     timeout=20,
                 )
-                self.assertEqual(result.returncode, 0, result.stderr)
-                return record(parse(result.stdout))
+                self.assertEqual(result.returncode == 0, success, result.stderr)
+                return record(parse(result.stdout if success else result.stderr))
 
             def native(*args: str) -> object:
                 result = subprocess.run(
@@ -126,10 +128,31 @@ class ExecutorHookTests(unittest.TestCase):
             native("update", owned, "--claim")
             self.assertEqual(invoke("hook", payload=payload), {})  # No role inference.
             invoke("start", "--project", "hive")
+            # The incident's free-form retry/timing stop cannot disarm execution.
+            invoke(
+                "stop",
+                "--reason",
+                "326s exceeds 300s; second retry failed",
+                success=False,
+            )
+            for kind in ("blocked", "pressure"):
+                rejected = invoke(
+                    "stop",
+                    "--kind",
+                    kind,
+                    "--reason",
+                    "Timing miss after retries",
+                    "--recovery",
+                    " ",
+                    success=False,
+                )
+                self.assertIn("justiciar", str(rejected))
             first = invoke("hook", payload=payload)
             self.assertEqual(first["decision"], "block")
             self.assertIn(owned, str(first["reason"]))
             self.assertIn("acceptance", str(first["reason"]))
+            self.assertIn("justiciar", str(first["reason"]))
+            self.assertIn("explicit user acceptance", str(first["reason"]))
             repeated = invoke("hook", payload=payload)
             self.assertNotIn("decision", repeated)
             self.assertIn("unresolved", str(repeated["systemMessage"]))
@@ -147,7 +170,32 @@ class ExecutorHookTests(unittest.TestCase):
                 "systemMessage",
                 invoke("hook", payload={**payload, "turn_id": "turn-2"}),
             )
-            invoke("stop", "--reason", "User paused measurements until machine is idle")
+            # Recovery can resume useful work; an unresolved external dependency
+            # can be recorded explicitly without the hook mutating ownership.
+            stopped = invoke(
+                "stop",
+                "--kind",
+                "blocked",
+                "--reason",
+                "External host unavailable",
+                "--recovery",
+                "Inspected host outage; local diagnosis exhausted; "
+                "writers settled; host owner must restore access; no independent work",
+            )
+            self.assertEqual(stopped["kind"], "blocked")
+            self.assertEqual(invoke("hook", payload=payload), {})
+            self.assertEqual(
+                record(sequence(native("show", owned), "beads")[0])["assignee"], THREAD
+            )
+            invoke("start", "--project", "hive")
+            self.assertIn("systemMessage", invoke("hook", payload=payload))
+            invoke(
+                "stop",
+                "--kind",
+                "pause",
+                "--reason",
+                "User paused measurements until machine is idle",
+            )
             self.assertEqual(invoke("hook", payload=payload), {})
             native("update", owned, "--set-metadata", "hive_resolution=completed")
             native("close", owned)
@@ -188,6 +236,15 @@ class ExecutorHookTests(unittest.TestCase):
             )
             native("close", ready)
             self.assertEqual(invoke("hook", payload=payload), {})
+            invoke(
+                "stop",
+                "--kind",
+                "drained",
+                "--reason",
+                "No unfinished assignments or eligible ready work",
+            )
+            self.assertEqual(invoke("hook", payload=payload), {})
+            invoke("start", "--project", "hive")
             native("update", ready, "--status", "open")
             # New source takes effect without installing or restarting a hook.
             path = repository / "src/hive/executor_hook.py"
