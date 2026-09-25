@@ -12,7 +12,7 @@ from hive.errors import ErrorCode, HiveError
 from hive.identity import Host, ThreadId
 from hive.jsonvalue import integer, parse, record, string
 from hive.transcript_chunks import MAX_BATCH, MAX_LINE, Line, read
-from hive.usage import Tokens, tokens
+from hive.usage import Tokens, timestamp, tokens
 from hive.usage_store import UsageStore, row
 
 
@@ -45,13 +45,17 @@ def save(connection: sqlite3.Connection, event: ClaudeResponse) -> None:
     if not isinstance(current, Tokens):
         raise HiveError(ErrorCode.INVALID_RECORD, "Claude usage is missing")
     previous: object = connection.execute(
-        "SELECT host,usage,model,modifiers,complete,flags FROM responses WHERE response=?",
+        "SELECT host,usage,model,modifiers,complete,flags,last_observed FROM responses WHERE response=?",
         (usage.response,),
     ).fetchone()
     flags = set(event.flags)
     complete = event.complete
+    last_observed = usage.observed.astimezone(UTC)
     if previous is not None:
-        host, raw_usage, model, modifiers, old_complete, raw_flags = row(previous, 6)
+        host, raw_usage, model, modifiers, old_complete, raw_flags, old_time = row(
+            previous, 7
+        )
+        last_observed = max(last_observed, timestamp(old_time))
         old = tokens(parse(string(raw_usage, "stored Claude usage")))
         if (
             host != Host.CLAUDE
@@ -102,9 +106,9 @@ def save(connection: sqlite3.Connection, event: ClaudeResponse) -> None:
         (usage.response, current.output, current.reasoning_output),
     )
     connection.execute(
-        "INSERT INTO responses(response,task,turn,observed,usage,input,cached,cache_write,output,reasoning,host,agent,model,modifier_key,modifiers,cache_write_1h,complete,skill,flags) "
-        "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(response) DO UPDATE SET "
-        "usage=excluded.usage,output=excluded.output,reasoning=excluded.reasoning,complete=excluded.complete,flags=excluded.flags",
+        "INSERT INTO responses(response,task,turn,observed,usage,input,cached,cache_write,output,reasoning,host,agent,model,modifier_key,modifiers,cache_write_1h,complete,skill,flags,last_observed) "
+        "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(response) DO UPDATE SET "
+        "usage=excluded.usage,output=excluded.output,reasoning=excluded.reasoning,complete=excluded.complete,flags=excluded.flags,last_observed=excluded.last_observed",
         (
             usage.response,
             usage.owner.thread,
@@ -125,6 +129,7 @@ def save(connection: sqlite3.Connection, event: ClaudeResponse) -> None:
             int(complete),
             event.skill,
             json.dumps(sorted(flags)),
+            last_observed.isoformat(),
         ),
     )
 
@@ -223,6 +228,10 @@ def collect(
                                 ErrorCode.INVALID_RECORD,
                                 "Invalid Claude sidechain identity",
                             )
+                        if agent is None and raw.get("type") == "cost-state":
+                            from hive.claude_cost_state import save as save_cost_state
+
+                            save_cost_state(connection, thread, raw)
                         event = decode(raw, thread)
                         if event is not None:
                             save(connection, event)

@@ -63,6 +63,223 @@ def assistant(
 
 
 class ClaudeTests(unittest.TestCase):
+    def test_version_two_upgrade_collects_and_prices_claude(self) -> None:
+        from test_contention import ROOT
+
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            state = root / "state"
+            state.mkdir()
+            with sqlite3.connect(state / "telemetry.sqlite3") as db:
+                db.executescript((ROOT / "tests/fixtures/telemetry-v2.sql").read_text())
+                db.execute("PRAGMA user_version=2")
+            path = root / f"{THREAD}.jsonl"
+            path.write_bytes(assistant("req_upgrade"))
+            result = hive(
+                root,
+                "telemetry",
+                "collect",
+                "--task",
+                THREAD,
+                "--transcript",
+                str(path),
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            result = hive(root, "cost", "--task", THREAD)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(
+                record(json.loads(result.stdout))["priced_subset_usd"], "0.000438000000"
+            )
+            with sqlite3.connect(state / "telemetry.sqlite3") as db:
+                self.assertEqual(db.execute("PRAGMA user_version").fetchone(), (3,))
+
+    def test_host_totals_replay_old_cursors_and_reject_late_output(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            path = root / f"{THREAD}.jsonl"
+            total = {
+                "type": "cost-state",
+                "startTime": "2026-09-23T23:00:00Z",
+                "timestamp": "2026-09-24T00:01:00Z",
+                "totalCostUSD": 1,
+            }
+            path.write_bytes(
+                assistant("req_partial", 1, complete=False)
+                + (json.dumps(total) + "\n").encode()
+            )
+            collect = (
+                "telemetry",
+                "collect",
+                "--task",
+                THREAD,
+                "--transcript",
+                str(path),
+            )
+            self.assertEqual(hive(root, *collect).returncode, 0)
+            # Construct the populated delivered v2 schema: it had consumed
+            # these records but could not retain cost-state or latest time.
+            with sqlite3.connect(root / "state/telemetry.sqlite3") as db:
+                db.execute("DROP TABLE claude_cost_states")
+                db.execute("ALTER TABLE responses DROP COLUMN last_observed")
+                db.execute("PRAGMA user_version=2")
+            collected = hive(root, *collect)
+            self.assertEqual(collected.returncode, 0, collected.stderr)
+            self.assertEqual(
+                record(json.loads(collected.stdout))["read_bytes"], path.stat().st_size
+            )
+            before = record(json.loads(hive(root, "cost", "--task", THREAD).stdout))
+            self.assertIsNone(before["host_reported_reason"])
+            final = record(json.loads(assistant("req_partial", 10)))
+            final["timestamp"] = "2026-09-24T00:02:00Z"
+            with path.open("ab") as stream:
+                stream.write((json.dumps(final) + "\n").encode())
+            self.assertEqual(hive(root, *collect).returncode, 0)
+            after = record(json.loads(hive(root, "cost", "--task", THREAD).stdout))
+            self.assertEqual(
+                after["host_reported_reason"], "cost_state_before_last_request"
+            )
+            self.assertEqual(after["priced_subset_usd"], "0.000438000000")
+            self.assertEqual(after["parse_gaps"], 0)
+            with sqlite3.connect(root / "state/telemetry.sqlite3") as db:
+                self.assertEqual(
+                    db.execute(
+                        "SELECT observed,last_observed FROM responses"
+                    ).fetchone(),
+                    ("2026-09-24T00:00:00+00:00", "2026-09-24T00:02:00+00:00"),
+                )
+
+    def test_host_total_comparison_and_resume_guards(self) -> None:
+        def state(**changes: object) -> bytes:
+            value: dict[str, object] = {
+                "type": "cost-state",
+                "startTime": "2026-09-23T23:59:00Z",
+                "timestamp": "2026-09-24T00:01:00Z",
+                "totalCostUSD": 0.001,
+                "hasUnknownModelCost": False,
+            }
+            value.update(changes)
+            return (json.dumps(value) + "\n").encode()
+
+        cases = (
+            ("single", state(), None),
+            (
+                "incremental",
+                state(totalCostUSD=0.0001, timestamp="2026-09-24T00:00:10Z") + state(),
+                None,
+            ),
+            ("epoch", state(startTime=1790207940000), None),
+            ("offset", state(timestamp="2026-09-23T17:01:00-07:00"), None),
+            ("unknown", state(hasUnknownModelCost=True), None),
+            ("missing", b"", "no_cost_state"),
+            (
+                "resumed",
+                state() + state(startTime="2026-09-24T00:00:30Z"),
+                "multiple_process_segments",
+            ),
+            (
+                "stale",
+                state(timestamp="2026-09-24T00:00:00Z"),
+                "cost_state_before_last_request",
+            ),
+            (
+                "late_start",
+                state(startTime="2026-09-24T00:00:30Z"),
+                "process_starts_after_first_request",
+            ),
+            ("negative", state(totalCostUSD=0.000001), "negative_difference"),
+            ("invalid", state(totalCostUSD=True), "invalid_cost_state"),
+            ("no_timestamp", state(timestamp=None), "invalid_cost_state"),
+            ("nonfinite", state(totalCostUSD=float("nan")), "invalid_cost_state"),
+        )
+        for name, states, reason in cases:
+            with self.subTest(name=name), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                path = root / f"{THREAD}.jsonl"
+                path.write_bytes(assistant("req_main") + states)
+                command = (
+                    "telemetry",
+                    "collect",
+                    "--task",
+                    THREAD,
+                    "--transcript",
+                    str(path),
+                )
+                collected = hive(root, *command)
+                self.assertEqual(collected.returncode, 0, collected.stderr)
+                result = hive(root, "cost", "--task", THREAD)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                report = record(json.loads(result.stdout))
+                self.assertEqual(report["host_reported_reason"], reason)
+                if reason is not None:
+                    self.assertIsNone(report["host_reported"])
+                    self.assertIsNone(report["unrecorded_usd_lower_bound"])
+                else:
+                    self.assertEqual(record(report["host_reported"])["usd"], "0.001")
+                    self.assertEqual(
+                        record(report["host_reported"])["has_unknown_model_cost"],
+                        name == "unknown",
+                    )
+                    self.assertEqual(report["priced_subset_usd"], "0.000438000000")
+                    self.assertEqual(
+                        report["unrecorded_usd_lower_bound"], "0.000562000000"
+                    )
+                    # A complete reread never adds cumulative process totals.
+                    self.assertEqual(hive(root, *command, "--from-start").returncode, 0)
+                    reread = record(
+                        json.loads(hive(root, "cost", "--task", THREAD).stdout)
+                    )
+                    self.assertEqual(reread["host_reported"], report["host_reported"])
+                    self.assertEqual(reread["host_process_segments"], 1)
+
+    def test_host_total_must_cover_subagents_and_ignores_their_cost_states(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            main = root / f"{THREAD}.jsonl"
+            total = {
+                "type": "cost-state",
+                "startTime": "2026-09-23T23:00:00Z",
+                "timestamp": "2026-09-24T00:01:00Z",
+                "totalCostUSD": 1,
+            }
+            main.write_bytes(
+                assistant("req_main") + (json.dumps(total) + "\n").encode()
+            )
+            child = root / THREAD / "subagents/agent-child.jsonl"
+            child.parent.mkdir(parents=True)
+            request = record(json.loads(assistant("req_child", agent="child")))
+            request["timestamp"] = "2026-09-24T00:02:00Z"
+            total.update(
+                sessionId=THREAD,
+                agentId="child",
+                isSidechain=True,
+                timestamp="2026-09-24T00:03:00Z",
+                startTime="2026-09-23T22:00:00Z",
+            )
+            child.write_bytes(
+                (json.dumps(request) + "\n" + json.dumps(total) + "\n").encode()
+            )
+            for path in (main, child):
+                self.assertEqual(
+                    hive(
+                        root,
+                        "telemetry",
+                        "collect",
+                        "--task",
+                        THREAD,
+                        "--transcript",
+                        str(path),
+                    ).returncode,
+                    0,
+                )
+            result = record(json.loads(hive(root, "cost", "--task", THREAD).stdout))
+            self.assertEqual(
+                result["host_reported_reason"], "cost_state_before_last_request"
+            )
+            self.assertEqual(result["host_process_segments"], 1)
+            self.assertIsNone(result["host_reported"])
+
     def test_commands_update_partial_requests_and_keep_each_file_cursor(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

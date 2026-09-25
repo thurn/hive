@@ -7,7 +7,7 @@ from hive.errors import ErrorCode, HiveError
 from hive.jsonvalue import integer, parse, sequence, string
 from hive.usage import tokens
 
-VERSION = 2
+VERSION = 3
 
 SCHEMA = (
     """CREATE TABLE IF NOT EXISTS sources (
@@ -61,6 +61,20 @@ def add_claude(connection: sqlite3.Connection) -> None:
         description TEXT, spawn_depth INTEGER, PRIMARY KEY(task,agent))""")
 
 
+def add_cost_states(connection: sqlite3.Connection) -> None:
+    connection.execute("ALTER TABLE responses ADD COLUMN last_observed TEXT")
+    connection.execute("UPDATE responses SET last_observed=observed")
+    # Replay Claude files in the normal per-file byte budget to recover host
+    # totals and the last streamed usage time; first request times stay fixed.
+    connection.execute(
+        "UPDATE sources SET position=0,skipping=0,remaining=NULL WHERE host='claude'"
+    )
+    connection.execute("""CREATE TABLE claude_cost_states (
+        task TEXT NOT NULL, start TEXT NOT NULL, observed TEXT NOT NULL,
+        usd TEXT NOT NULL, unknown_model INTEGER NOT NULL,
+        PRIMARY KEY(task,start))""")
+
+
 def version(connection: sqlite3.Connection) -> int:
     raw: object = connection.execute("PRAGMA user_version").fetchone()
     if not isinstance(raw, tuple) or len(raw) != 1:
@@ -105,8 +119,10 @@ def prepare(connection: sqlite3.Connection, *, write: bool) -> None:
                 )
             if current == VERSION:
                 return
-            if current == 1:
-                add_claude(connection)
+            if current in (1, 2):
+                if current == 1:
+                    add_claude(connection)
+                add_cost_states(connection)
                 connection.execute(f"PRAGMA user_version={VERSION}")
                 return
             existing = tables(connection)
@@ -158,6 +174,7 @@ def prepare(connection: sqlite3.Connection, *, write: bool) -> None:
                 if name in existing:
                     connection.execute(f"DROP TABLE legacy_{name}")
             add_claude(connection)
+            add_cost_states(connection)
             connection.execute(f"PRAGMA user_version={VERSION}")
     finally:
         connection.execute("PRAGMA busy_timeout=100")

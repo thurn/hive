@@ -51,3 +51,5 @@ Never restore over the live database. Compare descriptions, priorities, dependen
 ## Cutover
 
 Preserve Fulcrum's database, assignments, services, skill links and configuration. Install Hive skills only after resolving name conflicts, and first use an isolated Hive config/database. Refile selected intent with fresh bead IDs and links to originals only after Fulcrum stops executing that work. Activate production Hive, collector and any optional transport separately after acceptance. Rollback restores the prior skill links/configuration and stops the opt-in collector; it does not overwrite Fulcrum data.
+
+Claude host totals are compared only when one process start covers the recorded requests and its last timestamp follows every priced request, including subagents. `host_reported_reason` explains why comparison is unavailable (such as a resume, a stale total or missing records); Hive never sums process totals. `has_unknown_model_cost` means the host figure is itself incomplete. `unrecorded_usd_lower_bound` is disclosure only and is never attributed to a bead or tool.

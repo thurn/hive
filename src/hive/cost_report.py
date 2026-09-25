@@ -3,6 +3,7 @@
 import json
 from collections import Counter
 from dataclasses import replace
+from datetime import datetime
 
 from hive.claude_usage import Modifiers
 from hive.errors import ErrorCode, HiveError
@@ -10,7 +11,7 @@ from hive.identity import CodexTaskId, Host, ModelId, PricingTier, ResponseId, U
 from hive.jsonvalue import integer, parse, sequence, string
 from hive.price_evidence import apply_updates, usage_updates
 from hive.pricing import Quote, claude_quote, claude_reason, dollars, quote
-from hive.usage import Tokens, tokens
+from hive.usage import Tokens, timestamp, tokens
 from hive.usage_store import UsageStore, row, source_status, stored_host
 
 
@@ -116,7 +117,7 @@ def report(
                 "Claude observes modifiers per request; --tier is not supported",
             )
         cursor = connection.execute(
-            "SELECT r.response, r.usage, CASE WHEN r.host='claude' THEN r.model ELSE m.model END, m.conflicted, e.quote, r.host, r.modifiers, r.flags, r.complete "
+            "SELECT r.response, r.usage, CASE WHEN r.host='claude' THEN r.model ELSE m.model END, m.conflicted, e.quote, r.host, r.modifiers, r.flags, r.complete, COALESCE(r.last_observed,r.observed) "
             "FROM responses r LEFT JOIN turn_models m ON r.task=m.task AND r.turn=m.turn AND r.host='codex' "
             "LEFT JOIN response_estimates e ON r.response=e.response AND e.tier=CASE WHEN r.host='claude' THEN r.modifier_key ELSE ? END "
             "WHERE r.task=?",
@@ -129,6 +130,7 @@ def report(
         amount = 0
         server_fees = 0
         observed = 0
+        last_priced: datetime | None = None
         observed_modifiers: Counter[Modifiers] = Counter()
         while True:
             fetched: object = cursor.fetchmany(256)
@@ -146,7 +148,8 @@ def report(
                     raw_modifiers,
                     raw_flags,
                     complete,
-                ) = row(raw, 9)
+                    observed_at,
+                ) = row(raw, 10)
                 request_host = Host(string(raw_host, "request host"))
                 flags = tuple(
                     string(value, "usage flag")
@@ -213,6 +216,9 @@ def report(
                     raise HiveError(
                         ErrorCode.INVALID_RECORD, "Missing estimate outcome"
                     )
+                observed_time = timestamp(observed_at)
+                if last_priced is None or observed_time > last_priced:
+                    last_priced = observed_time
                 counts["priced"] += 1
                 amount += quoted.amount
                 server_fees += (
@@ -222,6 +228,11 @@ def report(
                 count, subtotal = groups.get(key, (0, 0))
                 groups[key] = count + 1, subtotal + quoted.amount
         health = source_status(connection, task)
+        host_totals: dict[str, object] = {}
+        if host == Host.CLAUDE:
+            from hive.claude_cost_state import comparison
+
+            host_totals = comparison(connection, task, amount, last_priced)
     unretained = retain(store, fresh)
     unpriced = observed - counts["priced"]
     return {
@@ -262,7 +273,7 @@ def report(
             else "native turn context; live model overrides are not established"
         ),
         "coverage": (
-            "API-equivalent estimate from recorded requests, not billing; Claude Code makes requests its transcript omits, so this is a lower bound."
+            "API-equivalent estimate from recorded requests, not billing; Claude Code makes requests its transcript omits, so this is a lower bound. A host total with has_unknown_model_cost is itself incomplete."
             if host == Host.CLAUDE
             else "API-equivalent estimate, not billing. Configured model and assumed tier; thread association is not a token allocation. Excludes tool fees and regional uplifts."
         ),
@@ -272,5 +283,6 @@ def report(
         ],
         "unpriced_examples": examples,
         "unretained_estimates": unretained,
+        **host_totals,
         **health,
     }
