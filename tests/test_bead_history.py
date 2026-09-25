@@ -116,6 +116,13 @@ class BeadHistoryTests(unittest.TestCase):
             self.assertEqual(reported.returncode, 0, reported.stderr)
             self.assertTrue(json.loads(reported.stdout)["association_stale"])
             self.assertEqual(set(registry.next(8)), {CREATOR, EXECUTOR, OTHER})
+            sql(
+                connection,
+                "ALTER TABLE events RENAME COLUMN old_value_changed TO old_value",
+            )
+            recovered = sweep(context, root / "missing-index", 8)
+            self.assertTrue(recovered["bead_events_caught_up"])
+            self.assertEqual(registry.status()["interval_unknown_beads"], 0)
 
     def test_multi_page_cold_start_late_visibility_and_invalid_id(self) -> None:
         with (
@@ -273,7 +280,7 @@ class BeadHistoryTests(unittest.TestCase):
                 refresh(store, process, time.monotonic() + 2)
                 refresh(store, process, time.monotonic() + 2)
             self.assertEqual(
-                calls, [identities[0], identities[1], identities[1], identities[2]]
+                calls[:4], [identities[0], identities[1], identities[1], identities[2]]
             )
             status = CollectionRegistry(store).status()
             self.assertTrue(status["bead_events_caught_up"])

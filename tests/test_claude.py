@@ -91,7 +91,7 @@ class ClaudeTests(unittest.TestCase):
                 record(json.loads(result.stdout))["priced_subset_usd"], "0.000438000000"
             )
             with sqlite3.connect(state / "telemetry.sqlite3") as db:
-                self.assertEqual(db.execute("PRAGMA user_version").fetchone(), (7,))
+                self.assertEqual(db.execute("PRAGMA user_version").fetchone(), (8,))
 
     def test_host_totals_replay_old_cursors_and_reject_late_output(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -123,7 +123,14 @@ class ClaudeTests(unittest.TestCase):
                 db.execute("DROP TABLE claude_cost_states")
                 db.execute("DROP VIEW claude_agent_parents")
                 db.execute("DROP TABLE claude_tool_owners")
-                for table in ("bead_events", "bead_event_cursor", "bead_snapshots"):
+                for table in (
+                    "bead_replays",
+                    "bead_intervals",
+                    "bead_seen_owners",
+                    "bead_events",
+                    "bead_event_cursor",
+                    "bead_snapshots",
+                ):
                     db.execute("DROP TABLE " + table)
                 db.execute("ALTER TABLE responses DROP COLUMN last_observed")
                 db.execute("PRAGMA user_version=2")

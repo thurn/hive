@@ -34,7 +34,10 @@ def main() -> int:
         groups = parser.add_subparsers(dest="group", required=True)
         groups.add_parser("source")
         cost = groups.add_parser("cost")
-        cost.add_argument("--task", required=True)
+        cost_target = cost.add_mutually_exclusive_group(required=True)
+        cost_target.add_argument("--task")
+        cost_target.add_argument("--bead")
+        cost_target.add_argument("--reconcile", action="store_true")
         cost.add_argument(
             "--native-index", default=str(Path.home() / ".codex/state_5.sqlite")
         )
@@ -53,6 +56,7 @@ def main() -> int:
         usage = actions.add_parser("usage")
         usage.add_argument("--task", required=True)
         actions.add_parser("status")
+        actions.add_parser("reset-bead-events")
         otlp_config = actions.add_parser("otlp-config")
         otlp_config.add_argument("--port", type=int, default=4319)
         otlp_config.add_argument("--secret-file")
@@ -79,61 +83,96 @@ def main() -> int:
                 "directory": str(context.source),
             }
         elif parsed.group == "cost":
-            store = UsageStore(context.state / "telemetry.sqlite3")
-            registry = CollectionRegistry(store)
-            discoveries, _ = probe(
-                (CodexTaskId(parsed.task),),
-                Path(parsed.native_index),
-                context.claude_projects,
-                registry,
-            )
-            found = discoveries[CodexTaskId(parsed.task)]
-            if parsed.cursor is not None and not parsed.requests:
-                raise HiveError(ErrorCode.INVALID_INPUT, "--cursor requires --requests")
-            if parsed.requests:
-                from hive.request_detail import report as request_report
+            if parsed.task is None:
+                if parsed.requests or parsed.cursor is not None:
+                    raise HiveError(
+                        ErrorCode.INVALID_INPUT, "Request paging requires --task"
+                    )
+                from hive.bead_cost import report as bead_report
 
-                result = request_report(
+                store = UsageStore(context.state / "telemetry.sqlite3")
+                registry = CollectionRegistry(store)
+                history_error: str | None = None
+                try:
+                    links, gaps = refresh_history(
+                        store,
+                        BeadsProcess(BeadsConnection.read(context.beads)),
+                        time.monotonic() + 2,
+                    )
+                    registry.refresh(links, gaps, None)
+                except (HiveError, OSError) as error:
+                    history_error = str(error)
+                result = bead_report(
                     store,
-                    CodexTaskId(parsed.task),
+                    parsed.bead,
                     None if parsed.tier is None else PricingTier(parsed.tier),
-                    cursor=parsed.cursor,
-                    host_hint=found.host,
+                    history_error=history_error,
                 )
             else:
-                result = report(
-                    store,
-                    CodexTaskId(parsed.task),
-                    None if parsed.tier is None else PricingTier(parsed.tier),
-                    host_hint=found.host,
+                store = UsageStore(context.state / "telemetry.sqlite3")
+                registry = CollectionRegistry(store)
+                discoveries, _ = probe(
+                    (CodexTaskId(parsed.task),),
+                    Path(parsed.native_index),
+                    context.claude_projects,
+                    registry,
                 )
-            links, gaps, failure = None, None, None
-            try:
-                links, gaps = refresh_history(
-                    store,
-                    BeadsProcess(BeadsConnection.read(context.beads), timeout=2),
-                    time.monotonic() + 2,
+                found = discoveries[CodexTaskId(parsed.task)]
+                if parsed.cursor is not None and not parsed.requests:
+                    raise HiveError(
+                        ErrorCode.INVALID_INPUT, "--cursor requires --requests"
+                    )
+                if parsed.requests:
+                    from hive.request_detail import report as request_report
+
+                    result = request_report(
+                        store,
+                        CodexTaskId(parsed.task),
+                        None if parsed.tier is None else PricingTier(parsed.tier),
+                        cursor=parsed.cursor,
+                        host_hint=found.host,
+                    )
+                else:
+                    result = report(
+                        store,
+                        CodexTaskId(parsed.task),
+                        None if parsed.tier is None else PricingTier(parsed.tier),
+                        host_hint=found.host,
+                    )
+                links, gaps, failure = None, None, None
+                try:
+                    links, gaps = refresh_history(
+                        store,
+                        BeadsProcess(BeadsConnection.read(context.beads), timeout=2),
+                        time.monotonic() + 2,
+                    )
+                except (HiveError, OSError) as error:
+                    failure = str(error)
+                # Refreshing the link cache is incidental to a report; contention
+                # leaves the cached associations in place, reported as stale.
+                try:
+                    registry.refresh(links, gaps, failure)
+                except HiveError as error:
+                    if error.code != ErrorCode.BUSY:
+                        raise
+                    failure = failure or error.detail
+                result["association_stale"] = (
+                    failure is not None
+                    or not registry.status()["bead_events_caught_up"]
                 )
-            except (HiveError, OSError) as error:
-                failure = str(error)
-            # Refreshing the link cache is incidental to a report; contention
-            # leaves the cached associations in place, reported as stale.
-            try:
-                registry.refresh(links, gaps, failure)
-            except HiveError as error:
-                if error.code != ErrorCode.BUSY:
-                    raise
-                failure = failure or error.detail
-            result["association_stale"] = (
-                failure is not None or not registry.status()["bead_events_caught_up"]
-            )
-            result["associated_beads"] = registry.associations(CodexTaskId(parsed.task))
-            result["association_gaps"] = registry.gaps()
-            result["usage_collectable"] = (
-                found.host is not None and found.path is not None
-            )
-            if found.error:
-                result["collection_gap"] = found.error
+                result["associated_beads"] = registry.associations(
+                    CodexTaskId(parsed.task)
+                )
+                result["association_gaps"] = registry.gaps()
+                result["usage_collectable"] = (
+                    found.host is not None and found.path is not None
+                )
+                if found.error:
+                    result["collection_gap"] = found.error
+        elif parsed.action == "reset-bead-events":
+            from hive.bead_intervals import reset
+
+            result = reset(UsageStore(context.state / "telemetry.sqlite3"))
         elif parsed.action == "otlp-config":
             from hive.otlp_storage import config
 

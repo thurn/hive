@@ -73,7 +73,7 @@ def main() -> int:
         )
     )
     fast = "--fast" in sys.argv[1:]
-    deadline = time.monotonic() + (30 if fast else 120)
+    deadline = time.monotonic() + (30 if fast else 180)
     if boundary_rules():
         return 1
     python = sys.executable
@@ -166,6 +166,19 @@ def main() -> int:
         ]
     )
     if not fast:
+        commands.append(
+            [
+                python,
+                "-m",
+                "unittest",
+                "discover",
+                "-s",
+                "tests",
+                "-p",
+                "test_bead_cost.py",
+                "-v",
+            ]
+        )
         commands.append(
             [
                 python,

@@ -14,15 +14,26 @@ from hive.identity import ThreadId
 from hive.jsonvalue import integer, record, sequence, string
 from hive.locking import file_lock
 from hive.thread_links import ThreadLink, decode, thread_id
+from hive.usage import timestamp
 from hive.usage_store import UsageStore, row
 
 
 def save(connection: sqlite3.Connection, values: tuple[Event, ...]) -> None:
-    connection.executemany(
-        "INSERT INTO bead_events VALUES (?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET "
-        "bead=excluded.bead,kind=excluded.kind,old_status=excluded.old_status,old_assignee=excluded.old_assignee,"
-        "new_status=excluded.new_status,new_assignee=excluded.new_assignee,occurred=excluded.occurred,error=excluded.error",
-        [
+    from hive.bead_intervals import owners
+
+    for event in values:
+        connection.execute(
+            "INSERT OR IGNORE INTO bead_snapshots(bead,status,assignee,listed,rebuilt) VALUES (?,'','',0,0)",
+            (event.bead,),
+        )
+        changed = connection.execute(
+            "INSERT INTO bead_events VALUES (?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET "
+            "bead=excluded.bead,kind=excluded.kind,old_status=excluded.old_status,old_assignee=excluded.old_assignee,"
+            "new_status=excluded.new_status,new_assignee=excluded.new_assignee,occurred=excluded.occurred,error=excluded.error "
+            "WHERE bead_events.bead IS NOT excluded.bead OR bead_events.kind IS NOT excluded.kind "
+            "OR bead_events.old_status IS NOT excluded.old_status OR bead_events.old_assignee IS NOT excluded.old_assignee "
+            "OR bead_events.new_status IS NOT excluded.new_status OR bead_events.new_assignee IS NOT excluded.new_assignee "
+            "OR bead_events.occurred IS NOT excluded.occurred OR bead_events.error IS NOT excluded.error",
             (
                 event.identity,
                 event.bead,
@@ -33,19 +44,24 @@ def save(connection: sqlite3.Connection, values: tuple[Event, ...]) -> None:
                 event.new_assignee,
                 None if event.occurred is None else event.occurred.isoformat(),
                 event.error,
+            ),
+        ).rowcount
+        if changed:
+            connection.execute(
+                "UPDATE bead_snapshots SET dirty=1 WHERE bead=?", (event.bead,)
             )
-            for event in values
-        ],
-    )
-    connection.executemany(
-        "UPDATE bead_snapshots SET rebuilt=1 WHERE bead=?",
-        [(event.bead,) for event in values],
-    )
+        owners(connection, event.bead, (event,))
+        connection.execute(
+            "UPDATE bead_snapshots SET rebuilt=1 WHERE bead=? AND listed=1",
+            (event.bead,),
+        )
 
 
 def historical(connection: sqlite3.Connection) -> tuple[ThreadLink, ...]:
     fetched: object = connection.execute(
-        "SELECT bead,old_assignee FROM bead_events UNION SELECT bead,new_assignee FROM bead_events"
+        "SELECT bead,old_assignee FROM bead_events UNION SELECT bead,new_assignee FROM bead_events "
+        "UNION SELECT bead,thread FROM bead_seen_owners WHERE bead NOT IN (SELECT bead FROM bead_replays WHERE renamed_to IS NOT NULL) "
+        "UNION SELECT bead,thread FROM bead_intervals"
     ).fetchall()
     links: set[ThreadLink] = set()
     for value in sequence(fetched, "historical assignees"):
@@ -92,7 +108,7 @@ def _refresh(
 
     listed = bounded().list_all()
     links, gaps = decode(listed)
-    snapshots: list[tuple[str, str, str]] = []
+    snapshots: list[tuple[str, str, str, str | None]] = []
     for raw in sequence(listed, "beads"):
         bead = record(raw, "bead")
         identity = string(bead.get("id"), "bead ID")
@@ -105,6 +121,11 @@ def _refresh(
                         ""
                         if bead.get("assignee") is None
                         else string(bead["assignee"], "assignee", empty=True)
+                    ),
+                    (
+                        None
+                        if bead.get("created_at") is None
+                        else timestamp(bead["created_at"]).isoformat()
                     ),
                 )
             )
@@ -120,11 +141,11 @@ def _refresh(
         ]
         connection.execute("UPDATE bead_snapshots SET listed=0")
         connection.executemany(
-            "UPDATE bead_snapshots SET rebuilt=0 WHERE bead=?", changed
+            "UPDATE bead_snapshots SET rebuilt=0,dirty=1 WHERE bead=?", changed
         )
         connection.executemany(
-            "INSERT INTO bead_snapshots(bead,status,assignee,listed) VALUES (?,?,?,1) "
-            "ON CONFLICT(bead) DO UPDATE SET status=excluded.status,assignee=excluded.assignee,listed=1",
+            "INSERT INTO bead_snapshots(bead,status,assignee,created,listed) VALUES (?,?,?,?,1) "
+            "ON CONFLICT(bead) DO UPDATE SET dirty=CASE WHEN bead_snapshots.status<>excluded.status OR bead_snapshots.assignee<>excluded.assignee THEN 1 ELSE dirty END,status=excluded.status,assignee=excluded.assignee,created=excluded.created,listed=1,native_missing=0",
             snapshots,
         )
         previous: object = connection.execute(
@@ -191,21 +212,23 @@ def _refresh(
                 with store.connect() as connection:
                     save(connection, values)
                     connection.execute(
-                        "UPDATE bead_snapshots SET rebuilt=1 WHERE bead=?", (identity,)
+                        "UPDATE bead_snapshots SET rebuilt=1,native_missing=? WHERE bead=?",
+                        (
+                            int(not values),
+                            identity,
+                        ),
                     )
     except (HiveError, OSError) as error:
         caught_up = False
         failure = str(error)
+    if caught_up:
+        from hive.bead_intervals import refresh as replay_intervals
+
+        caught_up = replay_intervals(store, process, deadline)
     with store.connect() as connection:
         connection.execute(
             "UPDATE bead_event_cursor SET caught_up=?,error=? WHERE singleton=1",
             (int(caught_up), failure),
-        )
-        connection.execute(
-            "UPDATE bead_snapshots SET unknown_reason=CASE "
-            "WHEN ? IS NOT NULL THEN ? WHEN EXISTS (SELECT 1 FROM bead_events e WHERE e.bead=bead_snapshots.bead AND e.error IS NOT NULL) "
-            "THEN 'Invalid event time' WHEN NOT EXISTS (SELECT 1 FROM bead_events e WHERE e.bead=bead_snapshots.bead) THEN 'No ownership events' END",
-            (failure, failure),
         )
         combined = set(links) | set(historical(connection))
         if not caught_up:
