@@ -3,9 +3,11 @@
 import argparse
 import json
 import sys
+import time
 from pathlib import Path
 from typing import NoReturn
 
+from hive.bead_history import refresh as refresh_history
 from hive.beads_connection import BeadsConnection
 from hive.beads_process import BeadsProcess
 from hive.collection import sweep
@@ -14,7 +16,6 @@ from hive.cost_report import report
 from hive.errors import ErrorCode, HiveError
 from hive.identity import CodexTaskId, PricingTier
 from hive.launch_context import LaunchContext
-from hive.thread_links import read
 from hive.transcript_discovery import probe
 from hive.usage_store import UsageStore
 
@@ -108,8 +109,10 @@ def main() -> int:
                 )
             links, gaps, failure = None, None, None
             try:
-                links, gaps = read(
-                    BeadsProcess(BeadsConnection.read(context.beads), timeout=2)
+                links, gaps = refresh_history(
+                    store,
+                    BeadsProcess(BeadsConnection.read(context.beads), timeout=2),
+                    time.monotonic() + 2,
                 )
             except (HiveError, OSError) as error:
                 failure = str(error)
@@ -121,7 +124,9 @@ def main() -> int:
                 if error.code != ErrorCode.BUSY:
                     raise
                 failure = failure or error.detail
-            result["association_stale"] = failure is not None
+            result["association_stale"] = (
+                failure is not None or not registry.status()["bead_events_caught_up"]
+            )
             result["associated_beads"] = registry.associations(CodexTaskId(parsed.task))
             result["association_gaps"] = registry.gaps()
             result["usage_collectable"] = (
@@ -153,12 +158,13 @@ def main() -> int:
                 UsageStore(context.state / "telemetry.sqlite3")
             ).status()
         elif parsed.action == "links":
-            links, gaps = read(
-                BeadsProcess(BeadsConnection.read(context.beads), timeout=2)
+            store = UsageStore(context.state / "telemetry.sqlite3")
+            links, gaps = refresh_history(
+                store,
+                BeadsProcess(BeadsConnection.read(context.beads), timeout=2),
+                time.monotonic() + 2,
             )
-            registry = CollectionRegistry(
-                UsageStore(context.state / "telemetry.sqlite3")
-            )
+            registry = CollectionRegistry(store)
             registry.refresh(links, gaps, None)
             tasks = tuple(sorted({link.task for link in links}))
             linked: list[dict[str, object]] = []

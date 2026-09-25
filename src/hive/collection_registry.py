@@ -7,6 +7,8 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 
+from hive.bead_history import historical
+from hive.bead_history import status as history_status
 from hive.identity import CodexTaskId, Host
 from hive.jsonvalue import integer, sequence, string
 from hive.otlp_storage import status as otlp_status
@@ -31,6 +33,7 @@ class CollectionRegistry:
     ) -> None:
         with self.connect() as connection:
             if links is not None and gaps is not None:
+                links = tuple(sorted(set(links) | set(historical(connection))))
                 tasks = {link.task for link in links}
                 previous: object = connection.execute(
                     "SELECT task FROM collection_tasks"
@@ -164,6 +167,7 @@ class CollectionRegistry:
             ).fetchone()
             return {
                 "code": "CollectorStatus",
+                **history_status(connection),
                 **otlp_status(self.usage.path.parent),
                 "linked_threads": integer(total, "linked threads"),
                 "database_bytes": self.usage.path.stat().st_size,

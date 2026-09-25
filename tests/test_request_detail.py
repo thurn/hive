@@ -76,6 +76,8 @@ class RequestDetailTests(unittest.TestCase):
                 db.execute("ALTER TABLE claude_cost_states DROP COLUMN timestamp_known")
                 db.execute("DROP VIEW claude_agent_parents")
                 db.execute("DROP TABLE claude_tool_owners")
+                for table in ("bead_events", "bead_event_cursor", "bead_snapshots"):
+                    db.execute("DROP TABLE " + table)
                 db.execute("PRAGMA user_version=3")
             store.collect(THREAD, path)
             with sqlite3.connect(store.path) as db:

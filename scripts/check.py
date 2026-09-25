@@ -175,6 +175,19 @@ def main() -> int:
                 "-s",
                 "tests",
                 "-p",
+                "test_bead_history.py",
+                "-v",
+            ]
+        )
+        commands.append(
+            [
+                python,
+                "-m",
+                "unittest",
+                "discover",
+                "-s",
+                "tests",
+                "-p",
                 "test_breakdown.py",
                 "-v",
             ]

@@ -508,6 +508,8 @@ class EventTests(unittest.TestCase):
                 )
                 db.execute("DROP VIEW claude_agent_parents")
                 db.execute("DROP TABLE claude_tool_owners")
+                for table in ("bead_events", "bead_event_cursor", "bead_snapshots"):
+                    db.execute("DROP TABLE " + table)
                 db.execute("PRAGMA user_version=4")
             result = store.collect(THREAD, path)
             self.assertGreater(int(str(result["read_bytes"])), 0)

@@ -5,6 +5,7 @@ import time
 from collections import deque
 from pathlib import Path
 
+from hive.bead_history import refresh as refresh_history
 from hive.beads_connection import BeadsConnection
 from hive.beads_process import BeadsProcess
 from hive.claude_store import files
@@ -16,7 +17,6 @@ from hive.identity import Host
 from hive.jsonvalue import string
 from hive.launch_context import LaunchContext
 from hive.locking import file_lock
-from hive.thread_links import read
 from hive.transcript_discovery import probe
 from hive.usage_store import UsageStore
 
@@ -34,17 +34,29 @@ def sweep(context: LaunchContext, index: Path, limit: int) -> dict[str, object]:
         gaps = None
         registry_error: str | None = None
         try:
-            links, gaps = read(
-                BeadsProcess(BeadsConnection.read(context.beads), timeout=2)
+            links, gaps = refresh_history(
+                usage,
+                BeadsProcess(BeadsConnection.read(context.beads), timeout=2),
+                min(deadline, time.monotonic() + 2),
             )
         except (HiveError, OSError) as error:
             registry_error = str(error)
+            with usage.connect() as connection:
+                connection.execute(
+                    "UPDATE bead_event_cursor SET caught_up=0,error=? WHERE singleton=1",
+                    (registry_error,),
+                )
         registry.refresh(links, gaps, registry_error)
+        from hive.bead_history import status as history_status
+
+        with usage.connect(write=False) as connection:
+            bead_health = history_status(connection)
         event_health = retain_events(
             usage,
             context.state,
             min(deadline, time.monotonic() + 0.25),
-            permitted=registry_error is None,
+            permitted=registry_error is None
+            and bead_health["bead_events_caught_up"] is True,
         )
         event_health.update(ingest(usage, context.state, deadline))
         selected = registry.next(limit)
@@ -116,6 +128,7 @@ def sweep(context: LaunchContext, index: Path, limit: int) -> dict[str, object]:
         return {
             "code": "CollectionBatch",
             **event_health,
+            **bead_health,
             "source": context.commit,
             "registry_error": registry_error,
             "native_index_error": native_error,

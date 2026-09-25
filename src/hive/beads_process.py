@@ -14,6 +14,19 @@ class BeadsProcess:
     timeout: float = 10
 
     def list_all(self) -> object:
+        return self._run(("list", "--all", "--limit", "0"))
+
+    def event_page(self, after: str) -> object:
+        from hive.bead_queries import page
+
+        return self._run(("sql", page(after)))
+
+    def bead_events(self, identifier: str) -> object:
+        from hive.bead_queries import bead
+
+        return self._run(("sql", bead(identifier)))
+
+    def _run(self, arguments: tuple[str, ...]) -> object:
         command = [
             "bd",
             "-C",
@@ -22,10 +35,7 @@ class BeadsProcess:
             "--dolt-auto-commit",
             "off",
             "--json",
-            "list",
-            "--all",
-            "--limit",
-            "0",
+            *arguments,
         ]
         try:
             result = subprocess.run(

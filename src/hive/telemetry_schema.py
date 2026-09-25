@@ -7,7 +7,7 @@ from hive.errors import ErrorCode, HiveError
 from hive.jsonvalue import integer, parse, sequence, string
 from hive.usage import tokens
 
-VERSION = 6
+VERSION = 7
 
 SCHEMA = (
     """CREATE TABLE IF NOT EXISTS sources (
@@ -119,7 +119,7 @@ def prepare(connection: sqlite3.Connection, *, write: bool) -> None:
                 )
             if current == VERSION:
                 return
-            if current in (1, 2, 3, 4, 5):
+            if current in (1, 2, 3, 4, 5, 6):
                 if current == 1:
                     add_claude(connection)
                 if current < 3:
@@ -131,7 +131,11 @@ def prepare(connection: sqlite3.Connection, *, write: bool) -> None:
                     create_events(connection)
                 from hive.agent_store import create as create_agents
 
-                create_agents(connection)
+                if current < 6:
+                    create_agents(connection)
+                from hive.bead_schema import create as create_beads
+
+                create_beads(connection)
                 create(connection)
                 connection.execute(f"PRAGMA user_version={VERSION}")
                 return
@@ -192,6 +196,9 @@ def prepare(connection: sqlite3.Connection, *, write: bool) -> None:
             from hive.agent_store import create as create_agents
 
             create_agents(connection)
+            from hive.bead_schema import create as create_beads
+
+            create_beads(connection)
             create(connection)
             connection.execute(f"PRAGMA user_version={VERSION}")
     finally:
