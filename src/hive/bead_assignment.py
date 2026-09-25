@@ -88,15 +88,23 @@ class Evidence:
     def assign(self, request: Request) -> Assignment:
         if request.amount is None:
             return Assignment(request, (), "unpriced", False)
+        owner = request.thread
+        if (
+            request.host == "codex"
+            and request.agent is not None
+            and (
+                any(i.thread == request.agent for i in self.intervals)
+                or any(u.thread == request.agent for u in self.unknown)
+            )
+        ):
+            owner = ThreadId(request.agent)
         if not self.caught_up or any(
-            unknown.thread == request.thread
+            unknown.thread == owner
             and (unknown.start is None or request.at >= unknown.start)
             for unknown in self.unknown
         ):
             return Assignment(request, (), "unattributable", False)
-        relevant = [
-            interval for interval in self.intervals if interval.thread == request.thread
-        ]
+        relevant = [interval for interval in self.intervals if interval.thread == owner]
         near = any(
             abs((request.at - boundary).total_seconds()) <= 2
             for interval in relevant

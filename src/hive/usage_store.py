@@ -6,13 +6,13 @@ import sqlite3
 import stat
 from collections.abc import Iterator
 from contextlib import contextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 from pathlib import Path
 
 from hive import telemetry_schema, turn_model
 from hive.errors import ErrorCode, HiveError
-from hive.identity import CodexTaskId, Host
+from hive.identity import AgentId, CodexTaskId, Host
 from hive.jsonvalue import integer, parse, record, sequence, string
 from hive.transcript_chunks import MAX_BATCH, MAX_LINE, Line, read
 from hive.usage import MissingUsage, ResponseUsage, decode, tokens
@@ -57,6 +57,7 @@ class UsageStore:
         budget: int = MAX_BATCH,
         from_start: bool = False,
         host: Host | None = None,
+        agent: CodexTaskId | None = None,
     ) -> dict[str, object]:
         if not MAX_LINE < budget <= MAX_BATCH:
             raise HiveError(ErrorCode.INVALID_INPUT, "Invalid transcript byte budget")
@@ -67,13 +68,21 @@ class UsageStore:
             from hive.claude_store import collect
 
             return collect(self, task, path, budget=budget, from_start=from_start)
+        with self.connect() as mapping:
+            from hive.codex_folding import root
+
+            canonical = root(mapping, task)
+            if canonical != task:
+                agent, task = task, canonical
+        identity = agent or task
+        file: str = "" if agent is None else "codex-agent-" + agent
         connection: sqlite3.Connection
         device: int
         inode: int
         with self.connect() as connection:
             previous: object = connection.execute(
-                "SELECT device, inode, position, skipping FROM sources WHERE task = ? AND file = ''",
-                (task,),
+                "SELECT device, inode, position, skipping FROM sources WHERE task = ? AND file = ?",
+                (task, file),
             ).fetchone()
             device, inode, position, skipping = (
                 (0, 0, 0, 0)
@@ -83,12 +92,13 @@ class UsageStore:
             remaining: int | None = None
             incomplete: bool | None = None
             read_bytes = 0
+            mtime_ns = size = 0
             error: str | None = None
 
             def gap(offset: int, detail: str) -> None:
                 connection.execute(
-                    "INSERT OR IGNORE INTO gaps(task,device,inode,position,detail) VALUES (?, ?, ?, ?, ?)",
-                    (task, device, inode, offset, detail),
+                    "INSERT OR IGNORE INTO gaps(task,file,device,inode,position,detail) VALUES (?, ?, ?, ?, ?, ?)",
+                    (task, file, device, inode, offset, detail),
                 )
 
             try:
@@ -108,7 +118,8 @@ class UsageStore:
                         raise ValueError(
                             "Transcript must start with native session metadata"
                         )
-                    decode(first, task)
+                    decode(first, identity)
+                    mtime_ns, size = info.st_mtime_ns, info.st_size
                     if (device, inode) != (
                         info.st_dev,
                         info.st_ino,
@@ -138,11 +149,27 @@ class UsageStore:
                             continue
                         try:
                             raw = parse(line.data.decode("utf-8"))
-                            model = turn_model.decode(raw, task)
+                            model = turn_model.decode(raw, identity)
                             if model is not None:
+                                model = replace(
+                                    model,
+                                    owner=replace(
+                                        model.owner,
+                                        thread=task,
+                                        agent=None if agent is None else AgentId(agent),
+                                    ),
+                                )
                                 turn_model.save(connection, model)
-                            event = decode(raw, task)
+                            event = decode(raw, identity)
                             if event is not None:
+                                event = replace(
+                                    event,
+                                    owner=replace(
+                                        event.owner,
+                                        thread=task,
+                                        agent=None if agent is None else AgentId(agent),
+                                    ),
+                                )
                                 self.save(connection, event)
                         except (HiveError, UnicodeError) as failure:
                             gap(line.offset, str(failure))
@@ -157,11 +184,11 @@ class UsageStore:
                 error = str(failure)
                 remaining, incomplete = None, None
             connection.execute(
-                "INSERT INTO sources(task,path,device,inode,position,skipping,scanned,remaining,incomplete,error) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) "
+                "INSERT INTO sources(task,path,device,inode,position,skipping,scanned,remaining,incomplete,error,file,mtime_ns,size) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) "
                 "ON CONFLICT(task,file) DO UPDATE SET path=excluded.path, device=excluded.device, "
                 "inode=excluded.inode, position=excluded.position, skipping=excluded.skipping, "
                 "scanned=excluded.scanned, remaining=excluded.remaining, "
-                "incomplete=excluded.incomplete, error=excluded.error",
+                "incomplete=excluded.incomplete, error=excluded.error, mtime_ns=excluded.mtime_ns,size=excluded.size",
                 (
                     task,
                     str(path),
@@ -173,6 +200,9 @@ class UsageStore:
                     remaining,
                     None if incomplete is None else int(incomplete),
                     error,
+                    file,
+                    mtime_ns,
+                    size,
                 ),
             )
         return {
@@ -194,15 +224,16 @@ class UsageStore:
             else json.dumps(observed_tokens.value(), sort_keys=True)
         )
         previous: object = connection.execute(
-            "SELECT task, turn, usage, host FROM responses WHERE response = ?",
+            "SELECT task, turn, usage, host, agent FROM responses WHERE response = ?",
             (event.response,),
         ).fetchone()
         if previous is not None:
-            old_task, old_turn, old_usage, old_host = row(previous, 4)
-            if (old_task, old_turn, old_host) != (
+            old_task, old_turn, old_usage, old_host, old_agent = row(previous, 5)
+            if (old_task, old_turn, old_host, old_agent) != (
                 event.owner.task,
                 event.owner.turn,
                 event.owner.host,
+                event.owner.agent,
             ) or (
                 old_usage is not None
                 and usage is not None

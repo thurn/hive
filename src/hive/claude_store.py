@@ -179,6 +179,7 @@ def collect(
         incomplete: bool | None = None
         error: str | None = None
         read_bytes = 0
+        mtime_ns = size = 0
 
         def gap(offset: int, detail: str) -> None:
             connection.execute(
@@ -192,6 +193,7 @@ def collect(
             descriptor = os.open(path, os.O_RDONLY | os.O_NONBLOCK | os.O_NOFOLLOW)
             with os.fdopen(descriptor, "rb") as stream:
                 info = os.fstat(stream.fileno())
+                mtime_ns, size = info.st_mtime_ns, info.st_size
                 if not stat.S_ISREG(info.st_mode):
                     raise ValueError("A transcript must be a regular file")
                 if (device, inode) != (
@@ -311,6 +313,10 @@ def collect(
 
         if facts_changed:
             refresh_allocations(connection, thread)
+        connection.execute(
+            "UPDATE sources SET mtime_ns=?,size=? WHERE task=? AND file=?",
+            (mtime_ns, size, thread, key),
+        )
     if error is None:
         metadata(store, thread, path)
     return {

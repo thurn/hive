@@ -177,7 +177,7 @@ def report(
             )
         cursor = connection.execute(
             "SELECT r.response, r.usage, CASE WHEN r.host='claude' THEN r.model ELSE m.model END, m.conflicted, e.quote, r.host, r.modifiers, r.flags, r.complete, COALESCE(r.last_observed,r.observed),r.agent,r.skill "
-            "FROM responses r LEFT JOIN turn_models m ON r.task=m.task AND r.turn=m.turn AND r.host='codex' "
+            "FROM responses r LEFT JOIN turn_models m ON r.task=m.task AND r.turn=m.turn AND COALESCE(r.agent,'')=m.agent AND r.host='codex' "
             "LEFT JOIN response_estimates e ON r.response=e.response AND e.tier=CASE WHEN r.host='claude' THEN r.modifier_key ELSE ? END "
             "WHERE r.task=?",
             (selected_tier, task),

@@ -7,6 +7,8 @@
 - Related docs: `docs/invariants.md`, `docs/implementation.md` (it says "Telemetry and cost read only Codex transcripts and prices").
 - Rate source: <https://platform.claude.com/docs/en/about-claude/pricing>, checked 2026-09-23.
 
+**Dashboard amendment (2026-09-25).** Dashboard step 1 extends §§5.2, 5.4, 5.8 and 5.9: Codex spawned files validate their own child session ID, are stored at `sources(task=<root>, file="codex-agent-<child>")`, and expose that child in `request_detail.agent`. Parent and child model contexts remain separate even when native turn IDs match. Requests use the child's own ownership intervals when any exist, otherwise the root parent's; unrelated sessions are not allocated. Existing stored child observations and cursors migrate under the root without changing retained prices. This supersedes the earlier main-thread-only Codex wording in those sections.
+
 ## 1. Summary
 
 Hive estimates the cost of Codex threads today. It reads Codex's native transcript, stores each API response's token counts, and prices each response with a checked-in rate card. Claude Code sessions are already linked to beads, but they are never collected or priced.

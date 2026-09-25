@@ -25,6 +25,16 @@ def main() -> int:
             HIVE_BEADS_DIRECTORY=str(settings.beads),
             HIVE_STATE_DIRECTORY=str(settings.state),
             HIVE_CLAUDE_PROJECTS=str(settings.claude_projects),
+            HIVE_PROJECTS=json.dumps(
+                [
+                    {
+                        "id": p.id,
+                        "repository": str(p.repository),
+                        "observe_since": p.observe_since,
+                    }
+                    for p in settings.projects
+                ]
+            ),
             HIVE_MUTATION_GUARD_FD=str(descriptor),
         )
     except (

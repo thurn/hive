@@ -6,6 +6,7 @@ from dataclasses import replace
 from hive.bead_assignment import Assignment, Evidence, hour
 from hive.bead_queries import BEAD
 from hive.bead_requests import prepare, requests
+from hive.codex_folding import root
 from hive.errors import ErrorCode, HiveError
 from hive.identity import PricingTier
 from hive.jsonvalue import sequence, string
@@ -119,7 +120,7 @@ def report(
             "SELECT thread FROM bead_seen_owners WHERE bead=?", (bead,)
         ).fetchall()
         threads = {
-            string(row(value, 1)[0], "owner")
+            root(connection, string(row(value, 1)[0], "owner"))
             for value in sequence(owners, "bead owners")
         }
         creators = [
@@ -222,7 +223,7 @@ def report(
                 if reports.get(task, {}).get("complete_estimate_usd") is None
             ),
         },
-        "not_captured": "Threads that never held the bead (including reviewers that did not claim it) are not included.",
+        "not_captured": "Codex spawned reviewers without their own intervals are included through their root parent; unrelated threads that never held the bead are excluded.",
         "creator_threads": creators,
         "unretained_estimates": 0,
         "pricing_tier_assumption": selected,

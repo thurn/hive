@@ -1,23 +1,21 @@
 """A bounded observation batch that never changes a work item or launches agents."""
 
-import sqlite3
 import time
-from collections import deque
 from pathlib import Path
 
 from hive.bead_history import refresh as refresh_history
+from hive.bead_history import status as history_status
 from hive.beads_connection import BeadsConnection
 from hive.beads_process import BeadsProcess
-from hive.claude_store import files
+from hive.collection_pass import collect
 from hive.collection_registry import CollectionRegistry
+from hive.collection_schedule import select
 from hive.errors import ErrorCode, HiveError
 from hive.event_ingest import ingest
 from hive.event_retention import retain as retain_events
-from hive.identity import Host
-from hive.jsonvalue import string
 from hive.launch_context import LaunchContext
 from hive.locking import file_lock
-from hive.transcript_discovery import probe
+from hive.project_discovery import discover
 from hive.usage_store import UsageStore
 
 
@@ -30,6 +28,32 @@ def sweep(context: LaunchContext, index: Path, limit: int) -> dict[str, object]:
     usage = UsageStore(context.state / "telemetry.sqlite3")
     registry = CollectionRegistry(usage)
     with file_lock(context.state / "collection.lock", timeout=0):
+        with usage.connect() as connection:
+            previous = history_status(connection)
+            changed = select(
+                connection, limit, idle=False, deadline=time.monotonic() + 0.1
+            )
+        pending_events = (
+            next((context.state / "otlp-spool").glob("*.json"), None) is not None
+        )
+        # Keep one second of transcript progress even during history backlogs.
+        transcript_deadline = min(
+            deadline - 0.8,
+            time.monotonic()
+            + (
+                1
+                if previous["bead_events_caught_up"] is not True or pending_events
+                else 4.2
+            ),
+        )
+        results, native_error = collect(
+            usage,
+            registry,
+            changed,
+            index,
+            context.claude_projects,
+            transcript_deadline,
+        )
         links = None
         gaps = None
         registry_error: str | None = None
@@ -46,89 +70,39 @@ def sweep(context: LaunchContext, index: Path, limit: int) -> dict[str, object]:
                     "UPDATE bead_event_cursor SET caught_up=0,error=? WHERE singleton=1",
                     (registry_error,),
                 )
+        event_health = ingest(usage, context.state, min(deadline, time.monotonic() + 2))
+        linked = tuple(sorted({link.task for link in links or ()}))
+        discovery = discover(
+            usage, context, index, linked, min(deadline, time.monotonic() + 0.3)
+        )
         registry.refresh(links, gaps, registry_error)
-        from hive.bead_history import status as history_status
-
         with usage.connect(write=False) as connection:
             bead_health = history_status(connection)
-        event_health = retain_events(
-            usage,
-            context.state,
-            min(deadline, time.monotonic() + 0.25),
-            permitted=registry_error is None
-            and bead_health["bead_events_caught_up"] is True,
+        event_health.update(
+            retain_events(
+                usage,
+                context.state,
+                min(deadline, time.monotonic() + 0.25),
+                permitted=registry_error is None
+                and bead_health["bead_events_caught_up"] is True
+                and discovery["discovery_error"] is None
+                and discovery["discovery_behind"] is False,
+            )
         )
-        event_health.update(ingest(usage, context.state, deadline))
-        selected = registry.next(limit)
-        discoveries, native_error = probe(
-            selected, index, context.claude_projects, registry
-        )
-        work: dict[str, tuple[Path, ...]] = {}
-        errors: dict[str, list[str]] = {}
-        file_results: dict[str, list[dict[str, object]]] = {}
-        for task in selected:
-            found = discoveries[task]
-            try:
-                work[task] = (
-                    ()
-                    if found.path is None
-                    else (
-                        files(usage, task, found.path)
-                        if found.host == Host.CLAUDE
-                        else (found.path,)
-                    )
-                )
-            except (HiveError, OSError, ValueError, sqlite3.Error) as error:
-                work[task] = ()
-                errors[task] = [str(error)]
-        # One file per thread per round; older attempts sort before fresh ones.
-        queue = deque(selected)
-        results: dict[str, dict[str, object]] = {}
-        while queue and time.monotonic() < deadline:
-            task = queue.popleft()
-            found = discoveries[task]
-            candidates = work[task]
-            problem = found.error
-            validated_path: Path | None = None
-            collected_host = found.host
-            try:
-                if not candidates or found.path is None or found.host is None:
-                    result: dict[str, object] = {
-                        "task": task,
-                        "error": problem or "No readable transcript files",
-                    }
-                else:
-                    path, *rest = candidates
-                    result = usage.collect(task, path, host=found.host)
-                    result["discovery_error"] = problem
-                    if result["error"] is not None:
-                        problem = string(result["error"], "collection error")
-                    else:
-                        validated_path = found.path
-                    work[task] = tuple(rest)
-                    if rest:
-                        queue.append(task)
-                if result["error"] is not None:
-                    problem = string(result["error"], "collection error")
-                file_results.setdefault(task, []).append(result)
-                results[task] = result
-            except (HiveError, OSError, ValueError, sqlite3.Error) as error:
-                problem = str(error)
-                results[task] = {"task": task, "error": problem}
-            problems = errors.setdefault(task, [])
-            if problem is not None and problem not in problems:
-                problems.append(problem)
-            combined = "; ".join(problems) if problems else None
-            results[task] = {
-                **results[task],
-                "error": combined,
-                "files": file_results.get(task, []),
-            }
-            registry.attempted(task, combined, validated_path, collected_host)
+        if time.monotonic() < deadline and len(results) < limit:
+            selected = tuple(t for t in registry.next(limit) if t not in results)[
+                : limit - len(results)
+            ]
+            idle_results, error = collect(
+                usage, registry, selected, index, context.claude_projects, deadline
+            )
+            results.update(idle_results)
+            native_error = native_error or error
         return {
             "code": "CollectionBatch",
             **event_health,
             **bead_health,
+            **discovery,
             "source": context.commit,
             "registry_error": registry_error,
             "native_index_error": native_error,

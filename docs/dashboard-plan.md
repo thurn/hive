@@ -1,9 +1,9 @@
 # Plan: Hive web dashboard
 
 - Epic: `hv-762` — **Deliver the Hive web dashboard**. Children: completed design `hv-amo`; implementation `hv-ijd` (steps 1–2), `hv-q9z` (step 3), `hv-l85` (steps 4–5), and `hv-286` (steps 6–8). Prerequisites and native dependency semantics are recorded in §12.
-- Status: revision 4. The user approved the design on 2026-09-24 and requested the epic and prerequisite updates on 2026-09-25. Revision 2 addresses the first cold review; revision 3 addresses the second (§14); revision 4 records the epic and cost-review follow-ups without changing the approved implementation scope.
+- Status: revision 5. The user approved the design on 2026-09-24; on 2026-09-25 the user rejected intermediate approval holds, corrected the weaver skill, and explicitly resumed implementation. This revision removes those holds while retaining technical scope and honest evidence reporting.
 - Repository: `/Users/dthurn/hive`.
-- **Hard prerequisite:** every step of [`docs/claude-cost-plan.md`](claude-cost-plan.md) (steps 1–12) is implemented and accepted, including the timestamp-consistency fix `hv-k8r` and per-request tool-allocation interface `hv-82b`. The user chose the entire cost plan over a partial dependency (§13, decision 12); passing checks alone does not satisfy its remaining acceptance requirements.
+- **Technical foundation:** the complete cost implementation, including delivered `hv-k8r` and `hv-82b`, supplies pricing, request details and allocation. Remaining empirical and live-host evidence is disclosed in `docs/acceptance.md`; it is not an implementation approval gate.
 - Related code: `src/hive_bootstrap/source.py` and `settings.py` (per-commit source selection, bootstrap config), `src/hive/launch_context.py`, `src/hive/collection*.py`, `src/hive/collection_registry.py`, `src/hive/usage_store.py`, `src/hive/cost_report.py`, `src/hive/thread_links.py`, `src/hive/beads_process.py`.
 - Visual reference: Fulcrum's design-system mockups (`~/fulcrum/docs/mockups/design-system-*.png`, `newsfeed-desktop.png`). They set the visual style only. Content, names and emblems below are Hive's.
 
@@ -328,7 +328,7 @@ Taken from the Fulcrum primitives, as CSS custom properties:
 - **Narrower widths:** 2 columns below 1024 px. Below 640 px, 1 column, and the rail becomes a compact header. The dashboard is loopback only (§8.4), so narrow layouts serve small windows, not phones.
 - The detail view is a routed full page (`/bead/hv-4up`, `/session/<id>`, `/ledger/<kind>/<project>`), not a modal, so it can be linked and reloaded. Back returns to the feed at its scroll position.
 
-**Mockups.** Step 6 begins with static mockups for user sign-off, before any components are built. They cover the feed, bead detail, agent detail, and the empty, building and error states.
+**Mockups.** Step 6 begins with static mockups to check the approved visual direction before components are built, without an intermediate sign-off pause. They cover the feed, bead detail, agent detail, and the empty, building and error states.
 
 ## 7. Detail view
 
@@ -592,7 +592,7 @@ Each step is one Conventional Commit, delivered through Tollgate with a fresh co
      - a UI commit is served on the next load without restart;
      - subprocess timeout and saturation.
 6. `feat(dashboard): design system and feed`
-   - Mockups first, for sign-off. Then the `dashboard/` React app: tokens, brand, emblems, cards, filters, summary strip, hotspot banner and polling.
+   - Mockups first, checked against the approved references. Then the `dashboard/` React app: tokens, brand, emblems, cards, filters, summary strip, hotspot banner and polling.
    - Vitest component tests. `tsc -b`, ESLint and `vitest run` join `scripts/check-fast` and `scripts/check`.
    - `scripts/prepare-check` runs `npm ci` in the worktree. So Tollgate's CI step needs Node 20 or newer and network access whenever `package-lock.json` changes; this is documented in operations.
 7. `feat(dashboard): bead, session and ledger detail`
@@ -625,7 +625,7 @@ Manual acceptance is recorded in `docs/acceptance.md`. Browser checks use the Pl
    - promote a commit that breaks the build: the previous build is served with the banner.
 8. **Security.** These are rejected: a foreign `Host`, a cross-site page embedding `<img src="http://127.0.0.1:4320/">` (no build starts), `POST`, an encoded traversal, and an invalid bead ID. No response carries CORS headers.
 9. **Performance.** The feed responds in under 500 ms on the live store and a cold detail view in under 2 seconds. With every project session collected, a changed thread's new requests appear within two sweeps.
-10. **Visual review.** A `visual-review` pass at 1440, 1024 and 600 px has no open bugs, and the user signs off on the look against the Fulcrum references.
+10. **Visual review.** A `visual-review` pass at 1440, 1024 and 600 px has no open bugs, and the implementation is checked against the Fulcrum references.
 
 ## 12. Beads
 
@@ -636,20 +636,20 @@ Epic **`hv-762` — Deliver the Hive web dashboard** owns this plan. Its native 
 - `hv-l85`: dashboard API and loopback server (steps 4–5).
 - `hv-286`: dashboard UI and acceptance (steps 6–8).
 
-Every implementation task has direct blocking dependencies on all six prerequisites below, as well as its existing predecessors from §10:
+The epic tracks the six cost tasks below; implementation children retain their step-order dependencies and the completed technical fixes `hv-k8r` and `hv-82b`:
 
 | Prerequisite | Required outcome |
 | --- | --- |
 | `hv-b4r` | Claude thread pricing, request detail, and exact subagent/skill breakdowns, with the cost plan's required evidence. |
 | `hv-2uo` | Request-event collection, transcript joins, coverage, and event-source acceptance. |
 | `hv-qg7` | Historical-owner collection and per-bead attribution with exact reconciliation. |
-| `hv-8ib` | Estimated tool allocation, including empirical `byte_split_error` evidence and the user's acceptance of its accuracy. |
+| `hv-8ib` | Estimated tool allocation, with empirical `byte_split_error` evidence reported when available and uncertainty disclosed. |
 | `hv-k8r` | One event timestamp for event-only request details and bead attribution, including ownership-boundary regression coverage. |
 | `hv-82b` | The queryable per-request `tool_allocation` rows promised by cost-plan §5.8, with exact per-request reconciliation against retained prices. |
 
-Beads rejects blocking edges between an epic and a task. The epic therefore uses `tracks` links to these six prerequisites; the direct `blocks` edges on every implementation child enforce readiness. Parent-child links express ownership, not a replacement for those blockers. The epic completes only after all six prerequisites and all four implementation tasks have completed with accepted evidence, including §11 of this plan.
+The epic uses `tracks` links for cost work. On the user's 2026-09-25 resumption, the acceptance-only blocking edges from `hv-b4r`, `hv-2uo`, `hv-qg7` and `hv-8ib` to dashboard children were removed. Their code is delivered; outstanding evidence remains recorded on those tasks without pretending it passed. Parent-child links group the dashboard work, and technical dependencies preserve its execution order. The epic completes when its four implementation tasks and this plan's executable checks are delivered, with evidence and limitations recorded.
 
-The cost implementation has landed, but [its acceptance record](acceptance.md#claude-cost-implementation-2026-09-24) still distinguishes tested behavior from outstanding evidence: empirical tool-split accuracy is unaccepted, and several live-host checks remain unverified. These remain part of the original cost beads' acceptance; creating this epic does not release their holds or mark them complete.
+The [cost acceptance record](acceptance.md#claude-cost-implementation-2026-09-24) distinguishes tested behavior from missing empirical tool-split and live-host evidence. These remain limitations to disclose, not renewed requests for user approval or a reason to stop dashboard implementation.
 
 ## 13. Decisions
 
@@ -666,7 +666,7 @@ Decided by the user on 2026-09-24 in the design interview:
 9. Diagnostics v1 includes **all four groups**: tool errors and slow tools, Tollgate CI, context and cache waste, and human waits and interruptions (§4.3, §4.4).
 10. CI join: **transcript candidate IDs first, then a branch-name fallback** (§4.4).
 11. The detail view's centerpiece is a **timeline plus a switchable breakdown** (§7.1).
-12. Dependency: **the entire cost plan** is a hard prerequisite.
+12. Dependency: the **entire cost implementation** supplies the technical foundation; the 2026-09-25 resumption removes acceptance-only approval holds.
 13. Fleet view: **summary strip plus rule-based hotspots** (§5.5).
 14. Access: **loopback only, desktop-first** (§8.4).
 15. Excerpts are read **on demand by offset**; nothing is copied (§7.3).
@@ -677,7 +677,7 @@ Chosen by the author, open to change at approval:
 - Default port 4320. The cost plan's OTLP listener uses 4319.
 - Ledger cards for unattributable spend and small tails (§5.1).
 - Codex spawned threads are folded into their root parent and attributed through its intervals (§4.1). This extends cost plan §5.9.
-- The emblem set (§6.2), subject to sign-off on the step 6 mockups.
+- The emblem set (§6.2), checked against the step 6 mockups.
 
 The user approved steps 1–8 on 2026-09-24, with the author's choices above.
 

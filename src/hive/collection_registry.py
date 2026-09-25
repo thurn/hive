@@ -9,6 +9,7 @@ from pathlib import Path
 
 from hive.bead_history import historical
 from hive.bead_history import status as history_status
+from hive.codex_folding import root
 from hive.identity import CodexTaskId, Host
 from hive.jsonvalue import integer, sequence, string
 from hive.otlp_storage import status as otlp_status
@@ -33,22 +34,33 @@ class CollectionRegistry:
     ) -> None:
         with self.connect() as connection:
             if links is not None and gaps is not None:
-                links = tuple(sorted(set(links) | set(historical(connection))))
-                tasks = {link.task for link in links}
-                previous: object = connection.execute(
-                    "SELECT task FROM collection_tasks"
-                ).fetchall()
-                old = {
-                    CodexTaskId(string(row(value, 1)[0], "cached task"))
-                    for value in sequence(previous, "cached tasks")
-                }
-                connection.executemany(
-                    "DELETE FROM collection_tasks WHERE task=?",
-                    [(task,) for task in old - tasks],
+                owners = set(historical(connection))
+                links = tuple(sorted(set(links) | owners))
+                connection.execute(
+                    "DELETE FROM collection_reasons WHERE reason IN ('link','interval_owner')"
                 )
-                connection.executemany(
-                    "INSERT OR IGNORE INTO collection_tasks(task) VALUES (?)",
-                    [(task,) for task in tasks],
+                for link in links:
+                    canonical = root(connection, link.task)
+                    connection.execute(
+                        "INSERT OR IGNORE INTO collection_reasons VALUES (?,?,?)",
+                        (
+                            canonical,
+                            ("interval_owner" if link in owners else "link"),
+                            link.task,
+                        ),
+                    )
+                links = tuple(
+                    sorted(
+                        {
+                            ThreadLink(
+                                root(connection, link.task),
+                                link.bead,
+                                link.relation,
+                                link.collected,
+                            )
+                            for link in links
+                        }
+                    )
                 )
                 connection.execute("DELETE FROM collection_links")
                 connection.executemany(
@@ -70,16 +82,43 @@ class CollectionRegistry:
                     (error,),
                 )
 
-    def next(self, limit: int) -> tuple[CodexTaskId, ...]:
-        with self.connect(write=False) as connection:
-            values: object = connection.execute(
-                "SELECT task FROM collection_tasks ORDER BY attempted, task LIMIT ?",
-                (limit,),
-            ).fetchall()
-            return tuple(
-                CodexTaskId(string(row(value, 1)[0], "linked task"))
-                for value in sequence(values, "linked tasks")
+            connection.execute(
+                "DELETE FROM collection_reasons WHERE reason IN ('project','subagent_of')"
             )
+            connection.execute(
+                "INSERT OR IGNORE INTO collection_reasons SELECT COALESCE(r.root,s.thread),'project',s.project FROM project_sessions s LEFT JOIN codex_roots r ON s.thread=r.thread WHERE s.project IS NOT NULL AND (r.root IS NULL OR r.root=s.thread)"
+            )
+            connection.execute(
+                "INSERT OR IGNORE INTO collection_reasons SELECT r.root,'subagent_of',r.thread FROM codex_roots r WHERE r.root<>r.thread AND r.root IN (SELECT task FROM collection_reasons)"
+            )
+            reason_rows: object = connection.execute(
+                "SELECT DISTINCT task FROM collection_reasons"
+            ).fetchall()
+            tasks = {
+                CodexTaskId(string(row(value, 1)[0], "observed task"))
+                for value in sequence(reason_rows, "observation reasons")
+            }
+            previous: object = connection.execute(
+                "SELECT task FROM collection_tasks"
+            ).fetchall()
+            old = {
+                CodexTaskId(string(row(value, 1)[0], "cached task"))
+                for value in sequence(previous, "cached tasks")
+            }
+            connection.executemany(
+                "DELETE FROM collection_tasks WHERE task=?",
+                [(task,) for task in old - tasks],
+            )
+            connection.executemany(
+                "INSERT OR IGNORE INTO collection_tasks(task) VALUES (?)",
+                [(task,) for task in tasks],
+            )
+
+    def next(self, limit: int) -> tuple[CodexTaskId, ...]:
+        from hive.collection_schedule import select
+
+        with self.connect(write=False) as connection:
+            return select(connection, limit)
 
     def associations(self, task: CodexTaskId) -> list[dict[str, str]]:
         with self.connect(write=False) as connection:
@@ -165,8 +204,16 @@ class CollectionRegistry:
             gap_count: object = connection.execute(
                 "SELECT COUNT(*) FROM collection_gaps"
             ).fetchone()
+            from hive.codex_discovery import state
+
+            unresolved: object = connection.execute(
+                "SELECT COUNT(*) FROM cwd_projects WHERE unresolved=1"
+            ).fetchone()
             return {
                 "code": "CollectorStatus",
+                "discovery_behind": state(connection, "behind", "1") == "1",
+                "discovery_error": state(connection, "error") or None,
+                "unresolved_cwd": integer(row(unresolved, 1)[0], "unresolved cwd"),
                 **history_status(connection),
                 **otlp_status(self.usage.path.parent),
                 "linked_threads": integer(total, "linked threads"),

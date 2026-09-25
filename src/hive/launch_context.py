@@ -8,6 +8,7 @@ from pathlib import Path
 
 from hive.errors import ErrorCode, HiveError
 from hive.identity import SourceCommit
+from hive.project_config import Project, projects
 
 
 @dataclass(frozen=True)
@@ -19,6 +20,7 @@ class LaunchContext:
     guard: int
     repository: Path
     claude_projects: Path = Path.home() / ".claude/projects"
+    projects: tuple[Project, ...] = ()
 
     @classmethod
     def read(cls) -> LaunchContext:
@@ -39,6 +41,7 @@ class LaunchContext:
                         "HIVE_CLAUDE_PROJECTS", str(Path.home() / ".claude/projects")
                     )
                 ),
+                projects(os.environ.get("HIVE_PROJECTS", "[]")),
             )
         except (KeyError, ValueError, OSError) as error:
             raise HiveError(

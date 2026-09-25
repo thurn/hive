@@ -23,7 +23,7 @@ base AS (
  FROM responses r
  JOIN tiers t ON r.host='codex' OR t.tier='standard'
  LEFT JOIN claude_request_events ev ON r.host='claude' AND r.response=ev.request_id
- LEFT JOIN turn_models m ON r.host='codex' AND r.task=m.task AND r.turn=m.turn
+ LEFT JOIN turn_models m ON r.host='codex' AND r.task=m.task AND r.turn=m.turn AND COALESCE(r.agent,'')=m.agent
  LEFT JOIN claude_agent_parents a ON r.host='claude' AND r.task=a.task AND r.agent=a.agent
  LEFT JOIN response_estimates e ON r.response=e.response
  AND e.tier=CASE WHEN r.host='claude' THEN r.modifier_key ELSE t.tier END

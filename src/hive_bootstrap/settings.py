@@ -2,7 +2,9 @@
 
 import json
 import os
+import re
 from dataclasses import dataclass
+from datetime import date
 from pathlib import Path
 
 
@@ -21,6 +23,7 @@ class Project:
     repository: Path
     invariants: Path
     native_id: str | None
+    observe_since: str | None = None
 
 
 def read_settings() -> Settings:
@@ -72,6 +75,7 @@ def read_settings() -> Settings:
             "repository",
             "invariants",
             "native_id",
+            "observe_since",
         }:
             raise ValueError("Invalid project configuration")
         identifier = item.get("id")
@@ -91,7 +95,17 @@ def read_settings() -> Settings:
             if not isinstance(value, str) or not Path(value).is_absolute():
                 raise ValueError(f"Project {name} must be absolute")
             locations.append(Path(value).resolve())
-        projects.append(Project(identifier, locations[0], locations[1], native_id))
+        since = item.get("observe_since")
+        if since is not None:
+            if (
+                not isinstance(since, str)
+                or re.fullmatch(r"\d{4}-\d{2}-\d{2}", since) is None
+            ):
+                raise ValueError("observe_since must be an ISO date")
+            date.fromisoformat(since)
+        projects.append(
+            Project(identifier, locations[0], locations[1], native_id, since)
+        )
     if len({project.id for project in projects}) != len(projects):
         raise ValueError("Duplicate project identity")
     return Settings(
