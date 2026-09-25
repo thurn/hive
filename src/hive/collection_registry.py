@@ -205,12 +205,14 @@ class CollectionRegistry:
                 "SELECT COUNT(*) FROM collection_gaps"
             ).fetchone()
             from hive.codex_discovery import state
+            from hive.tollgate_observation import status as tollgate_status
 
             unresolved: object = connection.execute(
                 "SELECT COUNT(*) FROM cwd_projects WHERE unresolved=1"
             ).fetchone()
             return {
                 "code": "CollectorStatus",
+                **tollgate_status(connection),
                 "discovery_behind": state(connection, "behind", "1") == "1",
                 "discovery_error": state(connection, "error") or None,
                 "unresolved_cwd": integer(row(unresolved, 1)[0], "unresolved cwd"),

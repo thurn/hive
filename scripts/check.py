@@ -176,6 +176,19 @@ def main() -> int:
                 "-s",
                 "tests",
                 "-p",
+                "test_tollgate_observation.py",
+                "-v",
+            ]
+        )
+        commands.append(
+            [
+                python,
+                "-m",
+                "unittest",
+                "discover",
+                "-s",
+                "tests",
+                "-p",
                 "test_diagnostics.py",
                 "-v",
             ]

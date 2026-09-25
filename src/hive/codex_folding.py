@@ -26,6 +26,7 @@ def fold(connection: sqlite3.Connection, child: str, parent: str) -> None:
         "role_spans",
         "diagnostic_sessions",
         "diagnostic_titles",
+        "tollgate_mentions",
     ):
         fields = [
             string(row(v, 6)[1], "column")

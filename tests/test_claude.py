@@ -92,7 +92,7 @@ class ClaudeTests(unittest.TestCase):
                 record(json.loads(result.stdout))["priced_subset_usd"], "0.000438000000"
             )
             with sqlite3.connect(state / "telemetry.sqlite3") as db:
-                self.assertEqual(db.execute("PRAGMA user_version").fetchone(), (14,))
+                self.assertEqual(db.execute("PRAGMA user_version").fetchone(), (15,))
 
     def test_host_totals_replay_old_cursors_and_reject_late_output(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

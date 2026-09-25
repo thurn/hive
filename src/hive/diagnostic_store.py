@@ -111,6 +111,11 @@ def use(
             command_kind,
         ),
     )
+    for command in uses:
+        if commands.kind(command).startswith("tg_"):
+            from hive.tollgate_mentions import observe as mentions
+
+            mentions(connection, location.thread, location.agent, at, command)
     for ordinal, command in enumerate(uses if len(uses) == 1 else ()):
         connection.execute(
             "INSERT OR IGNORE INTO tool_commands VALUES (?,?,?,?,NULL,NULL,?,?)",
@@ -134,13 +139,23 @@ def result(
     error: bool,
 ) -> None:
     raw: object = connection.execute(
-        "SELECT tool,started_at FROM tool_calls WHERE thread=? AND agent=? AND call_id=?",
+        "SELECT tool,started_at,command_kind FROM tool_calls WHERE thread=? AND agent=? AND call_id=?",
         (location.thread, location.agent, call),
     ).fetchone()
     if raw is None:
         return
-    tool, started = row(raw, 2)
+    tool, started, command_kind = row(raw, 3)
     content = text(output)
+    if isinstance(command_kind, str) and command_kind.startswith("tg_"):
+        from hive.tollgate_mentions import observe as mentions
+
+        mentions(
+            connection,
+            location.thread,
+            location.agent,
+            string(started, "start"),
+            content,
+        )
     elapsed = max(0, round((timestamp(at) - timestamp(started)).total_seconds() * 1000))
     status = "error" if error else "ok"
     try:

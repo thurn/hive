@@ -205,6 +205,14 @@ class DiagnosticTests(unittest.TestCase):
             # A schema-13 store already at EOF must replay metadata during upgrade.
             with sqlite3.connect(store.path) as db:
                 for table in (
+                    "tollgate_promotions",
+                    "tollgate_mapping_state",
+                    "tollgate_repositories",
+                    "tollgate_mentions",
+                    "tollgate_pending",
+                    "tollgate_candidates",
+                    "tollgate_branch_matches",
+                    "tollgate_health",
                     "tool_calls",
                     "tool_commands",
                     "session_events",

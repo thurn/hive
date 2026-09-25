@@ -75,6 +75,9 @@ def sweep(context: LaunchContext, index: Path, limit: int) -> dict[str, object]:
         discovery = discover(
             usage, context, index, linked, min(deadline, time.monotonic() + 0.3)
         )
+        from hive.tollgate_observation import poll as poll_tollgate
+
+        tollgate = poll_tollgate(usage, context, min(deadline, time.monotonic() + 0.3))
         registry.refresh(links, gaps, registry_error)
         with usage.connect(write=False) as connection:
             bead_health = history_status(connection)
@@ -107,6 +110,7 @@ def sweep(context: LaunchContext, index: Path, limit: int) -> dict[str, object]:
             **event_health,
             **bead_health,
             **discovery,
+            **tollgate,
             "source": context.commit,
             "registry_error": registry_error,
             "native_index_error": native_error,

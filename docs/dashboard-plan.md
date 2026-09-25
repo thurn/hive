@@ -681,9 +681,7 @@ Chosen by the author, open to change at approval:
 
 The user approved steps 1–8 on 2026-09-24, with the author's choices above.
 
-Still open:
-
-1. Whether `observe_since` should be set for both `hive` and `battlement` at activation, and to what date.
+Activation resolved by the user on 2026-09-25: observe both `hive` and `battlement` from `2026-09-24`.
 
 ## 14. Cold review disposition
 
