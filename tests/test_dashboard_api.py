@@ -1,12 +1,14 @@
 """Native ownership and transcript journeys exercise public dashboard responses."""
 
 import json
+import os
 import sqlite3
 import tempfile
 import time
 import unittest
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from unittest.mock import patch
 
 from server_fixture import private_server
 from test_bead_cost import claude, command, last, setup
@@ -106,6 +108,32 @@ class DashboardTests(unittest.TestCase):
                     ),
                     expected,
                 )
+            self.assertEqual(record(detail["card"])["title"], "Dashboard A")
+            self.assertIsInstance(record(detail["card"])["roles"], dict)
+            self.assertTrue(any(v["id"] == "sample" for v in objects(feed["projects"])))
+            whole = api(root, "session", THREAD, "--requests")
+            tail = api(root, "session", THREAD, "--requests", "--tail")
+            self.assertEqual(len(objects(whole["requests"])), 2)
+            self.assertEqual(len(objects(tail["requests"])), 1)
+            filtered = api(
+                root, "session", THREAD, "--requests", "--since", at.isoformat()
+            )
+            self.assertEqual(len(objects(filtered["requests"])), 1)
+            empty = api(root, "bead", first, "--requests", "--until", now.isoformat())
+            self.assertEqual(empty["requests"], [])
+            invalid_range = command(
+                root,
+                "dashboard",
+                "api",
+                "session",
+                THREAD,
+                "--requests",
+                "--since",
+                at.isoformat(),
+                "--until",
+                now.isoformat(),
+            )
+            self.assertEqual(invalid_range["code"], "InvalidInput")
             self.assertEqual(record(detail["beads"])["source"], "live")
             self.assertIn(
                 "'<actor>'",
@@ -165,6 +193,22 @@ class DashboardTests(unittest.TestCase):
             cards = objects(api(root, "feed", "--older-completed")["cards"])
             self.assertIn("ledger:small_tails:Other", [v["key"] for v in cards])
             self.assertNotIn("session:" + THREAD, [v["key"] for v in cards])
+            whole = api(root, "session", THREAD)
+            self.assertEqual(record(whole["card"])["kind"], "agent")
+            self.assertEqual(record(whole["card"])["state"], "Working")
+            self.assertEqual(
+                record(whole["card"])["coverage"],
+                record(api(root, "bead", bead)["card"])["coverage"],
+            )
+            self.assertEqual(len(objects(whole["timeline"])), 2)
+            self.assertEqual(len(objects(whole["intervals"])), 1)
+            request_rows = objects(
+                api(root, "session", THREAD, "--requests")["requests"]
+            )
+            self.assertEqual(
+                sum(int(string(v["share_picos"], "amount")) for v in request_rows),
+                int(string(whole["amount_picos"], "amount")),
+            )
             # Missing native history moves dollars to the uncertainty ledger,
             # without trusting the current assignee as historical evidence.
             bd(connection, "update", bead, "--assignee", OTHER)
@@ -357,6 +401,17 @@ class DashboardTests(unittest.TestCase):
                 "--cursor",
                 string(first["next_cursor"], "cursor"),
             )
+            with UsageStore(root / "state/telemetry.sqlite3").connect(write=True) as c:
+                c.execute(
+                    "UPDATE card_summaries SET amount_picos='999' WHERE key=?",
+                    (objects(second["cards"])[-1]["key"],),
+                )
+            self.assertNotEqual(
+                first["revision"],
+                api(root, "feed", "--project", "sample", "--role", "executor")[
+                    "revision"
+                ],
+            )
             self.assertFalse(
                 {v["key"] for v in objects(first["cards"])}
                 & {v["key"] for v in objects(second["cards"])}
@@ -374,3 +429,66 @@ class DashboardTests(unittest.TestCase):
                 string(first["next_cursor"], "cursor"),
             )
             self.assertEqual(invalid["code"], "InvalidInput")
+
+    def test_ci_log_selects_exact_observed_attempt_and_retains_no_content(self) -> None:
+        from test_tollgate_observation import ATTEMPT, CANDIDATE, REPO, candidate
+
+        from hive.tollgate_records import decode
+
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            store = UsageStore(root / "state/telemetry.sqlite3")
+            at = datetime.now(UTC)
+            payload = decode(candidate(CANDIDATE, "codex/fixture", at)).json()
+            with store.connect(write=True) as c:
+                c.execute(
+                    "INSERT INTO tollgate_candidates(candidate,repository,project,state,terminal,payload,updated,observed) VALUES (?,?,?,?,?,?,?,?)",
+                    (
+                        CANDIDATE,
+                        REPO,
+                        "sample",
+                        "promoted",
+                        1,
+                        json.dumps(payload),
+                        at.isoformat(),
+                        at.isoformat(),
+                    ),
+                )
+            executable = root / "tg"
+            executable.write_text(
+                "#!/usr/bin/env python3\nimport sys\nassert '--json' not in sys.argv\nassert '--buildset="
+                + ATTEMPT
+                + "' in sys.argv\nassert '--step=ci' in sys.argv\nprint('x'*5000+'PRIVATE_FAILED_ATTEMPT')\n"
+            )
+            executable.chmod(0o755)
+            with patch.dict(
+                os.environ, PATH=str(root) + os.pathsep + os.environ["PATH"]
+            ):
+                value = api(
+                    root,
+                    "ci-log",
+                    "--candidate",
+                    CANDIDATE,
+                    "--step",
+                    "ci",
+                    "--attempt",
+                    ATTEMPT,
+                )
+                self.assertTrue(value["truncated"])
+                self.assertEqual(len(string(value["tail"], "tail").encode()), 4096)
+                self.assertIn("PRIVATE_FAILED_ATTEMPT", string(value["tail"], "tail"))
+                missing = command(
+                    root,
+                    "dashboard",
+                    "api",
+                    "ci-log",
+                    "--candidate",
+                    CANDIDATE,
+                    "--step",
+                    "ci",
+                    "--attempt",
+                    CANDIDATE,
+                )
+                self.assertEqual(missing["code"], "NotFound")
+            with store.connect() as c:
+                self.assertNotIn("PRIVATE_FAILED_ATTEMPT", "\n".join(c.iterdump()))

@@ -78,6 +78,7 @@ def main() -> int:
         return 1
     python = sys.executable
     commands = [
+        ["npm", "run", "check", "--prefix", "dashboard"],
         [python, "-m", "ruff", "check", "src", "tests", "scripts"],
         [python, "-m", "black", "--check", "src", "tests", "scripts"],
         [str(Path(python).parent / "pyre"), "--noninteractive", "check"],

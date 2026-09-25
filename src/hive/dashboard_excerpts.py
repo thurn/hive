@@ -220,7 +220,11 @@ def failing_output(content: str) -> str:
 
 
 def ci_log(
-    connection: sqlite3.Connection, context: LaunchContext, candidate: str, step: str
+    connection: sqlite3.Connection,
+    context: LaunchContext,
+    candidate: str,
+    step: str,
+    attempt: str | None = None,
 ) -> dict[str, object]:
     identifier(candidate)
     if not step or len(step) > 256 or "\0" in step:
@@ -233,9 +237,12 @@ def ci_log(
     if not values:
         raise HiveError(ErrorCode.NOT_FOUND, "Candidate not observed")
     payload = record(parse(string(values[0]["payload"], "candidate")))
+    if attempt is not None:
+        identifier(attempt)
     known = {
         record(s)["name"]
         for a in sequence(payload["attempts"], "attempts")
+        if attempt is None or record(a)["id"] == attempt
         for s in sequence(record(a)["steps"], "steps")
     }
     if step not in known:
@@ -243,19 +250,20 @@ def ci_log(
     output = run(
         (
             "tg",
-            "--json",
             "--no-launch",
             "--repository",
             string(values[0]["repository"], "repository"),
             "logs",
             candidate,
             "--step=" + step,
+            *(("--buildset=" + attempt,) if attempt else ()),
         ),
         context.repository,
         5,
     )
     return dict[str, object](
         candidate=candidate,
+        attempt=attempt,
         step=step,
         tail=output.content[-4096:].decode(errors="replace"),
         truncated=output.truncated or len(output.content) > 4096,

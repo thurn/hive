@@ -1,7 +1,7 @@
 """On-demand detail shares exactly the feed's retained-price assignments."""
 
 import sqlite3
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 
 from hive.bead_assignment import Evidence
 from hive.dashboard_accounting import Fact, bead_share, breakdown, facts
@@ -66,11 +66,35 @@ def selected(
 
 
 def page(
-    connection: sqlite3.Connection, key: str, token: str | None, *, sort: str = "time"
+    connection: sqlite3.Connection,
+    key: str,
+    token: str | None,
+    *,
+    sort: str = "time",
+    since: str | None = None,
+    until: str | None = None,
+    whole_session: bool = False,
 ) -> dict[str, object]:
     if sort not in {"time", "share"}:
         raise HiveError(ErrorCode.INVALID_INPUT, "Request sort must be time or share")
-    values = selected(connection, key)
+    from hive.usage import timestamp
+
+    values = (
+        tuple((f, f.request.amount) for f in facts(connection, key[8:]))
+        if whole_session and key.startswith("session:")
+        else selected(connection, key)
+    )
+    start, end = timestamp(since) if since else None, (
+        timestamp(until) if until else None
+    )
+    if start and end and start > end:
+        raise HiveError(ErrorCode.INVALID_INPUT, "Time range must start before it ends")
+    values = tuple(
+        (f, a)
+        for f, a in values
+        if (start is None or f.request.at >= start)
+        and (end is None or f.request.at <= end)
+    )
 
     def order(pair: tuple[Fact, int | None]) -> tuple[int | str, str]:
         fact, amount = pair
@@ -82,7 +106,13 @@ def page(
     ordered = sorted(values, key=order)
     if token:
         after = uncursor(token)
-        if after.get("key") != key or after.get("sort") != sort:
+        if (
+            after.get("key") != key
+            or after.get("sort") != sort
+            or after.get("since") != since
+            or after.get("until") != until
+            or bool(after.get("whole_session")) != whole_session
+        ):
             raise HiveError(
                 ErrorCode.INVALID_INPUT, "Cursor belongs to another request list"
             )
@@ -102,7 +132,12 @@ def page(
             next_cursor=(
                 cursor(
                     dict[str, object](
-                        key=key, sort=sort, response=output[-1]["response"]
+                        key=key,
+                        sort=sort,
+                        since=since,
+                        until=until,
+                        whole_session=whole_session,
+                        response=output[-1]["response"],
                     )
                 )
                 if len(ordered) > 500
@@ -116,17 +151,74 @@ def detail(
     connection: sqlite3.Connection, key: str, *, whole_session: bool = False
 ) -> dict[str, object]:
     from hive.bead_requests import Request
+    from hive.dashboard_feed import cards as feed_cards
+    from hive.dashboard_states import activity
+    from hive.dashboard_states import state as card_state
+    from hive.dashboard_titles import title as native_title
     from hive.diagnostic_report import events, tools
     from hive.identity import Host, ThreadId
     from hive.usage import timestamp
 
-    cards = rows(connection, "SELECT * FROM card_summaries WHERE key=?", (key,))
-    if not cards:
-        raise HiveError(ErrorCode.NOT_FOUND, "Dashboard card not found")
-    card: dict[str, object] = cards[0]
+    card: dict[str, object] | None = next(
+        (c for c in feed_cards(connection, datetime.now(UTC)) if c["key"] == key),
+        None,
+    )
     observations = selected(connection, key)
     if whole_session and key.startswith("session:"):
         observations = tuple((f, f.request.amount) for f in facts(connection, key[8:]))
+        if card is None and observations:
+            projects = rows(
+                connection,
+                "SELECT project,title FROM project_sessions WHERE thread=?",
+                (key[8:],),
+            )
+            latest = max(f.request.at for f, _ in observations)
+            contributions = rows(
+                connection,
+                "SELECT project,coverage FROM dashboard_contributions WHERE thread=?",
+                (key[8:],),
+            )
+            project = (
+                projects[0]["project"]
+                if projects
+                else contributions[0]["project"] if contributions else "Other"
+            )
+            incomplete = (
+                any(v["coverage"] for v in contributions) if contributions else True
+            )
+            card = dict[str, object](
+                key=key,
+                kind="agent",
+                project=project,
+                title=projects[0]["title"] if projects else key,
+                subtitle="Whole session",
+                amount_picos="0",
+                coverage=int(incomplete),
+                unpriced=0,
+                last_activity=latest.isoformat(),
+                roles={},
+                badges={},
+                primary_role=observations[0][0].role,
+                owners=[key[8:]],
+                thread=key[8:],
+                state="Finished",
+            )
+        if card is not None:
+            card["kind"] = "agent"
+            now = datetime.now(UTC)
+            latest = max(
+                (f.request.at.timestamp() for f, _ in observations),
+                default=now.timestamp(),
+            )
+            card["state"] = card_state(
+                card, now, activity(connection, now).get(key[8:], latest), None
+            )
+            card["subtitle"] = "Whole session · includes owned and unowned requests"
+            card["unpriced"] = sum(amount is None for _, amount in observations)
+    if card is None:
+        raise HiveError(ErrorCode.NOT_FOUND, "Dashboard card not found")
+    if key.startswith("session:") and (not card["title"] or card["title"] == key):
+        card["title"] = native_title(connection, key[8:]) or key
     amount = sum(a or 0 for _, a in observations)
     card["amount_picos"] = str(amount)
     tasks: set[str] = {f.request.thread for f, _ in observations}
@@ -161,6 +253,8 @@ def detail(
                     if distance <= timedelta(hours=2) and bead == key[5:]:
                         context.append(fact.public(0))
 
+    card_kind: str = string(card["kind"], "card kind")
+
     def relevant(item: dict[str, object], at: str) -> bool:
         assignment = evidence.assign(
             Request(
@@ -178,7 +272,7 @@ def detail(
         )
         if key.startswith("bead:"):
             return any(i.bead == key[5:] for i, _ in assignment.shares)
-        if card["kind"] == "tail" and not whole_session:
+        if card_kind == "tail" and not whole_session:
             return assignment.kind == "unowned"
         return True
 

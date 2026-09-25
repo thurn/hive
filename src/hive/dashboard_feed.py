@@ -200,6 +200,12 @@ def feed(connection: sqlite3.Connection, filters: Filters) -> dict[str, object]:
             )
     body: dict[str, object] = dict[str, object](
         cards=page,
+        projects=[
+            dict[str, object](
+                id=group, count=sum(c["project"] == group for c in all_cards)
+            )
+            for group in sorted({string(c["project"], "project") for c in all_cards})
+        ],
         summary=summary,
         hotspots=hotspots(connection, all_cards, summary, requests),
         next_cursor=(
@@ -220,8 +226,9 @@ def feed(connection: sqlite3.Connection, filters: Filters) -> dict[str, object]:
         for k, v in body.items()
         if not k.startswith("summaries_") and k != "collector"
     }
-    for card in page:
+    for card in all_cards:
         card.pop("idle_seconds", None)
+    revision_body["all_cards"] = all_cards
     body["revision"] = hashlib.sha256(packed(revision_body).encode()).hexdigest()
     return body
 

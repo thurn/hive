@@ -195,6 +195,7 @@ class Server:
             )
         status = {
             "Dashboard": 200,
+            "excerpt_unavailable": 200,
             "InvalidInput": 400,
             "NotFound": 404,
             "Busy": 503,

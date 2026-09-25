@@ -9,3 +9,7 @@ dist/
 .tollgate/
 .worktrees/
 .test-tools/
+
+dashboard/node_modules/
+dashboard/.vite-cache/
+dashboard/*.tsbuildinfo

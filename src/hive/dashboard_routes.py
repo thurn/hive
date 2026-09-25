@@ -74,10 +74,10 @@ def route(target: str) -> Route | None:
         }
         args = ["feed"]
     elif name == "bead" and len(parts) == 3 and BEAD.fullmatch(parts[2]):
-        allowed = {"requests", "cursor", "sort"}
+        allowed = {"requests", "cursor", "sort", "since", "until"}
         args = [name, parts[2]]
     elif name == "session" and len(parts) == 3 and uuid(parts[2]):
-        allowed = {"tail"}
+        allowed = {"tail", "requests", "cursor", "sort", "since", "until"}
         args = [name, parts[2]]
     elif (
         name == "ledger"
@@ -91,7 +91,7 @@ def route(target: str) -> Route | None:
         allowed = (
             {"thread", "agent", "call", "event"}
             if name == "excerpt"
-            else {"candidate", "step"} if name == "ci-log" else set()
+            else {"candidate", "step", "attempt"} if name == "ci-log" else set()
         )
         args = [name]
     else:

@@ -1,0 +1,28 @@
+{
+  "feed": {
+    "status": 200,
+    "ms": 124.83,
+    "source_commit": "c0d537a05451d8b74cbecbf877b8b2c9ec4c1b99",
+    "ui_tree": "b86902dbced2c2ff011b00093b1049c9e3c18e11"
+  },
+  "etag_304": true,
+  "detail": {
+    "status": 200,
+    "ms": 549.72,
+    "source_commit": "c0d537a05451d8b74cbecbf877b8b2c9ec4c1b99",
+    "ui_tree": "b86902dbced2c2ff011b00093b1049c9e3c18e11"
+  },
+  "requests": {
+    "status": 200,
+    "ms": 80.35,
+    "source_commit": "c0d537a05451d8b74cbecbf877b8b2c9ec4c1b99",
+    "ui_tree": "b86902dbced2c2ff011b00093b1049c9e3c18e11"
+  },
+  "security": {
+    "foreign_host": 403,
+    "cross_site": 403,
+    "traversal": 404,
+    "invalid_bead": 404
+  },
+  "preview_pid": "33454"
+}

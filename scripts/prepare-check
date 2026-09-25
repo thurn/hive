@@ -11,3 +11,10 @@ fi
 "$check_venv/bin/python" -m pip install --disable-pip-version-check \
   --no-build-isolation --no-deps --editable "$repo_root"
 "$check_venv/bin/python" "$repo_root/scripts/prepare_server_tools.py"
+dashboard_node=$(node --version)
+required_node="v$(cat "$repo_root/dashboard/.nvmrc")"
+if [ "$dashboard_node" != "$required_node" ]; then
+  echo "Dashboard checks require Node $required_node; found $dashboard_node." >&2
+  exit 1
+fi
+npm ci --ignore-scripts --no-audit --no-fund --prefix "$repo_root/dashboard"

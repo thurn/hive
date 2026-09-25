@@ -41,10 +41,17 @@ def add_parser[ParserType: argparse.ArgumentParser](
     bead.add_argument("id")
     bead.add_argument("--requests", action="store_true")
     bead.add_argument("--cursor")
+    bead.add_argument("--since")
+    bead.add_argument("--until")
     bead.add_argument("--sort", choices=("time", "share"), default="time")
     session = routes.add_parser("session")
     session.add_argument("id")
     session.add_argument("--tail", action="store_true")
+    session.add_argument("--requests", action="store_true")
+    session.add_argument("--cursor")
+    session.add_argument("--since")
+    session.add_argument("--until")
+    session.add_argument("--sort", choices=("time", "share"), default="time")
     ledger = routes.add_parser("ledger")
     ledger.add_argument("kind", choices=("small_tails", "unattributable"))
     ledger.add_argument("project")
@@ -57,6 +64,7 @@ def add_parser[ParserType: argparse.ArgumentParser](
     log = routes.add_parser("ci-log")
     log.add_argument("--candidate", required=True)
     log.add_argument("--step", required=True)
+    log.add_argument("--attempt")
     routes.add_parser("status")
 
 
@@ -143,17 +151,36 @@ def dispatch(context: LaunchContext, args: argparse.Namespace) -> dict[str, obje
                 if BEAD.fullmatch(args.id) is None:
                     raise HiveError(ErrorCode.INVALID_INPUT, "Invalid bead ID")
                 value = (
-                    page(connection, "bead:" + args.id, args.cursor, sort=args.sort)
+                    page(
+                        connection,
+                        "bead:" + args.id,
+                        args.cursor,
+                        sort=args.sort,
+                        since=args.since,
+                        until=args.until,
+                    )
                     if args.requests
                     else detail(connection, "bead:" + args.id)
                 )
                 if not args.requests:
                     value["beads"] = panel(connection, context, args.id)
             elif args.route == "session":
-                value = detail(
-                    connection, "session:" + args.id, whole_session=not args.tail
+                value = (
+                    page(
+                        connection,
+                        "session:" + args.id,
+                        args.cursor,
+                        sort=args.sort,
+                        since=args.since,
+                        until=args.until,
+                        whole_session=not args.tail,
+                    )
+                    if args.requests
+                    else detail(
+                        connection, "session:" + args.id, whole_session=not args.tail
+                    )
                 )
-                if args.tail and value["card"]:
+                if not args.requests and args.tail and value["card"]:
                     from hive.jsonvalue import record
 
                     if record(value["card"])["kind"] != "tail":
@@ -171,7 +198,9 @@ def dispatch(context: LaunchContext, args: argparse.Namespace) -> dict[str, obje
             elif args.route == "ci-log":
                 from hive.dashboard_excerpts import ci_log
 
-                value = ci_log(connection, context, args.candidate, args.step)
+                value = ci_log(
+                    connection, context, args.candidate, args.step, args.attempt
+                )
             else:
                 value = freshness(connection)
         finally:
