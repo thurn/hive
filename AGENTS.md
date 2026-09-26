@@ -8,4 +8,6 @@ Run `scripts/prepare-check` in each new worktree before `scripts/check-fast`, an
 
 Preserve local-master hot reload, consistent code/assets within a running call, and resident connection continuity. Ordinary source edits must not require reinstalling or restarting a resident service. Keep `docs/implementation.md` honest about evidence and outstanding acceptance.
 
+For implementation delivery, inspect the GitHub Portability run for the promoted commit before closing the bead; a green Tollgate run is local certification, not Linux acceptance. Repair in-scope failures on the same bead and keep pending or failed Linux acceptance explicit. Test deadline exhaustion and resumable progress with controlled budgets in the shared gate; do not assume a fixed number of timed sweeps finishes on every host.
+
 When completing tasks, provide a short summary of the work with the title "# Summary" as flat bullet points, focusing on surprising or interesting decisions you made, problems encountered, and action items for me. Flat means no nested bullets, and each bullet is a single sentence. Reduce the amount of summary text you think you need to write by half.

@@ -6,6 +6,7 @@ import time
 import unittest
 from datetime import UTC, datetime
 from pathlib import Path
+from unittest.mock import patch
 
 from test_bead_cost import claude, command
 from test_claude import OTHER, THREAD
@@ -50,7 +51,7 @@ class DashboardBudgetTests(unittest.TestCase):
                 )
             store = UsageStore(path)
             published = False
-            for _ in range(40):
+            for _ in range(200):
                 # Streaming metadata changes used to restart the prefix forever.
                 with sqlite3.connect(path) as connection:
                     connection.execute(
@@ -97,8 +98,14 @@ class DashboardBudgetTests(unittest.TestCase):
                 connection.execute(
                     f"WITH RECURSIVE n(n) AS (VALUES(1) UNION ALL SELECT n+1 FROM n WHERE n<260) INSERT INTO responses SELECT {burst_fields} FROM responses,n WHERE response='seed'"
                 )
-            for _ in range(4):
-                refresh(store, launch(root, root), time.monotonic() + 0.2)
+            for _ in range(200):
+                start = time.monotonic()
+                result = refresh(store, launch(root, root), start + 0.2)
+                self.assertLess(time.monotonic() - start, 0.35)
+                if not result["summaries_behind"]:
+                    break
+            else:
+                self.fail("Burst did not catch up")
             detail = api(root, "ledger", "unattributable", "Other")
             self.assertEqual(
                 record(detail["card"])["amount_picos"], str(5263 * 438000000)
@@ -108,7 +115,7 @@ class DashboardBudgetTests(unittest.TestCase):
                 connection.execute(
                     "INSERT INTO bead_event_cursor VALUES (1,'','',1,NULL) ON CONFLICT(singleton) DO UPDATE SET caught_up=1,error=NULL"
                 )
-            for _ in range(50):
+            for _ in range(200):
                 result = refresh(store, launch(root, root), time.monotonic() + 0.2)
                 if not result["summaries_behind"]:
                     break
@@ -121,6 +128,59 @@ class DashboardBudgetTests(unittest.TestCase):
                 str(5262 * 438000000),
             )
             self.assertFalse(any(v["kind"] == "unattributable" for v in cards))
+
+    def test_constrained_pages_eventually_publish_every_unpriced_request(self) -> None:
+        class WorkClock:
+            """Charge deterministic time at each SQLite progress checkpoint."""
+
+            def __init__(self) -> None:
+                self.now = 0.0
+
+            def monotonic(self) -> float:
+                self.now += 0.00025
+                return self.now
+
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            claude(root, THREAD, "seed", datetime.now(UTC))
+            command(root, "cost", "--task", THREAD)
+            settle(root)
+            store = UsageStore(root / "state/telemetry.sqlite3")
+            for phase in (1, 2):
+                with store.connect() as connection:
+                    names = [
+                        string(v["name"], "column")
+                        for v in rows(connection, "PRAGMA table_info(responses)")
+                    ]
+                    fields = ",".join(
+                        f"'{phase}-'||printf('%07d',n)" if name == "response" else name
+                        for name in names
+                    )
+                    connection.execute(
+                        f"WITH RECURSIVE n(n) AS (VALUES(1) UNION ALL SELECT n+1 FROM n WHERE n<260) INSERT INTO responses SELECT {fields} FROM responses,n WHERE response='seed'"
+                    )
+                # A page that cannot finish must yield without losing already committed
+                # progress; repeatedly imposing the same budget must still converge.
+                for attempt in range(400):
+                    with patch("time.monotonic", WorkClock().monotonic):
+                        result = refresh(
+                            store, launch(root, root), time.monotonic() + 0.2
+                        )
+                    if attempt == 0 and phase == 1:
+                        self.assertTrue(result["summaries_behind"])
+                        detail = api(root, "ledger", "unattributable", "Other")
+                        self.assertEqual(
+                            record(detail["card"])["amount_picos"], "438000000"
+                        )
+                    if not result["summaries_behind"]:
+                        break
+                else:
+                    self.fail("Constrained pages made no progress")
+                detail = api(root, "ledger", "unattributable", "Other")
+                self.assertEqual(
+                    record(detail["card"])["amount_picos"],
+                    str((1 + 260 * phase) * 438000000),
+                )
 
     def test_large_diagnostic_baseline_makes_bounded_progress(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

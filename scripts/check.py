@@ -6,6 +6,7 @@ import ast
 import os
 import platform
 import signal
+import sqlite3
 import subprocess
 import sys
 import time
@@ -76,7 +77,11 @@ def main() -> int:
     # Tests for other timezones must configure their own disposable processes.
     os.environ.update(TZ="UTC", LC_ALL="C", PYTHONUTF8="1", PYTHONHASHSEED="0")
     time.tzset()
-    print(f"Check environment: Python {required_python}, TZ=UTC, LC_ALL=C", flush=True)
+    print(
+        f"Check environment: Python {required_python}, SQLite {sqlite3.sqlite_version}, "
+        f"{platform.system()} {platform.machine()}, TZ=UTC, LC_ALL=C",
+        flush=True,
+    )
     os.environ["PYTHONPATH"] = str(ROOT / "src")
     os.environ["PATH"] = os.pathsep.join(
         (
@@ -142,6 +147,20 @@ def main() -> int:
             "-v",
         ],
     ]
+    commands.append(
+        [
+            python,
+            "-m",
+            "unittest",
+            "discover",
+            "-s",
+            "tests",
+            "-p",
+            "test_dashboard_budget.py",
+            "-v",
+            *(["-k", "constrained_pages"] if fast else []),
+        ]
+    )
     commands.append(
         [
             python,
@@ -223,19 +242,6 @@ def main() -> int:
         ]
     )
     if not fast:
-        commands.append(
-            [
-                python,
-                "-m",
-                "unittest",
-                "discover",
-                "-s",
-                "tests",
-                "-p",
-                "test_dashboard_budget.py",
-                "-v",
-            ]
-        )
         commands.append(
             [
                 python,

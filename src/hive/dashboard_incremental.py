@@ -79,7 +79,7 @@ def price(connection: sqlite3.Connection, identities: tuple[str, ...]) -> None:
     persist(connection, fresh)
 
 
-def batch(connection: sqlite3.Connection, thread: str) -> bool:
+def batch(connection: sqlite3.Connection, thread: str, page_size: int) -> bool:
     from hive.dashboard_summary import counts, session
 
     generation = version(connection, thread)
@@ -137,7 +137,7 @@ def batch(connection: sqlite3.Connection, thread: str) -> bool:
         for v in rows(
             connection,
             "SELECT response FROM (SELECT response FROM responses WHERE task=? AND response>? UNION SELECT response FROM claude_request_events WHERE task=? AND response>? AND NOT EXISTS (SELECT 1 FROM responses WHERE responses.response=claude_request_events.request_id AND host='claude')) ORDER BY response LIMIT ?",
-            (thread, after, thread, after, PAGE),
+            (thread, after, thread, after, page_size),
         )
     )
     if delta:
@@ -149,7 +149,7 @@ def batch(connection: sqlite3.Connection, thread: str) -> bool:
             for v in rows(
                 connection,
                 "SELECT response FROM dashboard_changes WHERE thread=? ORDER BY response LIMIT ?",
-                (thread, PAGE),
+                (thread, page_size),
             )
         )
     price(connection, identities)
@@ -296,22 +296,30 @@ def batch(connection: sqlite3.Connection, thread: str) -> bool:
     connection.execute(
         "DELETE FROM dashboard_stage_contributions WHERE thread=?", (thread,)
     )
-    return True
+    return not rows(
+        connection,
+        "SELECT 1 AS pending FROM dashboard_changes WHERE thread=? LIMIT 1",
+        (thread,),
+    )
 
 
 def advance(store: UsageStore, thread: str, deadline: float) -> None:
     # Each page commits its cursor and sums together. A change to native evidence
     # increments the generation and discards the incomplete rebuild on next pass.
+    # Start each slice with a small transaction so a slower host can commit
+    # progress before a larger page exhausts the deadline and rolls back.
+    page_size = 1
     while time.monotonic() < deadline - 0.01:
         try:
             with store.connect() as connection:
                 connection.set_progress_handler(
                     lambda: int(time.monotonic() >= deadline), 1000
                 )
-                finished = batch(connection, thread)
+                finished = batch(connection, thread, page_size)
                 connection.set_progress_handler(None, 0)
             if finished:
                 return
+            page_size = min(PAGE, page_size * 2)
         except sqlite3.OperationalError as error:
             if str(error) != "interrupted":
                 raise
