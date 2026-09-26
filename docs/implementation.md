@@ -1,5 +1,9 @@
 # Implementation and acceptance status
 
+## Temporary justiciar titles (hv-72z)
+
+Justiciar entry and shared recovery/deferral guidance now require 🔥 on every invocation for the duration of justiciar powers, preserving the bead and summary and restoring the appropriate title afterward. Delegated reviews mark the invoking task and any independently renameable reviewer task; shared-identity subagents leave parent renames to the owner. This is skill-level guidance, not host-enforced automation. Structural validation, cold review and full Tollgate delivery are recorded on the native bead before closure; a live justiciar title lifecycle has not been observed for this change.
+
 The former Fulcrum design and Hive admission/session/delivery assertions are historical. Their deletion retires those requirements; it does not count as implementing them.
 
 ## Implemented in this branch

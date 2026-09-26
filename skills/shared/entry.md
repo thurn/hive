@@ -17,4 +17,10 @@ Title a thread `<emoji> [<bead-id>] <summary>`, where the emoji is the role's (�
 
 Keep the same summary between the working and completed titles. Do not add the role name, `·` separators, outcomes or status words such as "complete"; for example, never `⚒️ executor · Scope plan removed · hv-bmx complete`.
 
+### Temporary justiciar title
+
+Every justiciar invocation must mark the task with 🔥 before applying justiciar powers, including same-task executor recovery and read-only deferral review. Preserve the current bead ID and summary, replacing the leading role or completion emoji; before a bead exists, use `🔥 <summary>`. Keep 🔥 for the entire justiciar interval, including waits for a delegated justiciar decision. The invoking task's owner performs this rename before dispatching a justiciar subagent; a reviewer with its own independently renameable task also titles that task with 🔥. A subagent sharing its parent's identity must not rename the parent itself.
+
+When justiciar powers end, restore the role title for the work being resumed, or ✅ only if the bead has actually closed as completed. A standalone justiciar task with no prior role restores its pre-invocation title. Nested justiciar activity keeps 🔥 until the outermost invocation ends. Report an unavailable title tool or failed rename and retry a failure when possible, following the host limitations above; do not claim that an unsuccessful rename happened.
+
 Honor explicit user pauses and genuinely unapproved designs until resumption or approval; any native deferral requires [fresh justiciar agreement](repair.md#deferral-decisions). Check later user direction before treating an old approval note as a current hold. Readiness and resource judgment belong to the agent. Native claiming excludes a competing owner, but cannot force noncooperating agents to respect scope or pauses.
