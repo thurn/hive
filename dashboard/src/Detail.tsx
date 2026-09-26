@@ -18,6 +18,7 @@ import {
   type Requests,
 } from "./data";
 import { request } from "./network";
+import { EpicProgress } from "./EpicProgress";
 import { Breakdown, Timeline, inRange, type Range } from "./Timeline";
 import { Amount, Copy, Empty, Hex, Icon, Link, Panel, State } from "./ui";
 
@@ -524,6 +525,7 @@ export function DetailView({ path, search }: { path: string; search: string }) {
           <Link to={path}>View whole session →</Link>
         )}
       </div>
+      {detail.epic && <EpicProgress epic={detail.epic} direct={detail.card} />}
       <Timeline
         detail={detail}
         range={range}

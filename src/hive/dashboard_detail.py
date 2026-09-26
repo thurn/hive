@@ -159,8 +159,9 @@ def detail(
     from hive.identity import Host, ThreadId
     from hive.usage import timestamp
 
+    all_cards = feed_cards(connection, datetime.now(UTC))
     card: dict[str, object] | None = next(
-        (c for c in feed_cards(connection, datetime.now(UTC)) if c["key"] == key),
+        (c for c in all_cards if c["key"] == key),
         None,
     )
     observations = selected(connection, key)
@@ -321,9 +322,16 @@ def detail(
             (task,),
         )
     ]
+    from hive.dashboard_epics import progress
+
     dimensions = breakdown(connection, observations)
     return dict[str, object](
         card=card,
+        epic=(
+            progress(connection, key[5:], all_cards)
+            if card.get("issue_type") == "epic"
+            else None
+        ),
         amount_picos=card["amount_picos"],
         usd=dollars(int(string(card["amount_picos"], "amount"))),
         timeline=[

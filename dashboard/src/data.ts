@@ -31,6 +31,9 @@ export const HealthSchema = z.object({
   summaries_refreshed: MaybeText,
   tollgate_error: MaybeText,
   bead_events_error: MaybeText,
+  bead_events_behind: z.boolean().optional(),
+  tollgate_refreshed: MaybeText,
+  registry: z.object({ refreshed: MaybeText, error: MaybeText }).nullish(),
   discovery_error: MaybeText,
   discovery_behind: z.boolean().optional(),
   tollgate_behind: z.boolean().optional(),
@@ -151,7 +154,32 @@ const BeadsSchema = z.object({
   error: MaybeText,
 });
 export type Beads = z.infer<typeof BeadsSchema>;
+const EpicSchema = z.object({
+  native_status: z.string(),
+  scope: z.string(),
+  classification: z.string(),
+  groups: z.array(z.object({ category: z.string(), total: z.number(), completed: z.number() })),
+  active: z.number(),
+  in_ci: z.number(),
+  blocked: z.number(),
+  held: z.number(),
+  owners: z.array(z.string()),
+  amount_picos: Amount,
+  unpriced: z.number(),
+  incomplete: z.number(),
+  missing_costs: z.number(),
+  refreshed: MaybeText,
+  collector: HealthSchema,
+  members: z.array(z.object({
+    bead: z.string(), title: z.string(), category: z.string(), direct_child: z.boolean(), current: z.boolean(),
+    native_status: z.string(), state: z.string(), completed: z.boolean(), cancelled: z.boolean(),
+    active: z.boolean(), owner: MaybeText, blockers: z.array(z.string()), held: z.boolean(),
+    in_ci: z.boolean(), ci_failed: z.boolean(),
+  })),
+});
+export type Epic = z.infer<typeof EpicSchema>;
 export const DetailSchema = z.object({
+  epic: EpicSchema.nullish(),
   card: CardSchema,
   amount_picos: Amount,
   timeline: z.array(PointSchema),

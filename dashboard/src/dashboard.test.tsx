@@ -416,3 +416,33 @@ describe("read-only data journeys", () => {
     expect(screen.queryByRole("heading", { name: "Newsfeed" })).toBeNull();
   });
 });
+
+it("shows descendant progress without replacing native epic state or direct spend", async () => {
+  const epicDetail = {
+    ...detail,
+    card: { ...card, state: "Ready", amount_picos: "1000000000000" },
+    epic: {
+      native_status: "open", scope: "All reachable descendants; excludes this epic",
+      classification: "Explicit work kinds and retained task conventions",
+      groups: [{ category: "implementation", total: 4, completed: 1 }, { category: "review", total: 1, completed: 1 }],
+      active: 2, in_ci: 1, blocked: 1, held: 1, owners: ["same-owner"],
+      amount_picos: "2000000000000", unpriced: 1, incomplete: 1, missing_costs: 0,
+      refreshed: at, collector: { summaries_behind: false, tollgate_behind: false, tollgate_refreshed: at, registry: { refreshed: at, error: "beads_unavailable" } },
+      members: [{ bead: "hv-child", title: "Active child", category: "implementation", direct_child: true, current: true,
+        native_status: "in_progress", state: "In CI", completed: false, cancelled: false,
+        active: true, owner: "same-owner", blockers: ["hv-cancelled"], held: false, in_ci: true, ci_failed: false }],
+    },
+  };
+  vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) =>
+    response(String(input).includes("requests=1") ? { requests: [], next_cursor: null } : epicDetail)));
+  render(<DetailView path="/bead/hv-test" search="" />);
+  await screen.findByRole("heading", { name: "Epic progress" });
+  expect(screen.getByText("Ready")).toBeInTheDocument();
+  expect(screen.getByText(/2 active descendants · 1 distinct assigned owners/)).toBeInTheDocument();
+  expect(screen.getByText("1 / 4 completed")).toBeInTheDocument();
+  expect(screen.getByText(/Direct epic lifetime spend:/)).toHaveTextContent("$1.00 · Descendant lifetime spend: ≥ $2.00");
+  expect(screen.getByText(/Cached descendant observation:/)).toHaveTextContent("Collection delayed or unavailable");
+  fireEvent.click(screen.getByText("Descendant work (1)"));
+  expect(screen.getByRole("link", { name: "Active child" })).toHaveAttribute("href", "/bead/hv-child");
+  expect(screen.getByRole("link", { name: "hv-cancelled" })).toHaveAttribute("href", "/bead/hv-cancelled");
+});

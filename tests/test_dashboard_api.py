@@ -21,6 +21,7 @@ from test_links import bd
 from test_project_observation import launch
 
 from hive.bead_events import read as read_events
+from hive.beads_connection import BeadsConnection
 from hive.beads_process import BeadsProcess
 from hive.dashboard_api import read
 from hive.dashboard_summary import refresh
@@ -493,3 +494,192 @@ class DashboardTests(unittest.TestCase):
                 self.assertEqual(missing["code"], "NotFound")
             with store.connect() as c:
                 self.assertNotIn("PRIVATE_FAILED_ATTEMPT", "\n".join(c.iterdump()))
+
+
+class EpicProgressTests(unittest.TestCase):
+    def test_native_descendants_progress_costs_ci_and_history_are_separate(
+        self,
+    ) -> None:
+        from test_tollgate_observation import CANDIDATE, REPO, candidate, fake
+
+        from hive.tollgate_observation import poll
+
+        beads: BeadsConnection
+        with private_server() as (beads, _), tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            setup(root, beads)
+
+            def create(title: str, kind: str = "task", **metadata: object) -> str:
+                return str(
+                    bd(
+                        beads,
+                        "create",
+                        title,
+                        "--type",
+                        kind,
+                        "--metadata",
+                        json.dumps({"hive_project": "sample", **metadata}),
+                    )["id"]
+                )
+
+            epic = create("Hearts", "epic")
+            native_bd(
+                beads,
+                "update",
+                epic,
+                "--notes",
+                "Implementation stays deferred.\nLater approved.",
+            )
+            done = create("Hearts H01", hearts_task="H01")
+            review = create("Introspect implementation", implementation_authorized=True)
+            visual_review = create(
+                "Hearts RV01: Review visual pass",
+                hearts_task="RV01",
+                implementation_authorized=True,
+            )
+            approval = create(
+                "Authorize work",
+                hearts_task="AUTHORIZE",
+                implementation_authorized=True,
+            )
+            acceptance = create(
+                "Accept delivered improvements", implementation_authorized=True
+            )
+            cancelled = create("Cancelled feature", hive_work_kind="implementation")
+            active = create("Hearts H02", hearts_task="H02")
+            second = create("Concurrent assignment", hive_work_kind="implementation")
+            held_bead = create("Waiting on external input")
+            for child in (
+                done,
+                review,
+                visual_review,
+                approval,
+                acceptance,
+                cancelled,
+                active,
+                held_bead,
+            ):
+                native_bd(beads, "dep", "add", child, epic, "--type", "parent-child")
+            native_bd(beads, "dep", "add", second, active, "--type", "parent-child")
+            native_bd(beads, "dep", "add", held_bead, cancelled)
+            for child, resolution in (
+                (done, "completed"),
+                (review, "completed"),
+                (visual_review, "completed"),
+                (approval, "completed"),
+                (cancelled, "cancelled"),
+            ):
+                native_bd(
+                    beads,
+                    "update",
+                    child,
+                    "--set-metadata",
+                    "hive_resolution=" + resolution,
+                )
+                native_bd(beads, "close", child)
+            native_bd(beads, "update", held_bead, "--status", "deferred")
+            for child in (epic, active, second):
+                bd(beads, "--actor", THREAD, "update", child, "--claim")
+            at = last(beads, second) + timedelta(milliseconds=1)
+            claude(root, THREAD, "shared-epic-and-descendants", at, 100000)
+            # Keep an open parent with historical direct spend and active children.
+            native_bd(beads, "update", epic, "--status", "open", "--assignee", "")
+            command(root, "cost", "--reconcile")
+            store = UsageStore(root / "state/telemetry.sqlite3")
+            running = candidate(CANDIDATE, active + "-feature", at, state="running")
+            fake(
+                root,
+                {
+                    "repositories": [
+                        dict(
+                            state=dict(id=REPO, path=str(root)),
+                            queue=[running],
+                            checks=[],
+                            history=[],
+                        )
+                    ],
+                    CANDIDATE: running,
+                },
+            )
+            with patch.dict(
+                os.environ, {"PATH": str(root) + os.pathsep + os.environ["PATH"]}
+            ):
+                poll(store, launch(root, root, beads.directory), time.monotonic() + 5)
+            settle(root)
+            detail = api(root, "bead", epic)
+            progress = record(detail["epic"])
+            groups = {g["category"]: g for g in objects(progress["groups"])}
+            self.assertEqual(
+                groups["implementation"],
+                dict(category="implementation", total=4, completed=1),
+            )
+            self.assertEqual(
+                groups["review"], dict(category="review", total=2, completed=2)
+            )
+            self.assertEqual(progress["active"], 2)
+            self.assertEqual(progress["owners"], [THREAD])
+            self.assertEqual(progress["in_ci"], 1)
+            self.assertEqual(progress["held"], 1)
+            self.assertEqual(progress["blocked"], 1)
+            members = {
+                string(m["bead"], "bead"): m for m in objects(progress["members"])
+            }
+            self.assertTrue(members[active]["in_ci"])
+            self.assertFalse(members[second]["direct_child"])
+            self.assertEqual(members[held_bead]["blockers"], [cancelled])
+            self.assertEqual(progress["native_status"], "open")
+            self.assertEqual(record(detail["card"])["state"], "Ready")
+            self.assertNotIn("deferred", str(record(detail["card"])["subtitle"]))
+            self.assertTrue(progress["refreshed"])
+            self.assertTrue(record(progress["collector"])["tollgate_refreshed"])
+            direct = int(str(detail["amount_picos"]))
+            descendants = sum(
+                int(str(api(root, "bead", child)["amount_picos"])) for child in members
+            )
+            self.assertGreater(direct, 0)
+            self.assertEqual(int(str(progress["amount_picos"])), descendants)
+            feed = api(root, "feed", "--older-completed")
+            self.assertEqual(
+                sum(int(str(c["amount_picos"])) for c in objects(feed["cards"])),
+                direct + descendants,
+            )
+            self.assertIsNone(api(root, "bead", active)["epic"])
+            native_bd(beads, "rename", second, "hv-renamed")
+            command(root, "cost", "--reconcile")
+            settle(root)
+            renamed = record(api(root, "bead", epic)["epic"])
+            self.assertEqual(renamed["active"], 2)
+            self.assertEqual(renamed["amount_picos"], progress["amount_picos"])
+            self.assertNotIn(second, [m["bead"] for m in objects(renamed["members"])])
+            second = "hv-renamed"
+            # Native deletion retains historical spend, never a ghost active owner.
+            native_bd(beads, "delete", second, "--force")
+            command(root, "cost", "--reconcile")
+            settle(root)
+            after = record(api(root, "bead", epic)["epic"])
+            self.assertEqual(after["active"], 1)
+            deleted = next(m for m in objects(after["members"]) if m["bead"] == second)
+            self.assertFalse(deleted["current"])
+            self.assertFalse(deleted["active"])
+            self.assertEqual(after["amount_picos"], progress["amount_picos"])
+            self.assertEqual(
+                next(
+                    g
+                    for g in objects(after["groups"])
+                    if g["category"] == "implementation"
+                )["total"],
+                3,
+            )
+
+            native_bd(beads, "delete", done, "--force")
+            command(root, "cost", "--reconcile")
+            settle(root)
+            deleted_complete = record(api(root, "bead", epic)["epic"])
+            implementation = next(
+                g
+                for g in objects(deleted_complete["groups"])
+                if g["category"] == "implementation"
+            )
+            self.assertEqual(
+                implementation, dict(category="implementation", total=2, completed=0)
+            )

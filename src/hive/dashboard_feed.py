@@ -37,7 +37,7 @@ def cards(connection: sqlite3.Connection, now: datetime) -> list[dict[str, objec
         connection,
         # Keep the joined primary keys bare so SQLite can use their indexes;
         # concatenating them scans every bead for every card on each feed read.
-        "SELECT c.*,b.bead,b.title,b.status,b.subtitle,b.created,b.closed,b.assignee,b.blockers,b.resolution,b.deferred_until,r.status AS interval_status,r.deleted FROM card_summaries c LEFT JOIN bead_rows b ON b.bead=substr(c.key,6) AND substr(c.key,1,5)='bead:' LEFT JOIN bead_replays r ON r.bead=substr(c.key,6) AND substr(c.key,1,5)='bead:' ORDER BY c.last_activity DESC,c.key",
+        "SELECT c.*,b.bead,b.title,b.status,b.subtitle,json_extract(b.payload,'$.issue_type') AS issue_type,b.created,b.closed,b.assignee,b.blockers,b.resolution,b.deferred_until,r.status AS interval_status,r.deleted FROM card_summaries c LEFT JOIN bead_rows b ON b.bead=substr(c.key,6) AND substr(c.key,1,5)='bead:' LEFT JOIN bead_replays r ON r.bead=substr(c.key,6) AND substr(c.key,1,5)='bead:' ORDER BY c.last_activity DESC,c.key",
     )
     primary_roles = {}
     for span in rows(
@@ -52,6 +52,8 @@ def cards(connection: sqlite3.Connection, now: datetime) -> list[dict[str, objec
         key = string(card["key"], "key")
         thread = key.removeprefix("session:") if key.startswith("session:") else None
         tasks = owners.get(key, set()) if thread is None else {thread}
+        if card.get("issue_type") == "epic":
+            card["subtitle"] = "Epic · open detail for descendant progress"
         card["owners"] = sorted(tasks)
         card["thread"] = thread
         card["primary_role"] = primary_roles.get(thread or "", "unknown")
