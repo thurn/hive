@@ -238,3 +238,19 @@ the scoped [shell review](measurements/dashboard-redesign/shell/README.md) cover
 this increment; the complete redesign acceptance remains hv-0gi.5. Native cold
 review, full Tollgate certification and promoted hot reload are recorded on the
 implementation bead.
+
+## Concise dashboard work list (hv-0gi.2)
+
+Newsfeed now separates unboxed selected-window Recorded spend from a title-linked
+list of Work, Project, State and Lifetime spend. All roles, ranked issues and
+coverage evidence remain available through named disclosures. Every stored title
+wraps in full; non-bead rows retain explicit kind qualifiers and unpriced counts.
+A narrow lifetime caption preserves scope when column headings are visually hidden.
+
+Search remains visible; Filters contains the original controls, applied count and
+reset action without changing backend semantics. The disclosure stays mounted
+while a query refetches, preserving open state and the selected project. Existing
+cursor paging, coherent loaded-page refresh, safe navigation, accounting and
+server contracts remain unchanged. Twenty-two frontend behavior tests and the
+[work-list smoke review](measurements/dashboard-redesign/work-list/README.md) cover
+this increment; detail reorganization and full redesign acceptance remain pending.

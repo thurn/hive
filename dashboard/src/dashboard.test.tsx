@@ -14,7 +14,9 @@ import { Filters, FeedView, useFeed } from "./Feed";
 import { Breakdown, Timeline } from "./Timeline";
 import { money, when, type Card, type Detail, type Feed } from "./data";
 import { request } from "./network";
-import { Disclosure, WorkCard } from "./ui";
+import { Disclosure } from "./ui";
+import { WorkList } from "./WorkList";
+import { FeedSummary } from "./FeedSummary";
 const at = "2026-09-24T12:00:00Z";
 const card: Card = {
   key: "bead:hv-test",
@@ -165,16 +167,19 @@ describe("work presentation", () => {
   it("preserves large integer costs, coverage and tail navigation", () => {
     expect(money(card.amount_picos, 6)).toBe("$1,234,567.890123");
     render(
-      <WorkCard card={{ ...card, key: "session:session-a", kind: "tail" }} />,
+      <WorkList
+        cards={[{ ...card, key: "session:session-a", kind: "tail" }]}
+      />,
     );
     expect(screen.getByRole("link")).toHaveAttribute(
       "href",
       "/session/session-a?tail=1",
     );
-    expect(screen.getByRole("link")).toHaveTextContent("≥");
+    expect(screen.getAllByRole("row")[1]).toHaveTextContent("≥");
   });
   it("keeps filters in the URL and exposes all backing hotspot cards", () => {
     render(<Filters search="?window=today" projects={feed.projects} />);
+    fireEvent.click(screen.getByRole("button", { name: "Filters" }));
     fireEvent.change(screen.getByLabelText("Project"), {
       target: { value: "battlement" },
     });
@@ -188,39 +193,137 @@ describe("work presentation", () => {
     fireEvent.submit(screen.getByLabelText("Search work").closest("form")!);
     expect(new URLSearchParams(location.search).get("q")).toBe("a & b");
   });
-  it("renders five distinct role emblems and an explicit empty state", () => {
-    const { container } = render(
-      <FeedView
+  it("keeps all work kinds, states and exact lifetime amounts in title-linked rows", () => {
+    const kinds = ["bead", "agent", "tail", "small_tails", "unattributable"];
+    const keys = [
+      "bead:hv-test",
+      "session:a",
+      "session:b",
+      "ledger:small_tails:hive",
+      "ledger:unattributable:Other",
+    ];
+    const states = [
+      "Working",
+      "In CI",
+      "Stalled",
+      "Ready",
+      "Blocked",
+      "Awaiting approval",
+      "Deferred",
+      "Complete",
+      "Cancelled",
+      "Needs attention",
+      "Idle",
+      "Finished",
+      "Closed",
+    ];
+    render(
+      <WorkList
+        cards={states.map((state, i) => ({
+          ...card,
+          key: `${keys[i % 5] ?? "bead:missing"}${i}`,
+          kind: kinds[i % 5] ?? "bead",
+          title: `Full title ${i} ` + "important words ".repeat(20),
+          state,
+        }))}
+      />,
+    );
+    expect(screen.getAllByRole("row")).toHaveLength(14);
+    for (const state of states) expect(screen.getByText(state)).toBeVisible();
+    expect(screen.getAllByText("Agent session").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Unowned tail").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Small tails ledger").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Unattributable ledger").length).toBeGreaterThan(
+      0,
+    );
+    expect(
+      screen.getAllByTitle(card.amount_picos + " picodollars"),
+    ).toHaveLength(13);
+    expect(screen.getAllByRole("link")[0]).toHaveTextContent(
+      "important words ".repeat(20).trim(),
+    );
+    expect(
+      screen.getByRole("columnheader", { name: "Lifetime spend" }),
+    ).toBeVisible();
+  });
+  it("reveals every window role and all ranked findings without duplicating coverage", () => {
+    const roles = ["executor", "warden", "weaver", "sage", "mason", "unknown"];
+    render(
+      <FeedSummary
+        search="?project=hive&role=warden&q=repair&state=Working"
+        data={{
+          ...feed,
+          summary: {
+            ...feed.summary,
+            roles: roles.map((role, i) => ({
+              role,
+              amount_picos: String(i * 1000),
+            })),
+          },
+          hotspots: [
+            {
+              kind: "coverage",
+              title: "Partial window",
+              amount_picos: "100",
+              keys: ["bead:hv-a", "bead:hv-b", "bead:hv-c", "bead:hv-d"],
+            },
+            ...feed.hotspots,
+          ],
+        }}
+      />,
+    );
+    expect(screen.queryByText("Partial window")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Spend by role" }));
+    for (const role of [
+      "Executor",
+      "Warden",
+      "Weaver",
+      "Sage",
+      "Mason",
+      "Unknown",
+    ])
+      expect(screen.getByText(role)).toBeVisible();
+    expect(screen.getByText(/Search, state, activity/)).toHaveTextContent(
+      "not these window totals",
+    );
+    expect(screen.getByText(/Selected window:/)).toHaveTextContent(
+      "Project: hive; request role: Warden",
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: "Coverage incomplete" }),
+    );
+    expect(screen.getByText("Partial window")).toBeVisible();
+    expect(screen.getByRole("link", { name: "bead:hv-d" })).toHaveAttribute(
+      "href",
+      "/bead/hv-d",
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Issues (1)" }));
+    expect(screen.getByText("Repeated tool errors")).toBeVisible();
+    expect(screen.getAllByText("Partial window")).toHaveLength(1);
+  });
+  it("keeps partial zero explicit and omits an empty issues action", () => {
+    render(
+      <FeedSummary
         search=""
         data={{
           ...feed,
-          cards: ["executor", "warden", "weaver", "sage", "mason"].map(
-            (role) => ({
-              ...card,
-              key: "session:" + role,
-              kind: "agent",
-              primary_role: role,
-              roles: { [role]: "1" },
-            }),
-          ),
+          summary: {
+            ...feed.summary,
+            amount_picos: "0",
+            incomplete_picos: "0",
+            unpriced: 2,
+            roles: [],
+          },
+          hotspots: [],
         }}
-        health={null}
-        error=""
-        more={async () => {}}
-        loading={false}
       />,
     );
-    expect(
-      new Set(
-        Array.from(container.querySelectorAll(".emblem svg")).map(
-          (svg) => svg.innerHTML,
-        ),
-      ).size,
-    ).toBe(5);
-    expect(screen.getByRole("link", { name: "hv-test →" })).toHaveAttribute(
-      "href",
-      "/bead/hv-test",
+    expect(screen.getByText("≥ $0.00")).toBeVisible();
+    expect(screen.queryByRole("button", { name: /Issues/ })).toBeNull();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Coverage incomplete" }),
     );
+    expect(screen.getByText(/2 requests unpriced/)).toBeVisible();
   });
   it("never turns hostile markdown into live HTML, scripts, images or javascript links", () => {
     const { container } = render(
@@ -587,7 +690,7 @@ describe("shell navigation", () => {
     render(<App />);
     fireEvent.click(
       await screen.findByRole("link", {
-        name: /Repair the collector.*tool errors/,
+        name: "Repair the collector",
       }),
     );
     fireEvent.click(
@@ -655,4 +758,67 @@ describe("shell navigation", () => {
     expect(trigger).toHaveFocus();
     expect(screen.queryByRole("button", { name: "Inner action" })).toBeNull();
   });
+});
+
+it("counts and resets all filters while preserving the selected window", () => {
+  const search =
+    "?window=30d&project=hive&role=warden&state=Complete&active=1&older-completed=1&q=needle&cursor=old";
+  history.replaceState(null, "", "/" + search);
+  render(<Filters search={search} projects={feed.projects} />);
+  fireEvent.click(screen.getByRole("button", { name: "Filters (6)" }));
+  expect(screen.getByLabelText("Older completed")).toBeChecked();
+  fireEvent.click(screen.getByRole("button", { name: "Reset filters" }));
+  expect(location.search).toBe("?window=30d");
+  expect(screen.getByLabelText("Search work")).toHaveValue("");
+});
+it("keeps stale readable rows, empty matches and initial errors distinct", () => {
+  const base = {
+    search: "",
+    health: null,
+    more: async () => {},
+    loading: false,
+  };
+  const view = render(
+    <FeedView {...base} data={feed} error="Refresh unavailable" />,
+  );
+  expect(screen.getByRole("alert")).toHaveTextContent("Refresh unavailable");
+  expect(screen.getByRole("link", { name: card.title })).toBeVisible();
+  view.rerender(<FeedView {...base} data={{ ...feed, cards: [] }} error="" />);
+  expect(
+    screen.getByRole("heading", { name: "No work matches" }),
+  ).toBeVisible();
+  view.rerender(<FeedView {...base} data={null} error="Initial read failed" />);
+  expect(
+    screen.getByRole("heading", { name: "Observations unavailable" }),
+  ).toBeVisible();
+  expect(screen.getByRole("button", { name: "Try again" })).toBeVisible();
+});
+
+it("keeps filter disclosure and scope while the next query is loading", () => {
+  const base = {
+    health: null,
+    error: "",
+    more: async () => {},
+    loading: false,
+  };
+  const view = render(
+    <FeedView {...base} search="?project=hive" data={feed} />,
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Filters (1)" }));
+  view.rerender(
+    <FeedView {...base} search="?project=hive&role=warden" data={null} />,
+  );
+  expect(screen.getByRole("button", { name: "Filters (2)" })).toHaveAttribute(
+    "aria-expanded",
+    "true",
+  );
+  expect(screen.getByLabelText("Project")).toHaveValue("hive");
+  expect(screen.getByLabelText("Role")).toHaveValue("warden");
+  view.rerender(
+    <FeedView {...base} search="?project=hive&role=warden" data={feed} />,
+  );
+  expect(screen.getByRole("button", { name: "Filters (2)" })).toHaveAttribute(
+    "aria-expanded",
+    "true",
+  );
 });

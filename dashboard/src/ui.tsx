@@ -7,7 +7,7 @@ import {
 } from "react";
 import { navigate } from "./navigation";
 export { navigate } from "./navigation";
-import { cardPath, cardTitle, label, money, type Card } from "./data";
+import { money } from "./data";
 
 export const roles = [
   "executor",
@@ -202,81 +202,6 @@ export function Copy({
     </span>
   );
 }
-export function WorkCard({ card }: { card: Card }) {
-  const ordered = Object.entries(card.roles)
-    .filter(([, v]) => BigInt(v) > 0n)
-    .sort((a, b) => (BigInt(a[1]) > BigInt(b[1]) ? -1 : 1));
-  const badgeNames: Record<string, string> = {
-    ci_failures: "CI failures",
-    tool_errors: "tool errors",
-    slow_tools: "slow tools",
-    api_errors: "API errors",
-    human_waits: "human waits",
-    retry_loops: "retry loops",
-  };
-  return (
-    <Link to={cardPath(card)} className="work-card">
-      <div className="card-top">
-        <span className="emblem">
-          {card.kind === "bead" ? (
-            <Hex project={card.project} />
-          ) : card.kind === "agent" || card.kind === "tail" ? (
-            <Icon role={card.primary_role} />
-          ) : (
-            <Hex />
-          )}
-        </span>
-        <span className="project-name">{card.project}</span>
-        <State value={card.state} />
-      </div>
-      <h2>{cardTitle(card)}</h2>
-      <p className="card-description">
-        {card.bead && (
-          <>
-            <code>{card.bead}</code> ·{" "}
-          </>
-        )}
-        {card.subtitle ||
-          [
-            card.kind === "tail"
-              ? "Unowned tail"
-              : card.kind === "agent"
-                ? "Agent session"
-                : label(card.kind),
-            label(card.primary_role),
-          ].join(" · ")}
-      </p>
-      <footer>
-        <Amount value={card.amount_picos} coverage={!!card.coverage} />
-        <div className="card-roles">
-          {ordered.slice(0, 2).map(([role]) => (
-            <span key={role} title={label(role)}>
-              <Icon role={role} small />
-              {label(role)}
-            </span>
-          ))}
-        </div>
-        <div className="badges">
-          {Object.entries(card.badges)
-            .filter(([, n]) => n > 0)
-            .slice(0, 2)
-            .map(([key, count]) => (
-              <span
-                key={key}
-                title={`${count} ${badgeNames[key] ?? label(key)}`}
-              >
-                ! {count} {key === "ci_failures" ? "CI" : ""}
-                <span className="sr-only">{badgeNames[key]}</span>
-              </span>
-            ))}
-        </div>
-        <span className="card-arrow" aria-hidden="true">
-          →
-        </span>
-      </footer>
-    </Link>
-  );
-}
 export function Empty({
   title,
   children,
@@ -339,6 +264,7 @@ export function Disclosure({
       }}
     >
       <button
+        type="button"
         ref={trigger}
         aria-expanded={open}
         aria-controls={id}

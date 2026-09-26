@@ -130,3 +130,13 @@ reload and independent history-entry restoration. Cold review found and verified
 the same-query cache correction. The remaining redesign children and the full
 glyph, border-stack, contrast, state and interaction matrix are unfinished; this
 checkpoint does not supersede those requirements or claim whole-plan acceptance.
+
+## Dashboard redesign: work-list checkpoint (hv-0gi.2)
+
+The [work-list review](measurements/dashboard-redesign/work-list/README.md) records
+twelve viewport/breakpoint measurements with zero page horizontal overflow and
+real wide/tall/narrow screenshots. Live filter changes exposed and verified the
+fix for disclosure loss during loading; all nine observed window roles remain
+reachable. Twenty-two frontend journeys and cold review cover exact scope, all
+item kinds/states, partial zero, findings, filter reset and retained navigation.
+Full redesign visual acceptance and detail evidence destinations remain pending.

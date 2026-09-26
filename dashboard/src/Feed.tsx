@@ -2,14 +2,15 @@ import { useEffect, useRef, useState } from "react";
 import {
   FeedSchema,
   HealthSchema,
-  keyPath,
   label,
   type Feed,
   type Health,
 } from "./data";
 import { rememberExtent } from "./navigation";
 import { request } from "./network";
-import { Amount, Empty, Icon, Link, WorkCard, navigate, roles } from "./ui";
+import { Disclosure, Empty, navigate, roles } from "./ui";
+import { FeedSummary } from "./FeedSummary";
+import { WorkList } from "./WorkList";
 
 export function useFeed(search: string, restoreCount = 0, entryKey = "") {
   const [data, setData] = useState<Feed | null>(null),
@@ -177,14 +178,30 @@ export function Filters({
     "Finished",
     "Closed",
   ];
+  const filterKeys = [
+    "q",
+    "project",
+    "role",
+    "state",
+    "active",
+    "older-completed",
+  ];
+  const count = filterKeys.filter((key) => params.has(key)).length;
+  function reset() {
+    const next = new URLSearchParams(search);
+    for (const key of [...filterKeys, "cursor"]) next.delete(key);
+    setQuery("");
+    navigate("/?" + next.toString());
+  }
   return (
     <form
-      className="filters"
+      className="work-toolbar"
       onSubmit={(e) => {
         e.preventDefault();
         change("q", query);
       }}
     >
+      <h2>All work</h2>
       <label className="search">
         <span aria-hidden="true">⌕</span>
         <input
@@ -197,119 +214,75 @@ export function Filters({
           }}
         />
       </label>
-      <select
-        aria-label="Project"
-        value={params.get("project") ?? ""}
-        onChange={(e) => change("project", e.target.value)}
-      >
-        <option value="">All projects</option>
-        {projects.map((p) => (
-          <option key={p.id} value={p.id}>
-            {p.id}
-          </option>
-        ))}
-      </select>
-      <select
-        aria-label="Role"
-        value={params.get("role") ?? ""}
-        onChange={(e) => change("role", e.target.value)}
-      >
-        <option value="">All roles</option>
-        {roles.map((r) => (
-          <option key={r} value={r}>
-            {label(r)}
-          </option>
-        ))}
-      </select>
-      <select
-        aria-label="State"
-        value={params.get("state") ?? ""}
-        onChange={(e) => change("state", e.target.value)}
-      >
-        <option value="">All states</option>
-        {states.map((s) => (
-          <option key={s}>{s}</option>
-        ))}
-      </select>
-      <label className="check">
-        <input
-          type="checkbox"
-          checked={params.has("active")}
-          onChange={(e) => change("active", e.target.checked ? "1" : "")}
-        />
-        Active in window
-      </label>
-      <label className="check">
-        <input
-          type="checkbox"
-          checked={params.has("older-completed")}
-          onChange={(e) =>
-            change("older-completed", e.target.checked ? "1" : "")
-          }
-        />
-        Older completed
-      </label>
+      <Disclosure title={count ? `Filters (${count})` : "Filters"}>
+        <div className="filter-fields">
+          <select
+            aria-label="Project"
+            value={params.get("project") ?? ""}
+            onChange={(e) => change("project", e.target.value)}
+          >
+            <option value="">All projects</option>
+            {params.get("project") &&
+              !projects.some((p) => p.id === params.get("project")) && (
+                <option value={params.get("project") ?? ""}>
+                  {params.get("project")}
+                </option>
+              )}
+            {projects.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.id}
+              </option>
+            ))}
+          </select>
+          <select
+            aria-label="Role"
+            value={params.get("role") ?? ""}
+            onChange={(e) => change("role", e.target.value)}
+          >
+            <option value="">All roles</option>
+            {roles.map((r) => (
+              <option key={r} value={r}>
+                {label(r)}
+              </option>
+            ))}
+          </select>
+          <select
+            aria-label="State"
+            value={params.get("state") ?? ""}
+            onChange={(e) => change("state", e.target.value)}
+          >
+            <option value="">All states</option>
+            {states.map((s) => (
+              <option key={s}>{s}</option>
+            ))}
+          </select>
+          <label className="check">
+            <input
+              type="checkbox"
+              checked={params.has("active")}
+              onChange={(e) => change("active", e.target.checked ? "1" : "")}
+            />
+            Active in window
+          </label>
+          <label className="check">
+            <input
+              type="checkbox"
+              checked={params.has("older-completed")}
+              onChange={(e) =>
+                change("older-completed", e.target.checked ? "1" : "")
+              }
+            />
+            Older completed
+          </label>
+          <button type="button" onClick={reset}>
+            Reset filters
+          </button>
+        </div>
+      </Disclosure>
       <button type="submit" className="sr-only">
         Search
       </button>
     </form>
-  );
-}
-function Hotspots({ items }: { items: Feed["hotspots"] }) {
-  const [index, setIndex] = useState(0);
-  const item = items[index % Math.max(1, items.length)];
-  return item ? (
-    <section className="hotspot" aria-label="Fleet hotspot">
-      <span className="spark" aria-hidden="true">
-        ✧
-      </span>
-      <div className="hotspot-copy">
-        <strong>{item.title}</strong>
-        <p>
-          <Amount value={item.amount_picos} /> in this window ·{" "}
-          {item.keys.length} {item.keys.length === 1 ? "card" : "cards"}
-        </p>
-        <div className="hotspot-links">
-          {item.keys.slice(0, 3).map((key) => (
-            <Link to={keyPath(key)} key={key}>
-              {key.replace(/^(bead|session|ledger):/, "").slice(0, 30)} →
-            </Link>
-          ))}
-          {item.keys.length > 3 && (
-            <details>
-              <summary>{item.keys.length - 3} more</summary>
-              {item.keys.slice(3).map((key) => (
-                <Link key={key} to={keyPath(key)}>
-                  {key} →
-                </Link>
-              ))}
-            </details>
-          )}
-        </div>
-      </div>
-      <div className="carousel">
-        <button
-          aria-label="Previous hotspot"
-          onClick={() => setIndex((index + items.length - 1) % items.length)}
-        >
-          ←
-        </button>
-        <span>
-          {(index % items.length) + 1} / {items.length}
-        </span>
-        <button
-          aria-label="Next hotspot"
-          onClick={() => setIndex((index + 1) % items.length)}
-        >
-          →
-        </button>
-      </div>
-    </section>
-  ) : (
-    <div className="hotspot quiet">
-      <span className="spark">✧</span>
-      <span>No hotspots in this window</span>
-    </div>
   );
 }
 export function FeedView({
@@ -331,6 +304,7 @@ export function FeedView({
   function window(value: string) {
     const next = new URLSearchParams(search);
     next.set("window", value);
+    next.delete("cursor");
     navigate("/?" + next);
   }
   const issues = [
@@ -345,82 +319,46 @@ export function FeedView({
         <div>
           <h1>Newsfeed</h1>
         </div>
-        <span className="freshness">
-          {issues.length
-            ? "! Some observations unavailable"
-            : health?.summaries_behind
-              ? "◷ Catching up"
-              : "● Live observations"}
-        </span>
+        <div className="segmented" aria-label="Time window">
+          {[
+            ["today", "Today"],
+            ["7d", "Last 7 days"],
+            ["30d", "Last 30 days"],
+          ].map(([value, title]) => (
+            <button
+              key={value}
+              aria-pressed={(params.get("window") ?? "7d") === value}
+              onClick={() => window(value ?? "7d")}
+            >
+              {title}
+            </button>
+          ))}
+        </div>
       </header>
+      <p className="feed-freshness">
+        {issues.length
+          ? "! Some observations unavailable"
+          : health?.summaries_behind
+            ? "◷ Catching up"
+            : "● Live observations"}
+      </p>
       {error && (
         <div role="alert" className="warning">
           {error}
         </div>
       )}
       {data ? (
+        <FeedSummary data={data} search={search} />
+      ) : (
+        <div className="summary-loading" role="status">
+          {error ? "Recorded spend unavailable" : "Loading recorded spend…"}
+        </div>
+      )}
+      <Filters search={search} projects={data?.projects ?? []} />
+      {data ? (
         <>
-          <section className="summary-strip" aria-label="Spend summary">
-            <div>
-              <span className="muted">
-                Spend ·{" "}
-                {data.summary.window === "today"
-                  ? "today"
-                  : "last " + data.summary.window.replace("d", " days")}
-              </span>
-              <div className="total">
-                <Amount
-                  value={data.summary.amount_picos}
-                  coverage={BigInt(data.summary.incomplete_picos) > 0n}
-                />
-              </div>
-              <div className="muted">
-                {data.summary.unpriced
-                  ? `${data.summary.unpriced} requests unpriced`
-                  : "Retained request estimates"}{" "}
-                · {data.summary.timezone}
-              </div>
-            </div>
-            <div className="summary-roles">
-              {[...data.summary.roles]
-                .sort((a, b) =>
-                  BigInt(a.amount_picos) > BigInt(b.amount_picos) ? -1 : 1,
-                )
-                .slice(0, 3)
-                .map((r) => (
-                  <div key={r.role}>
-                    <span className="role-label">
-                      <Icon role={r.role} small />
-                      {label(r.role)}
-                    </span>
-                    <Amount value={r.amount_picos} />
-                  </div>
-                ))}
-            </div>
-            <div className="segmented" aria-label="Time window">
-              {[
-                ["today", "Today"],
-                ["7d", "7 days"],
-                ["30d", "30 days"],
-              ].map(([value, title]) => (
-                <button
-                  key={value}
-                  aria-pressed={(params.get("window") ?? "7d") === value}
-                  onClick={() => window(value ?? "7d")}
-                >
-                  {title}
-                </button>
-              ))}
-            </div>
-          </section>
-          <Hotspots items={data.hotspots} />
-          <Filters search={search} projects={data.projects} />
           {data.cards.length ? (
-            <div className="card-grid">
-              {data.cards.map((card) => (
-                <WorkCard key={card.key} card={card} />
-              ))}
-            </div>
+            <WorkList cards={data.cards} />
           ) : (
             <Empty
               title="No work matches"
