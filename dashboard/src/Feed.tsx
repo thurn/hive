@@ -7,16 +7,18 @@ import {
   type Feed,
   type Health,
 } from "./data";
+import { rememberExtent } from "./navigation";
 import { request } from "./network";
 import { Amount, Empty, Icon, Link, WorkCard, navigate, roles } from "./ui";
 
-export function useFeed(search: string) {
+export function useFeed(search: string, restoreCount = 0, entryKey = "") {
   const [data, setData] = useState<Feed | null>(null),
     [health, setHealth] = useState<Health | null>(null),
     [error, setError] = useState(""),
     [loading, setLoading] = useState(false);
   const saved = useRef<{
     search: string;
+    key: string;
     data: Feed;
     etag: string | null;
   } | null>(null);
@@ -24,7 +26,7 @@ export function useFeed(search: string) {
   useEffect(() => {
     const controller = new AbortController();
     let busy = false;
-    if (saved.current?.search !== query) {
+    if (saved.current?.search !== query || saved.current?.key !== entryKey) {
       saved.current = null;
       setData(null);
     }
@@ -40,7 +42,10 @@ export function useFeed(search: string) {
         );
         if (next) {
           // Refresh all loaded pages together, so moved/deleted cards cannot linger.
-          const count = saved.current?.data.cards.length ?? 0;
+          const count = Math.max(
+            restoreCount,
+            saved.current?.data.cards.length ?? 0,
+          );
           let value = next.data;
           while (value.cards.length < count && value.next_cursor) {
             const page = await request(
@@ -59,7 +64,13 @@ export function useFeed(search: string) {
             };
           }
           if (controller.signal.aborted) return;
-          saved.current = { search: query, data: value, etag: next.etag };
+          saved.current = {
+            search: query,
+            key: entryKey,
+            data: value,
+            etag: next.etag,
+          };
+          rememberExtent(search, value.cards.length);
           setData(value);
         }
         const status = await request(
@@ -86,7 +97,7 @@ export function useFeed(search: string) {
       clearInterval(timer);
       document.removeEventListener("visibilitychange", load);
     };
-  }, [query]);
+  }, [query, restoreCount, search, entryKey]);
   async function more() {
     const before = saved.current;
     if (!before?.data.next_cursor || loading) return;
@@ -112,6 +123,7 @@ export function useFeed(search: string) {
           next_cursor: next.data.next_cursor,
         };
         saved.current = { ...saved.current, data: value };
+        rememberExtent(search, value.cards.length);
         setData(value);
       }
     } catch (e) {
@@ -120,7 +132,16 @@ export function useFeed(search: string) {
       setLoading(false);
     }
   }
-  return { data, health, error, more, loading };
+  return {
+    data:
+      saved.current?.search === query && saved.current?.key === entryKey
+        ? data
+        : null,
+    health,
+    error,
+    more,
+    loading,
+  };
 }
 export function Filters({
   search,
@@ -322,9 +343,7 @@ export function FeedView({
     <>
       <header className="page-header">
         <div>
-          <div className="eyebrow">Your work, in view</div>
           <h1>Newsfeed</h1>
-          <p>Follow the work. Understand the spend.</p>
         </div>
         <span className="freshness">
           {issues.length

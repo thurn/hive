@@ -119,3 +119,14 @@ Implemented plan revision 5, steps 1–8, for epic `hv-762`. The user authorized
 | 10. Visual review | Static mockups preceded React implementation. Accessibility snapshots and screenshots were reviewed at **1440, 1024 and 600 px** against Fulcrum's primitive, component and feed references. Checked feed filters, bead and session navigation, timeline/diagnostic source reads, breakdown selection, responsive layouts and safe content; no open visual defect remains. Narrow charts and tables scroll locally rather than widening the page. |
 
 The previous cost-plan limitations still apply: empirical tool-byte allocation error, complete Desktop managed-settings coverage and `/clear` host evidence are not established by dashboard delivery. Amounts remain API-equivalent estimates; incomplete coverage is marked `≥`, unpriced requests remain separate, and estimated tool allocation is labelled. Old or failed delivery candidates can leave a closed bead in Needs attention until a later observed success resolves that signal. Build and route changes are distinct: ordinary Python/UI source updates reload without restarting, while this initial UI release adds resident request-query routes and therefore receives one transport restart on activation.
+
+## Dashboard redesign: shared shell checkpoint (hv-0gi.1)
+
+The [scoped shell review](measurements/dashboard-redesign/shell/README.md) records
+natural, wide, tall and narrow renders and both sides of the existing breakpoints,
+with zero horizontal overflow after grid and role-summary repairs. Seventeen
+frontend journeys cover existing evidence views plus direct-route fallback,
+reload and independent history-entry restoration. Cold review found and verified
+the same-query cache correction. The remaining redesign children and the full
+glyph, border-stack, contrast, state and interaction matrix are unfinished; this
+checkpoint does not supersede those requirements or claim whole-plan acceptance.

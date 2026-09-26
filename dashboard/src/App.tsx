@@ -1,24 +1,32 @@
-import { useEffect, useState, useSyncExternalStore } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import { FeedView, useFeed } from "./Feed";
 import { DetailView } from "./Detail";
 import { Hex, Link } from "./ui";
+import {
+  entry,
+  feedSearch,
+  projectPath,
+  snapshot,
+  subscribe,
+} from "./navigation";
 import "./style.css";
-function subscribe(callback: () => void) {
-  window.addEventListener("popstate", callback);
-  return () => window.removeEventListener("popstate", callback);
-}
 export function App() {
-  const address = useSyncExternalStore(
-    subscribe,
-    () => location.pathname + location.search,
-  );
-  const path = address.split("?")[0] ?? "/";
-  const search = address.includes("?")
-    ? "?" + address.split("?").slice(1).join("?")
-    : "";
-  const feed = useFeed(
-    path === "/" ? search : (sessionStorage.getItem("hive-feed-search") ?? ""),
-  );
+  const route = useSyncExternalStore(subscribe, snapshot);
+  const navigation = useMemo(
+    () => ({ route, position: entry() }),
+    [route],
+  ).position;
+  const path = location.pathname,
+    search = location.search;
+  const query = path === "/" ? feedSearch(search) : navigation.feed.search;
+  const feed = useFeed(query, navigation.feed.count, route);
+  const restored = useRef<string | null>(null);
   const [updated, setUpdated] = useState(false),
     [incompatible, setIncompatible] = useState(false);
   useEffect(() => {
@@ -32,23 +40,25 @@ export function App() {
     };
   }, []);
   useEffect(() => {
-    if (path === "/") {
-      sessionStorage.setItem("hive-feed-url", address);
-      sessionStorage.setItem("hive-feed-search", search);
-    }
-    window.scrollTo(
-      0,
-      Number(sessionStorage.getItem("hive-scroll:" + address) ?? 0),
-    );
     document.title = path === "/" ? "Hive · Newsfeed" : "Hive · Work detail";
-  }, [address, path, search]);
+    if (restored.current === route) return;
+    if (
+      path === "/" &&
+      (!feed.data ||
+        (feed.data.cards.length < navigation.feed.count &&
+          feed.data.next_cursor))
+    )
+      return;
+    window.scrollTo(0, navigation.scroll);
+    restored.current = route;
+  }, [route, path, navigation, feed.data]);
   if (incompatible)
     return (
       <main className="incompatible">
         <button onClick={() => location.reload()}>New version — reload</button>
       </main>
     );
-  const project = new URLSearchParams(search).get("project");
+  const project = new URLSearchParams(query).get("project");
   return (
     <>
       <a className="skip" href="#main">
@@ -69,31 +79,23 @@ export function App() {
         </nav>
         <div className="project-list">
           <h2 className="eyebrow">Projects</h2>
-          <Link to="/" className={!project ? "project selected" : "project"}>
+          <Link
+            to={projectPath("")}
+            className={!project ? "project selected" : "project"}
+          >
             <span>All projects</span>
-            <span>
-              {feed.data?.projects.reduce((sum, p) => sum + p.count, 0) ?? "—"}
-            </span>
           </Link>
           {feed.data?.projects.map((p) => (
             <Link
               key={p.id}
-              to={"/?project=" + encodeURIComponent(p.id)}
+              to={projectPath(p.id)}
               className={project === p.id ? "project selected" : "project"}
             >
-              <span>
-                <Hex project={p.id} />
-                {p.id}
-              </span>
-              <span>{p.count}</span>
+              <span>{p.id}</span>
             </Link>
           ))}
         </div>
-        <p className="rail-note">
-          Read-only observations
-          <br />
-          Local to this Mac
-        </p>
+        <p className="rail-note">Local observation</p>
       </aside>
       <main id="main">
         {updated && (
@@ -104,7 +106,7 @@ export function App() {
           </div>
         )}
         {path === "/" ? (
-          <FeedView search={search} {...feed} />
+          <FeedView search={query} {...feed} />
         ) : (
           <DetailView key={path} path={path} search={search} />
         )}

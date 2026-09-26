@@ -1,0 +1,14 @@
+{
+  "base_commit": "2170d9b6661611214bfe7fcd75732613cc000705",
+  "route": "http://127.0.0.1:4322/",
+  "state": "Read-only live all-project seven-day feed; changing observation totals",
+  "source_sha256": {
+    "App.tsx": "1faf042d47476a41575688aa1ec23d6ae996dd85cab7251f5b536e0c14e730fa",
+    "Detail.tsx": "0901d66f10b29d016c4bd96f052c5599cb8b9201254159bf4138dbf3d937c9f4",
+    "Feed.tsx": "911c45d291ae19c71fd7ffc71b5f329f70875081827c36cf7fcb938fdf2690bf",
+    "navigation.ts": "fa3efbb8392f48b1a2035915e5fb30e3da11323d03d21f1e80c95a3117fa2ed4",
+    "ui.tsx": "4b7131bc804e3c3f453daa71a998beebbb073f0e1a0f1597b1fb6052dc67daeb",
+    "style.css": "bffa2e59afd022087fe557ecea0bb1a8adee1dec7c296bec5fb8ca43568bde48",
+    "dashboard.test.tsx": "25ffa76f3cc664f582204e1dcc7e8491a35da05b1f7dd4ea6839e666cd9da5f3"
+  }
+}

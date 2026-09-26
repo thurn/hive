@@ -11,6 +11,14 @@
   --information: #93c5fd;
   --failure: #fda4af;
   --border: #353047;
+  --control-radius: 8px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   font-size: 16px;
   line-height: 1.5;
@@ -35,8 +43,10 @@ select {
   color: inherit;
   background: var(--card);
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: var(--control-radius);
   padding: 9px 13px;
+  min-height: 40px;
+  max-width: 100%;
 }
 button,
 select,
@@ -146,9 +156,10 @@ header {
 }
 .rail {
   position: fixed;
-  width: 208px;
+  width: 216px;
   inset: 0 auto 0 0;
-  padding: 32px 20px;
+  padding: 32px 16px;
+  overflow-y: auto;
   border-right: 1px solid var(--border);
   background: var(--canvas);
   display: flex;
@@ -160,7 +171,7 @@ header {
   align-items: center;
   gap: 12px;
   color: var(--violet);
-  font-size: 26px;
+  font-size: 24px;
   font-weight: 650;
   letter-spacing: -0.035em;
 }
@@ -216,8 +227,9 @@ header {
   color: var(--text-secondary);
 }
 main {
-  margin-left: 208px;
-  padding: 32px;
+  margin-left: 216px;
+  padding: 32px 40px;
+  min-width: 0;
   max-width: 1900px;
 }
 .page-header {
@@ -251,13 +263,14 @@ main {
 .summary-roles {
   display: flex;
   gap: 28px;
-  flex: 1;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
   border-left: 1px solid var(--border);
   padding-left: 32px;
   min-width: 0;
 }
 .summary-roles > div {
-  min-width: 0;
+  min-width: max-content;
 }
 .summary-roles .money {
   display: block;
@@ -633,11 +646,11 @@ main {
   stroke-width: 1;
 }
 .axis-label {
-  font-size: 11px;
+  font-size: 12px;
   fill: var(--text-secondary);
 }
 .band-label {
-  font-size: 11px;
+  font-size: 12px;
   fill: var(--violet);
 }
 .ownership-band {
@@ -838,7 +851,7 @@ td details {
 }
 .request-id {
   font:
-    11px ui-monospace,
+    12px ui-monospace,
     monospace;
   color: var(--text-secondary);
 }
@@ -972,7 +985,7 @@ body > aside[role="alert"] {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .detail-columns {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
   .summary-roles > div:nth-child(3) {
     display: none;
@@ -994,29 +1007,6 @@ body > aside[role="alert"] {
   }
 }
 @media (max-width: 639px) {
-  .rail {
-    position: static;
-    width: auto;
-    padding: 16px;
-    border-right: 0;
-    border-bottom: 1px solid var(--border);
-  }
-  .rail nav,
-  .project-list,
-  .rail-note {
-    display: none;
-  }
-  .brand {
-    font-size: 22px;
-  }
-  .brand-icon {
-    width: 28px;
-    height: 32px;
-  }
-  main {
-    margin-left: 0;
-    padding: 16px;
-  }
   .page-header {
     gap: 12px;
     margin-bottom: 24px;
@@ -1034,7 +1024,7 @@ body > aside[role="alert"] {
     font-size: 26px;
   }
   .card-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     gap: 16px;
   }
   .work-card {
@@ -1128,7 +1118,7 @@ body > aside[role="alert"] {
     gap: 0;
   }
   .breakdown-list {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
   .owner-chips {
     font-size: 12px;
@@ -1146,10 +1136,10 @@ body > aside[role="alert"] {
     flex-basis: 100%;
   }
   .state {
-    font-size: 11px;
+    font-size: 12px;
   }
   .facts {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
   .row .role-label {
     max-width: 75%;
@@ -1159,5 +1149,178 @@ body > aside[role="alert"] {
   }
   .hotspot-copy {
     min-width: 0;
+  }
+}
+
+/* Shared shell and controls; feed/detail composition remains independent. */
+button:not(:disabled):active,
+select:active,
+summary:active {
+  background: #342c4c;
+}
+a:active {
+  color: #e3d9ff;
+}
+.nav-item:hover,
+.project:hover {
+  background: var(--card);
+}
+.nav-item:active,
+.project:active {
+  background: #342c4c;
+}
+.project.selected {
+  background: #211d32;
+}
+.project > span:first-child {
+  display: block;
+  overflow-wrap: anywhere;
+}
+.project,
+.nav-item,
+.brand {
+  min-width: 0;
+}
+.project,
+.nav-item {
+  min-height: 44px;
+  border-radius: var(--control-radius);
+}
+.brand-icon {
+  flex-shrink: 0;
+}
+.disclosure {
+  margin-block: var(--space-3);
+}
+.disclosure > button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.disclosure-content {
+  max-width: 80ch;
+  margin-top: var(--space-3);
+  overflow-wrap: anywhere;
+}
+button,
+summary {
+  overflow-wrap: anywhere;
+}
+button:disabled:hover {
+  background: var(--card);
+  color: inherit;
+}
+@media (max-width: 900px) and (min-width: 769px) {
+  main {
+    padding-inline: 24px;
+  }
+}
+@media (max-width: 768px) {
+  .rail {
+    position: static;
+    width: auto;
+    padding: 16px;
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 12px;
+  }
+  .brand {
+    font-size: 22px;
+  }
+  .brand-icon {
+    width: 28px;
+    height: 32px;
+  }
+  .rail nav {
+    margin: 0;
+  }
+  .rail-note {
+    display: none;
+  }
+  .project-list {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    max-height: 160px;
+    overflow-y: auto;
+  }
+  .project-list .eyebrow {
+    width: 100%;
+    margin: 0 8px 4px;
+  }
+  .project {
+    max-width: 100%;
+    padding: 8px;
+  }
+  main {
+    margin-left: 0;
+    padding: 24px 16px;
+  }
+}
+.project {
+  align-items: center;
+}
+.check {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  cursor: pointer;
+}
+input[type="checkbox"] {
+  min-height: 0;
+  width: 16px;
+  height: 16px;
+}
+.back {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+}
+@media (max-width: 768px) {
+  button,
+  select {
+    min-height: 44px;
+  }
+}
+@media (max-width: 768px) {
+  .summary-strip {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+  .summary-strip > * {
+    min-width: 0;
+    max-width: 100%;
+  }
+  .summary-roles {
+    flex-wrap: wrap;
+    border: 0;
+    padding: 0;
+  }
+  .summary-strip .segmented {
+    width: 100%;
+    margin: 0;
+  }
+}
+@media (max-width: 768px) {
+  .summary-roles {
+    flex: 1 0 100%;
+  }
+  .summary-roles > div {
+    min-width: max-content;
+  }
+}
+@media (max-width: 768px) {
+  summary {
+    min-height: 44px;
+    padding-block: 10px;
+  }
+  .sessions a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
   }
 }

@@ -1,0 +1,642 @@
+[
+  {
+    "border": [
+      "0px",
+      "none",
+      "rgb(196, 181, 253)"
+    ],
+    "centerOffset": {
+      "x": -45.4921875,
+      "y": 0
+    },
+    "clearance": {
+      "bottom": 0,
+      "left": 0,
+      "right": 90.984375,
+      "top": 0
+    },
+    "content": {
+      "height": 38,
+      "width": 92.015625,
+      "x": 16,
+      "y": 32
+    },
+    "font": "650 24px / 36px -apple-system, \"system-ui\", \"Segoe UI\", sans-serif",
+    "fontSize": "24px",
+    "label": "Hive",
+    "outer": {
+      "height": 38,
+      "width": 183,
+      "x": 16,
+      "y": 32
+    },
+    "outline": [
+      "3px",
+      "none",
+      "rgb(196, 181, 253)"
+    ],
+    "padding": "0px",
+    "selector": ".brand",
+    "shadow": "none"
+  },
+  {
+    "border": [
+      "0px",
+      "none",
+      "rgb(242, 240, 250)"
+    ],
+    "centerOffset": {
+      "x": -28.28125,
+      "y": 0
+    },
+    "clearance": {
+      "bottom": 12,
+      "left": 14,
+      "right": 70.5625,
+      "top": 12
+    },
+    "content": {
+      "height": 24,
+      "width": 98.4375,
+      "x": 30,
+      "y": 122
+    },
+    "font": "16px / 24px -apple-system, \"system-ui\", \"Segoe UI\", sans-serif",
+    "fontSize": "16px",
+    "label": "▦ Newsfeed",
+    "outer": {
+      "height": 48,
+      "width": 183,
+      "x": 16,
+      "y": 110
+    },
+    "outline": [
+      "3px",
+      "none",
+      "rgb(242, 240, 250)"
+    ],
+    "padding": "12px 14px",
+    "selector": ".nav-item",
+    "shadow": "none"
+  },
+  {
+    "border": [
+      "0px",
+      "none",
+      "rgb(196, 181, 253)"
+    ],
+    "centerOffset": {
+      "x": -43.3515625,
+      "y": 0
+    },
+    "clearance": {
+      "bottom": 11.5,
+      "left": 12,
+      "right": 98.703125,
+      "top": 11.5
+    },
+    "content": {
+      "height": 21,
+      "width": 72.296875,
+      "x": 28,
+      "y": 218.296875
+    },
+    "font": "14px / 21px -apple-system, \"system-ui\", \"Segoe UI\", sans-serif",
+    "fontSize": "14px",
+    "label": "All projects",
+    "outer": {
+      "height": 44,
+      "width": 183,
+      "x": 16,
+      "y": 206.796875
+    },
+    "outline": [
+      "3px",
+      "none",
+      "rgb(196, 181, 253)"
+    ],
+    "padding": "10px 12px",
+    "selector": ".project.selected",
+    "shadow": "none"
+  },
+  {
+    "border": [
+      "0px",
+      "none",
+      "rgb(166, 164, 184)"
+    ],
+    "centerOffset": {
+      "x": -61.1484375,
+      "y": 0
+    },
+    "clearance": {
+      "bottom": 11.5,
+      "left": 12,
+      "right": 134.296875,
+      "top": 11.5
+    },
+    "content": {
+      "height": 21,
+      "width": 36.703125,
+      "x": 28,
+      "y": 262.296875
+    },
+    "font": "14px / 21px -apple-system, \"system-ui\", \"Segoe UI\", sans-serif",
+    "fontSize": "14px",
+    "label": "Other",
+    "outer": {
+      "height": 44,
+      "width": 183,
+      "x": 16,
+      "y": 250.796875
+    },
+    "outline": [
+      "3px",
+      "none",
+      "rgb(166, 164, 184)"
+    ],
+    "padding": "10px 12px",
+    "selector": ".project:not(.selected)",
+    "shadow": "none"
+  },
+  {
+    "border": [
+      "0px",
+      "none",
+      "rgb(166, 164, 184)"
+    ],
+    "centerOffset": {
+      "x": -44.515625,
+      "y": 0
+    },
+    "clearance": {
+      "bottom": 11.5,
+      "left": 12,
+      "right": 101.03125,
+      "top": 11.5
+    },
+    "content": {
+      "height": 21,
+      "width": 69.96875,
+      "x": 28,
+      "y": 306.296875
+    },
+    "font": "14px / 21px -apple-system, \"system-ui\", \"Segoe UI\", sans-serif",
+    "fontSize": "14px",
+    "label": "battlement",
+    "outer": {
+      "height": 44,
+      "width": 183,
+      "x": 16,
+      "y": 294.796875
+    },
+    "outline": [
+      "3px",
+      "none",
+      "rgb(166, 164, 184)"
+    ],
+    "padding": "10px 12px",
+    "selector": ".project:not(.selected)",
+    "shadow": "none"
+  },
+  {
+    "border": [
+      "0px",
+      "none",
+      "rgb(242, 240, 250)"
+    ],
+    "centerOffset": {
+      "x": 0,
+      "y": -0.25
+    },
+    "clearance": {
+      "bottom": 12,
+      "left": 10,
+      "right": 10,
+      "top": 11.5
+    },
+    "content": {
+      "height": 16.5,
+      "width": 38.6796875,
+      "x": 1345.28125,
+      "y": 174.5
+    },
+    "font": "14px / 21px -apple-system, \"system-ui\", \"Segoe UI\", sans-serif",
+    "fontSize": "14px",
+    "label": "Today",
+    "outer": {
+      "height": 40,
+      "width": 58.6796875,
+      "x": 1335.28125,
+      "y": 163
+    },
+    "outline": [
+      "3px",
+      "none",
+      "rgb(242, 240, 250)"
+    ],
+    "padding": "7px 10px",
+    "selector": ".segmented button",
+    "shadow": "none"
+  },
+  {
+    "border": [
+      "0px",
+      "none",
+      "rgb(196, 181, 253)"
+    ],
+    "centerOffset": {
+      "x": 0,
+      "y": -0.25
+    },
+    "clearance": {
+      "bottom": 12,
+      "left": 10,
+      "right": 10,
+      "top": 11.5
+    },
+    "content": {
+      "height": 16.5,
+      "width": 41.78125,
+      "x": 1407.9609375,
+      "y": 174.5
+    },
+    "font": "14px / 21px -apple-system, \"system-ui\", \"Segoe UI\", sans-serif",
+    "fontSize": "14px",
+    "label": "7 days",
+    "outer": {
+      "height": 40,
+      "width": 61.78125,
+      "x": 1397.9609375,
+      "y": 163
+    },
+    "outline": [
+      "3px",
+      "none",
+      "rgb(196, 181, 253)"
+    ],
+    "padding": "7px 10px",
+    "selector": ".segmented button",
+    "shadow": "none"
+  },
+  {
+    "border": [
+      "1px",
+      "solid",
+      "rgb(53, 48, 71)"
+    ],
+    "centerOffset": {
+      "x": 0,
+      "y": 0
+    },
+    "clearance": {
+      "bottom": 1,
+      "left": 15,
+      "right": 15,
+      "top": 1
+    },
+    "content": {
+      "height": 44,
+      "width": 562.671875,
+      "x": 271,
+      "y": 408
+    },
+    "font": "16px / 24px -apple-system, \"system-ui\", \"Segoe UI\", sans-serif",
+    "fontSize": "16px",
+    "label": "⌕",
+    "outer": {
+      "height": 46,
+      "width": 592.671875,
+      "x": 256,
+      "y": 407
+    },
+    "outline": [
+      "3px",
+      "none",
+      "rgb(166, 164, 184)"
+    ],
+    "padding": "0px 14px",
+    "selector": ".search",
+    "shadow": "none"
+  },
+  {
+    "border": [
+      "1px",
+      "solid",
+      "rgb(53, 48, 71)"
+    ],
+    "centerOffset": {
+      "x": -918.921875,
+      "y": -430
+    },
+    "clearance": {
+      "bottom": 450,
+      "left": -858.671875,
+      "right": 979.171875,
+      "top": -410
+    },
+    "content": {
+      "height": 0,
+      "width": 0,
+      "x": 0,
+      "y": 0
+    },
+    "font": "14px -apple-system, \"system-ui\", \"Segoe UI\", sans-serif",
+    "fontSize": "14px",
+    "label": "All projectsOtherbattlementhive",
+    "outer": {
+      "height": 40,
+      "width": 120.5,
+      "x": 858.671875,
+      "y": 410
+    },
+    "outline": [
+      "3px",
+      "none",
+      "rgb(242, 240, 250)"
+    ],
+    "padding": "9px 13px",
+    "selector": ".filters select",
+    "shadow": "none"
+  },
+  {
+    "border": [
+      "1px",
+      "solid",
+      "rgb(53, 48, 71)"
+    ],
+    "centerOffset": {
+      "x": -1046.671875,
+      "y": -430
+    },
+    "clearance": {
+      "bottom": 450,
+      "left": -989.171875,
+      "right": 1104.171875,
+      "top": -410
+    },
+    "content": {
+      "height": 0,
+      "width": 0,
+      "x": 0,
+      "y": 0
+    },
+    "font": "14px -apple-system, \"system-ui\", \"Segoe UI\", sans-serif",
+    "fontSize": "14px",
+    "label": "All rolesExecutorBeadWardenWeaverSageMasonVizierJusticiarArchivistAd hocUnknown",
+    "outer": {
+      "height": 40,
+      "width": 115,
+      "x": 989.171875,
+      "y": 410
+    },
+    "outline": [
+      "3px",
+      "none",
+      "rgb(242, 240, 250)"
+    ],
+    "padding": "9px 13px",
+    "selector": ".filters select",
+    "shadow": "none"
+  },
+  {
+    "border": [
+      "0px",
+      "none",
+      "rgb(166, 164, 184)"
+    ],
+    "centerOffset": {
+      "x": 2,
+      "y": 0
+    },
+    "clearance": {
+      "bottom": 14,
+      "left": 4,
+      "right": 0,
+      "top": 14
+    },
+    "content": {
+      "height": 16,
+      "width": 128.171875,
+      "x": 1289.671875,
+      "y": 422
+    },
+    "font": "13px / 19.5px -apple-system, \"system-ui\", \"Segoe UI\", sans-serif",
+    "fontSize": "13px",
+    "label": "Active in window",
+    "outer": {
+      "height": 44,
+      "width": 132.171875,
+      "x": 1285.671875,
+      "y": 408
+    },
+    "outline": [
+      "3px",
+      "none",
+      "rgb(166, 164, 184)"
+    ],
+    "padding": "0px",
+    "selector": ".check",
+    "shadow": "none"
+  },
+  {
+    "border": [
+      "0px",
+      "none",
+      "rgb(166, 164, 184)"
+    ],
+    "centerOffset": {
+      "x": 2,
+      "y": 0
+    },
+    "clearance": {
+      "bottom": 14,
+      "left": 4,
+      "right": 0,
+      "top": 14
+    },
+    "content": {
+      "height": 16,
+      "width": 128.15625,
+      "x": 1431.84375,
+      "y": 422
+    },
+    "font": "13px / 19.5px -apple-system, \"system-ui\", \"Segoe UI\", sans-serif",
+    "fontSize": "13px",
+    "label": "Older completed",
+    "outer": {
+      "height": 44,
+      "width": 132.15625,
+      "x": 1427.84375,
+      "y": 408
+    },
+    "outline": [
+      "3px",
+      "none",
+      "rgb(166, 164, 184)"
+    ],
+    "padding": "0px",
+    "selector": ".check",
+    "shadow": "none"
+  },
+  {
+    "border": [
+      "0px",
+      "none",
+      "rgb(166, 164, 184)"
+    ],
+    "centerOffset": {
+      "x": 0,
+      "y": 0
+    },
+    "clearance": {
+      "bottom": 13,
+      "left": 8,
+      "right": 8,
+      "top": 13
+    },
+    "content": {
+      "height": 14,
+      "width": 10.875,
+      "x": 1451.984375,
+      "y": 320
+    },
+    "font": "12px / 18px -apple-system, \"system-ui\", \"Segoe UI\", sans-serif",
+    "fontSize": "12px",
+    "label": "←",
+    "outer": {
+      "height": 40,
+      "width": 26.875,
+      "x": 1443.984375,
+      "y": 307
+    },
+    "outline": [
+      "3px",
+      "none",
+      "rgb(166, 164, 184)"
+    ],
+    "padding": "4px 8px",
+    "selector": ".carousel button",
+    "shadow": "none"
+  },
+  {
+    "border": [
+      "0px",
+      "none",
+      "rgb(166, 164, 184)"
+    ],
+    "centerOffset": {
+      "x": 0,
+      "y": 0
+    },
+    "clearance": {
+      "bottom": 13,
+      "left": 8,
+      "right": 8,
+      "top": 13
+    },
+    "content": {
+      "height": 14,
+      "width": 10.875,
+      "x": 1520.125,
+      "y": 320
+    },
+    "font": "12px / 18px -apple-system, \"system-ui\", \"Segoe UI\", sans-serif",
+    "fontSize": "12px",
+    "label": "→",
+    "outer": {
+      "height": 40,
+      "width": 26.875,
+      "x": 1512.125,
+      "y": 307
+    },
+    "outline": [
+      "3px",
+      "none",
+      "rgb(166, 164, 184)"
+    ],
+    "padding": "4px 8px",
+    "selector": ".carousel button",
+    "shadow": "none"
+  },
+  {
+    "border": [
+      "0px",
+      "none",
+      "rgb(242, 240, 250)"
+    ],
+    "centerOffset": {
+      "x": 6.015625,
+      "y": -0.25
+    },
+    "clearance": {
+      "bottom": 2.5,
+      "left": 12.03125,
+      "right": 0,
+      "top": 2
+    },
+    "content": {
+      "height": 16.5,
+      "width": 62.03125,
+      "x": 538.6640625,
+      "y": 342
+    },
+    "font": "14px / 21px -apple-system, \"system-ui\", \"Segoe UI\", sans-serif",
+    "fontSize": "14px",
+    "label": "220 more",
+    "outer": {
+      "height": 21,
+      "width": 74.0625,
+      "x": 526.6328125,
+      "y": 340
+    },
+    "outline": [
+      "3px",
+      "none",
+      "rgb(242, 240, 250)"
+    ],
+    "padding": "0px",
+    "selector": ".hotspot summary",
+    "shadow": "none"
+  },
+  {
+    "border": [
+      "1px",
+      "solid",
+      "rgb(53, 48, 71)"
+    ],
+    "centerOffset": {
+      "x": 0,
+      "y": 0
+    },
+    "clearance": {
+      "bottom": 12.5,
+      "left": 14,
+      "right": 14,
+      "top": 12.5
+    },
+    "content": {
+      "height": 19,
+      "width": 116.1171875,
+      "x": 849.9375,
+      "y": 6004.4296875
+    },
+    "font": "16px / 24px -apple-system, \"system-ui\", \"Segoe UI\", sans-serif",
+    "fontSize": "16px",
+    "label": "Load more work",
+    "outer": {
+      "height": 44,
+      "width": 144.1171875,
+      "x": 835.9375,
+      "y": 5991.9296875
+    },
+    "outline": [
+      "3px",
+      "none",
+      "rgb(242, 240, 250)"
+    ],
+    "padding": "9px 13px",
+    "selector": ".load-more button",
+    "shadow": "none"
+  }
+]

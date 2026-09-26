@@ -1,0 +1,1136 @@
+[
+  {
+    "height": 720,
+    "overflow": 0,
+    "regions": [
+      {
+        "rect": {
+          "height": 720,
+          "width": 216,
+          "x": 0,
+          "y": 0
+        },
+        "selector": ".rail"
+      },
+      {
+        "rect": {
+          "height": 6410.875,
+          "width": 1064,
+          "x": 216,
+          "y": 0
+        },
+        "selector": "main"
+      },
+      {
+        "rect": {
+          "height": 51,
+          "width": 984,
+          "x": 256,
+          "y": 32
+        },
+        "selector": ".page-header"
+      },
+      {
+        "rect": {
+          "height": 144,
+          "width": 984,
+          "x": 256,
+          "y": 111
+        },
+        "selector": ".summary-strip"
+      },
+      {
+        "rect": {
+          "height": 46,
+          "width": 984,
+          "x": 256,
+          "y": 407
+        },
+        "selector": ".filters"
+      },
+      {
+        "rect": {
+          "height": 5759.875,
+          "width": 984,
+          "x": 256,
+          "y": 477
+        },
+        "selector": ".card-grid"
+      }
+    ],
+    "roles": [
+      {
+        "height": 52,
+        "width": 97.5390625,
+        "x": 602.140625,
+        "y": 157
+      },
+      {
+        "height": 52,
+        "width": 75.859375,
+        "x": 719.6796875,
+        "y": 157
+      },
+      {
+        "height": 52,
+        "width": 68.0078125,
+        "x": 815.5390625,
+        "y": 157
+      }
+    ],
+    "width": 1280
+  },
+  {
+    "height": 1000,
+    "overflow": 0,
+    "regions": [
+      {
+        "rect": {
+          "height": 1000,
+          "width": 216,
+          "x": 0,
+          "y": 0
+        },
+        "selector": ".rail"
+      },
+      {
+        "rect": {
+          "height": 6137.9296875,
+          "width": 1384,
+          "x": 216,
+          "y": 0
+        },
+        "selector": "main"
+      },
+      {
+        "rect": {
+          "height": 51,
+          "width": 1304,
+          "x": 256,
+          "y": 32
+        },
+        "selector": ".page-header"
+      },
+      {
+        "rect": {
+          "height": 144,
+          "width": 1304,
+          "x": 256,
+          "y": 111
+        },
+        "selector": ".summary-strip"
+      },
+      {
+        "rect": {
+          "height": 46,
+          "width": 1304,
+          "x": 256,
+          "y": 407
+        },
+        "selector": ".filters"
+      },
+      {
+        "rect": {
+          "height": 5486.9296875,
+          "width": 1304,
+          "x": 256,
+          "y": 477
+        },
+        "selector": ".card-grid"
+      }
+    ],
+    "roles": [
+      {
+        "height": 52,
+        "width": 97.5390625,
+        "x": 626.140625,
+        "y": 157
+      },
+      {
+        "height": 52,
+        "width": 75.859375,
+        "x": 751.6796875,
+        "y": 157
+      },
+      {
+        "height": 52,
+        "width": 68.0078125,
+        "x": 855.5390625,
+        "y": 157
+      }
+    ],
+    "width": 1600
+  },
+  {
+    "height": 1100,
+    "overflow": 0,
+    "regions": [
+      {
+        "rect": {
+          "height": 1100,
+          "width": 216,
+          "x": 0,
+          "y": 0
+        },
+        "selector": ".rail"
+      },
+      {
+        "rect": {
+          "height": 8724.6875,
+          "width": 784,
+          "x": 216,
+          "y": 0
+        },
+        "selector": "main"
+      },
+      {
+        "rect": {
+          "height": 51,
+          "width": 704,
+          "x": 256,
+          "y": 32
+        },
+        "selector": ".page-header"
+      },
+      {
+        "rect": {
+          "height": 204,
+          "width": 704,
+          "x": 256,
+          "y": 111
+        },
+        "selector": ".summary-strip"
+      },
+      {
+        "rect": {
+          "height": 100,
+          "width": 704,
+          "x": 256,
+          "y": 467
+        },
+        "selector": ".filters"
+      },
+      {
+        "rect": {
+          "height": 7959.6875,
+          "width": 704,
+          "x": 256,
+          "y": 591
+        },
+        "selector": ".card-grid"
+      }
+    ],
+    "roles": [
+      {
+        "height": 52,
+        "width": 97.5390625,
+        "x": 602.140625,
+        "y": 157
+      },
+      {
+        "height": 52,
+        "width": 75.859375,
+        "x": 719.6796875,
+        "y": 157
+      },
+      {
+        "height": 0,
+        "width": 0,
+        "x": 0,
+        "y": 0
+      }
+    ],
+    "width": 1000
+  },
+  {
+    "height": 900,
+    "overflow": 0,
+    "regions": [
+      {
+        "rect": {
+          "height": 900,
+          "width": 216,
+          "x": 0,
+          "y": 0
+        },
+        "selector": ".rail"
+      },
+      {
+        "rect": {
+          "height": 6385.6796875,
+          "width": 1085,
+          "x": 216,
+          "y": 0
+        },
+        "selector": "main"
+      },
+      {
+        "rect": {
+          "height": 51,
+          "width": 1005,
+          "x": 256,
+          "y": 32
+        },
+        "selector": ".page-header"
+      },
+      {
+        "rect": {
+          "height": 144,
+          "width": 1005,
+          "x": 256,
+          "y": 111
+        },
+        "selector": ".summary-strip"
+      },
+      {
+        "rect": {
+          "height": 46,
+          "width": 1005,
+          "x": 256,
+          "y": 407
+        },
+        "selector": ".filters"
+      },
+      {
+        "rect": {
+          "height": 5734.6796875,
+          "width": 1005,
+          "x": 256,
+          "y": 477
+        },
+        "selector": ".card-grid"
+      }
+    ],
+    "roles": [
+      {
+        "height": 52,
+        "width": 97.5390625,
+        "x": 626.140625,
+        "y": 157
+      },
+      {
+        "height": 52,
+        "width": 75.859375,
+        "x": 751.6796875,
+        "y": 157
+      },
+      {
+        "height": 52,
+        "width": 68.0078125,
+        "x": 855.5390625,
+        "y": 157
+      }
+    ],
+    "width": 1301
+  },
+  {
+    "height": 900,
+    "overflow": 0,
+    "regions": [
+      {
+        "rect": {
+          "height": 900,
+          "width": 216,
+          "x": 0,
+          "y": 0
+        },
+        "selector": ".rail"
+      },
+      {
+        "rect": {
+          "height": 6385.6796875,
+          "width": 1084,
+          "x": 216,
+          "y": 0
+        },
+        "selector": "main"
+      },
+      {
+        "rect": {
+          "height": 51,
+          "width": 1004,
+          "x": 256,
+          "y": 32
+        },
+        "selector": ".page-header"
+      },
+      {
+        "rect": {
+          "height": 144,
+          "width": 1004,
+          "x": 256,
+          "y": 111
+        },
+        "selector": ".summary-strip"
+      },
+      {
+        "rect": {
+          "height": 46,
+          "width": 1004,
+          "x": 256,
+          "y": 407
+        },
+        "selector": ".filters"
+      },
+      {
+        "rect": {
+          "height": 5734.6796875,
+          "width": 1004,
+          "x": 256,
+          "y": 477
+        },
+        "selector": ".card-grid"
+      }
+    ],
+    "roles": [
+      {
+        "height": 52,
+        "width": 97.5390625,
+        "x": 602.140625,
+        "y": 157
+      },
+      {
+        "height": 52,
+        "width": 75.859375,
+        "x": 719.6796875,
+        "y": 157
+      },
+      {
+        "height": 52,
+        "width": 68.0078125,
+        "x": 815.5390625,
+        "y": 157
+      }
+    ],
+    "width": 1300
+  },
+  {
+    "height": 900,
+    "overflow": 0,
+    "regions": [
+      {
+        "rect": {
+          "height": 900,
+          "width": 216,
+          "x": 0,
+          "y": 0
+        },
+        "selector": ".rail"
+      },
+      {
+        "rect": {
+          "height": 6676.046875,
+          "width": 885,
+          "x": 216,
+          "y": 0
+        },
+        "selector": "main"
+      },
+      {
+        "rect": {
+          "height": 51,
+          "width": 805,
+          "x": 256,
+          "y": 32
+        },
+        "selector": ".page-header"
+      },
+      {
+        "rect": {
+          "height": 204,
+          "width": 805,
+          "x": 256,
+          "y": 111
+        },
+        "selector": ".summary-strip"
+      },
+      {
+        "rect": {
+          "height": 100,
+          "width": 805,
+          "x": 256,
+          "y": 467
+        },
+        "selector": ".filters"
+      },
+      {
+        "rect": {
+          "height": 5911.046875,
+          "width": 805,
+          "x": 256,
+          "y": 591
+        },
+        "selector": ".card-grid"
+      }
+    ],
+    "roles": [
+      {
+        "height": 52,
+        "width": 97.5390625,
+        "x": 602.140625,
+        "y": 157
+      },
+      {
+        "height": 52,
+        "width": 75.859375,
+        "x": 719.6796875,
+        "y": 157
+      },
+      {
+        "height": 52,
+        "width": 68.0078125,
+        "x": 815.5390625,
+        "y": 157
+      }
+    ],
+    "width": 1101
+  },
+  {
+    "height": 900,
+    "overflow": 0,
+    "regions": [
+      {
+        "rect": {
+          "height": 900,
+          "width": 216,
+          "x": 0,
+          "y": 0
+        },
+        "selector": ".rail"
+      },
+      {
+        "rect": {
+          "height": 8574.4140625,
+          "width": 884,
+          "x": 216,
+          "y": 0
+        },
+        "selector": "main"
+      },
+      {
+        "rect": {
+          "height": 51,
+          "width": 804,
+          "x": 256,
+          "y": 32
+        },
+        "selector": ".page-header"
+      },
+      {
+        "rect": {
+          "height": 144,
+          "width": 804,
+          "x": 256,
+          "y": 111
+        },
+        "selector": ".summary-strip"
+      },
+      {
+        "rect": {
+          "height": 100,
+          "width": 804,
+          "x": 256,
+          "y": 407
+        },
+        "selector": ".filters"
+      },
+      {
+        "rect": {
+          "height": 7869.4140625,
+          "width": 804,
+          "x": 256,
+          "y": 531
+        },
+        "selector": ".card-grid"
+      }
+    ],
+    "roles": [
+      {
+        "height": 52,
+        "width": 97.5390625,
+        "x": 602.140625,
+        "y": 157
+      },
+      {
+        "height": 52,
+        "width": 75.859375,
+        "x": 719.6796875,
+        "y": 157
+      },
+      {
+        "height": 0,
+        "width": 0,
+        "x": 0,
+        "y": 0
+      }
+    ],
+    "width": 1100
+  },
+  {
+    "height": 900,
+    "overflow": 0,
+    "regions": [
+      {
+        "rect": {
+          "height": 900,
+          "width": 216,
+          "x": 0,
+          "y": 0
+        },
+        "selector": ".rail"
+      },
+      {
+        "rect": {
+          "height": 9019.8359375,
+          "width": 685,
+          "x": 216,
+          "y": 0
+        },
+        "selector": "main"
+      },
+      {
+        "rect": {
+          "height": 51,
+          "width": 605,
+          "x": 256,
+          "y": 32
+        },
+        "selector": ".page-header"
+      },
+      {
+        "rect": {
+          "height": 204,
+          "width": 605,
+          "x": 256,
+          "y": 111
+        },
+        "selector": ".summary-strip"
+      },
+      {
+        "rect": {
+          "height": 100,
+          "width": 605,
+          "x": 256,
+          "y": 467
+        },
+        "selector": ".filters"
+      },
+      {
+        "rect": {
+          "height": 8236.8359375,
+          "width": 605,
+          "x": 256,
+          "y": 591
+        },
+        "selector": ".card-grid"
+      }
+    ],
+    "roles": [
+      {
+        "height": 52,
+        "width": 97.5390625,
+        "x": 602.140625,
+        "y": 157
+      },
+      {
+        "height": 52,
+        "width": 75.859375,
+        "x": 719.6796875,
+        "y": 157
+      },
+      {
+        "height": 0,
+        "width": 0,
+        "x": 0,
+        "y": 0
+      }
+    ],
+    "width": 901
+  },
+  {
+    "height": 900,
+    "overflow": 0,
+    "regions": [
+      {
+        "rect": {
+          "height": 900,
+          "width": 216,
+          "x": 0,
+          "y": 0
+        },
+        "selector": ".rail"
+      },
+      {
+        "rect": {
+          "height": 8969.4453125,
+          "width": 684,
+          "x": 216,
+          "y": 0
+        },
+        "selector": "main"
+      },
+      {
+        "rect": {
+          "height": 51,
+          "width": 636,
+          "x": 240,
+          "y": 32
+        },
+        "selector": ".page-header"
+      },
+      {
+        "rect": {
+          "height": 204,
+          "width": 636,
+          "x": 240,
+          "y": 111
+        },
+        "selector": ".summary-strip"
+      },
+      {
+        "rect": {
+          "height": 100,
+          "width": 636,
+          "x": 240,
+          "y": 467
+        },
+        "selector": ".filters"
+      },
+      {
+        "rect": {
+          "height": 8186.4453125,
+          "width": 636,
+          "x": 240,
+          "y": 591
+        },
+        "selector": ".card-grid"
+      }
+    ],
+    "roles": [
+      {
+        "height": 52,
+        "width": 97.5390625,
+        "x": 586.140625,
+        "y": 157
+      },
+      {
+        "height": 52,
+        "width": 75.859375,
+        "x": 703.6796875,
+        "y": 157
+      },
+      {
+        "height": 0,
+        "width": 0,
+        "x": 0,
+        "y": 0
+      }
+    ],
+    "width": 900
+  },
+  {
+    "height": 900,
+    "overflow": 0,
+    "regions": [
+      {
+        "rect": {
+          "height": 900,
+          "width": 216,
+          "x": 0,
+          "y": 0
+        },
+        "selector": ".rail"
+      },
+      {
+        "rect": {
+          "height": 9257.3984375,
+          "width": 553,
+          "x": 216,
+          "y": 0
+        },
+        "selector": "main"
+      },
+      {
+        "rect": {
+          "height": 51,
+          "width": 505,
+          "x": 240,
+          "y": 32
+        },
+        "selector": ".page-header"
+      },
+      {
+        "rect": {
+          "height": 216,
+          "width": 505,
+          "x": 240,
+          "y": 111
+        },
+        "selector": ".summary-strip"
+      },
+      {
+        "rect": {
+          "height": 100,
+          "width": 505,
+          "x": 240,
+          "y": 503
+        },
+        "selector": ".filters"
+      },
+      {
+        "rect": {
+          "height": 8438.3984375,
+          "width": 505,
+          "x": 240,
+          "y": 627
+        },
+        "selector": ".card-grid"
+      }
+    ],
+    "roles": [
+      {
+        "height": 52,
+        "width": 97.5390625,
+        "x": 286,
+        "y": 250
+      },
+      {
+        "height": 52,
+        "width": 75.859375,
+        "x": 403.5390625,
+        "y": 250
+      },
+      {
+        "height": 0,
+        "width": 0,
+        "x": 0,
+        "y": 0
+      }
+    ],
+    "width": 769
+  },
+  {
+    "height": 900,
+    "overflow": 0,
+    "regions": [
+      {
+        "rect": {
+          "height": 161.796875,
+          "width": 768,
+          "x": 0,
+          "y": 0
+        },
+        "selector": ".rail"
+      },
+      {
+        "rect": {
+          "height": 8761.5,
+          "width": 768,
+          "x": 0,
+          "y": 161.796875
+        },
+        "selector": "main"
+      },
+      {
+        "rect": {
+          "height": 51,
+          "width": 736,
+          "x": 16,
+          "y": 185.796875
+        },
+        "selector": ".page-header"
+      },
+      {
+        "rect": {
+          "height": 280,
+          "width": 736,
+          "x": 16,
+          "y": 264.796875
+        },
+        "selector": ".summary-strip"
+      },
+      {
+        "rect": {
+          "height": 100,
+          "width": 736,
+          "x": 16,
+          "y": 719.796875
+        },
+        "selector": ".filters"
+      },
+      {
+        "rect": {
+          "height": 7913.5,
+          "width": 736,
+          "x": 16,
+          "y": 843.796875
+        },
+        "selector": ".card-grid"
+      }
+    ],
+    "roles": [
+      {
+        "height": 52,
+        "width": 97.5390625,
+        "x": 41,
+        "y": 403.796875
+      },
+      {
+        "height": 52,
+        "width": 75.859375,
+        "x": 158.5390625,
+        "y": 403.796875
+      },
+      {
+        "height": 0,
+        "width": 0,
+        "x": 0,
+        "y": 0
+      }
+    ],
+    "width": 768
+  },
+  {
+    "height": 900,
+    "overflow": 0,
+    "regions": [
+      {
+        "rect": {
+          "height": 161.796875,
+          "width": 640,
+          "x": 0,
+          "y": 0
+        },
+        "selector": ".rail"
+      },
+      {
+        "rect": {
+          "height": 9102.8359375,
+          "width": 640,
+          "x": 0,
+          "y": 161.796875
+        },
+        "selector": "main"
+      },
+      {
+        "rect": {
+          "height": 51,
+          "width": 608,
+          "x": 16,
+          "y": 185.796875
+        },
+        "selector": ".page-header"
+      },
+      {
+        "rect": {
+          "height": 280,
+          "width": 608,
+          "x": 16,
+          "y": 264.796875
+        },
+        "selector": ".summary-strip"
+      },
+      {
+        "rect": {
+          "height": 100,
+          "width": 608,
+          "x": 16,
+          "y": 719.796875
+        },
+        "selector": ".filters"
+      },
+      {
+        "rect": {
+          "height": 8236.8359375,
+          "width": 608,
+          "x": 16,
+          "y": 843.796875
+        },
+        "selector": ".card-grid"
+      }
+    ],
+    "roles": [
+      {
+        "height": 52,
+        "width": 97.5390625,
+        "x": 41,
+        "y": 403.796875
+      },
+      {
+        "height": 52,
+        "width": 75.859375,
+        "x": 158.5390625,
+        "y": 403.796875
+      },
+      {
+        "height": 0,
+        "width": 0,
+        "x": 0,
+        "y": 0
+      }
+    ],
+    "width": 640
+  },
+  {
+    "height": 900,
+    "overflow": 0,
+    "regions": [
+      {
+        "rect": {
+          "height": 161.796875,
+          "width": 639,
+          "x": 0,
+          "y": 0
+        },
+        "selector": ".rail"
+      },
+      {
+        "rect": {
+          "height": 15049.3125,
+          "width": 639,
+          "x": 0,
+          "y": 161.796875
+        },
+        "selector": "main"
+      },
+      {
+        "rect": {
+          "height": 48.5,
+          "width": 607,
+          "x": 16,
+          "y": 185.796875
+        },
+        "selector": ".page-header"
+      },
+      {
+        "rect": {
+          "height": 263,
+          "width": 607,
+          "x": 16,
+          "y": 258.296875
+        },
+        "selector": ".summary-strip"
+      },
+      {
+        "rect": {
+          "height": 162,
+          "width": 607,
+          "x": 16,
+          "y": 692.296875
+        },
+        "selector": ".filters"
+      },
+      {
+        "rect": {
+          "height": 14148.8125,
+          "width": 607,
+          "x": 16,
+          "y": 878.296875
+        },
+        "selector": ".card-grid"
+      }
+    ],
+    "roles": [
+      {
+        "height": 49,
+        "width": 86.6953125,
+        "x": 37,
+        "y": 387.296875
+      },
+      {
+        "height": 49,
+        "width": 71.0625,
+        "x": 143.6953125,
+        "y": 387.296875
+      },
+      {
+        "height": 0,
+        "width": 0,
+        "x": 0,
+        "y": 0
+      }
+    ],
+    "width": 639
+  },
+  {
+    "height": 844,
+    "overflow": 0,
+    "regions": [
+      {
+        "rect": {
+          "height": 161.796875,
+          "width": 390,
+          "x": 0,
+          "y": 0
+        },
+        "selector": ".rail"
+      },
+      {
+        "rect": {
+          "height": 16768.2734375,
+          "width": 390,
+          "x": 0,
+          "y": 161.796875
+        },
+        "selector": "main"
+      },
+      {
+        "rect": {
+          "height": 48.5,
+          "width": 358,
+          "x": 16,
+          "y": 185.796875
+        },
+        "selector": ".page-header"
+      },
+      {
+        "rect": {
+          "height": 263,
+          "width": 358,
+          "x": 16,
+          "y": 258.296875
+        },
+        "selector": ".summary-strip"
+      },
+      {
+        "rect": {
+          "height": 216,
+          "width": 358,
+          "x": 16,
+          "y": 765.796875
+        },
+        "selector": ".filters"
+      },
+      {
+        "rect": {
+          "height": 15740.2734375,
+          "width": 358,
+          "x": 16,
+          "y": 1005.796875
+        },
+        "selector": ".card-grid"
+      }
+    ],
+    "roles": [
+      {
+        "height": 49,
+        "width": 86.6953125,
+        "x": 37,
+        "y": 387.296875
+      },
+      {
+        "height": 49,
+        "width": 71.0625,
+        "x": 143.6953125,
+        "y": 387.296875
+      },
+      {
+        "height": 0,
+        "width": 0,
+        "x": 0,
+        "y": 0
+      }
+    ],
+    "width": 390
+  }
+]

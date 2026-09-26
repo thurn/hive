@@ -1,3 +1,4 @@
+import { backToFeed } from "./navigation";
 import { useEffect, useRef, useState } from "react";
 import Markdown from "react-markdown";
 import {
@@ -444,7 +445,7 @@ export function DetailView({ path, search }: { path: string; search: string }) {
   if (!detail)
     return (
       <>
-        <Link to="/" className="back">
+        <Link to={backToFeed()} className="back">
           ← Back to newsfeed
         </Link>
         <Empty
@@ -465,10 +466,7 @@ export function DetailView({ path, search }: { path: string; search: string }) {
   const kinds = [...new Set(diagnostics.map(diagnosticKind))];
   return (
     <>
-      <Link
-        to={sessionStorage.getItem("hive-feed-url") ?? "/"}
-        className="back"
-      >
+      <Link to={backToFeed()} className="back">
         ← Back to newsfeed
       </Link>
       <header className="detail-header">

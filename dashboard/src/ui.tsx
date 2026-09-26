@@ -1,4 +1,12 @@
-import { useState, type ReactNode, type MouseEvent } from "react";
+import {
+  useState,
+  useId,
+  useRef,
+  type ReactNode,
+  type MouseEvent,
+} from "react";
+import { navigate } from "./navigation";
+export { navigate } from "./navigation";
 import { cardPath, cardTitle, label, money, type Card } from "./data";
 
 export const roles = [
@@ -92,14 +100,6 @@ export function Hex({
       ) : null}
     </svg>
   );
-}
-export function navigate(path: string) {
-  sessionStorage.setItem(
-    "hive-scroll:" + location.pathname + location.search,
-    String(window.scrollY),
-  );
-  history.pushState(null, "", path);
-  window.dispatchEvent(new PopStateEvent("popstate"));
 }
 export function Link({
   to,
@@ -313,6 +313,44 @@ export function Panel({
         {action}
       </header>
       {children}
+    </section>
+  );
+}
+
+export function Disclosure({
+  title,
+  children,
+}: {
+  title: string;
+  children: ReactNode;
+}) {
+  const [open, setOpen] = useState(false);
+  const id = useId(),
+    trigger = useRef<HTMLButtonElement>(null);
+  return (
+    <section
+      className="disclosure"
+      onKeyDown={(event) => {
+        if (open && event.key === "Escape") {
+          event.stopPropagation();
+          setOpen(false);
+          trigger.current?.focus();
+        }
+      }}
+    >
+      <button
+        ref={trigger}
+        aria-expanded={open}
+        aria-controls={id}
+        onClick={() => setOpen(!open)}
+      >
+        <span aria-hidden="true">{open ? "−" : "+"}</span> {title}
+      </button>
+      {open && (
+        <div id={id} className="disclosure-content">
+          {children}
+        </div>
+      )}
     </section>
   );
 }

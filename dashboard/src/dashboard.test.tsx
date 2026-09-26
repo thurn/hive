@@ -4,6 +4,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
@@ -13,7 +14,7 @@ import { Filters, FeedView, useFeed } from "./Feed";
 import { Breakdown, Timeline } from "./Timeline";
 import { money, when, type Card, type Detail, type Feed } from "./data";
 import { request } from "./network";
-import { WorkCard } from "./ui";
+import { Disclosure, WorkCard } from "./ui";
 const at = "2026-09-24T12:00:00Z";
 const card: Card = {
   key: "bead:hv-test",
@@ -177,7 +178,10 @@ describe("work presentation", () => {
     fireEvent.change(screen.getByLabelText("Project"), {
       target: { value: "battlement" },
     });
-    expect(location.search).toBe("?window=today&project=battlement");
+    expect(new URLSearchParams(location.search).get("window")).toBe("today");
+    expect(new URLSearchParams(location.search).get("project")).toBe(
+      "battlement",
+    );
     fireEvent.change(screen.getByLabelText("Search work"), {
       target: { value: "a & b" },
     });
@@ -422,27 +426,233 @@ it("shows descendant progress without replacing native epic state or direct spen
     ...detail,
     card: { ...card, state: "Ready", amount_picos: "1000000000000" },
     epic: {
-      native_status: "open", scope: "All reachable descendants; excludes this epic",
+      native_status: "open",
+      scope: "All reachable descendants; excludes this epic",
       classification: "Explicit work kinds and retained task conventions",
-      groups: [{ category: "implementation", total: 4, completed: 1 }, { category: "review", total: 1, completed: 1 }],
-      active: 2, in_ci: 1, blocked: 1, held: 1, owners: ["same-owner"],
-      amount_picos: "2000000000000", unpriced: 1, incomplete: 1, missing_costs: 0,
-      refreshed: at, collector: { summaries_behind: false, tollgate_behind: false, tollgate_refreshed: at, registry: { refreshed: at, error: "beads_unavailable" } },
-      members: [{ bead: "hv-child", title: "Active child", category: "implementation", direct_child: true, current: true,
-        native_status: "in_progress", state: "In CI", completed: false, cancelled: false,
-        active: true, owner: "same-owner", blockers: ["hv-cancelled"], held: false, in_ci: true, ci_failed: false }],
+      groups: [
+        { category: "implementation", total: 4, completed: 1 },
+        { category: "review", total: 1, completed: 1 },
+      ],
+      active: 2,
+      in_ci: 1,
+      blocked: 1,
+      held: 1,
+      owners: ["same-owner"],
+      amount_picos: "2000000000000",
+      unpriced: 1,
+      incomplete: 1,
+      missing_costs: 0,
+      refreshed: at,
+      collector: {
+        summaries_behind: false,
+        tollgate_behind: false,
+        tollgate_refreshed: at,
+        registry: { refreshed: at, error: "beads_unavailable" },
+      },
+      members: [
+        {
+          bead: "hv-child",
+          title: "Active child",
+          category: "implementation",
+          direct_child: true,
+          current: true,
+          native_status: "in_progress",
+          state: "In CI",
+          completed: false,
+          cancelled: false,
+          active: true,
+          owner: "same-owner",
+          blockers: ["hv-cancelled"],
+          held: false,
+          in_ci: true,
+          ci_failed: false,
+        },
+      ],
     },
   };
-  vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) =>
-    response(String(input).includes("requests=1") ? { requests: [], next_cursor: null } : epicDetail)));
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: RequestInfo | URL) =>
+      response(
+        String(input).includes("requests=1")
+          ? { requests: [], next_cursor: null }
+          : epicDetail,
+      ),
+    ),
+  );
   render(<DetailView path="/bead/hv-test" search="" />);
   await screen.findByRole("heading", { name: "Epic progress" });
   expect(screen.getByText("Ready")).toBeInTheDocument();
-  expect(screen.getByText(/2 active descendants · 1 distinct assigned owners/)).toBeInTheDocument();
+  expect(
+    screen.getByText(/2 active descendants · 1 distinct assigned owners/),
+  ).toBeInTheDocument();
   expect(screen.getByText("1 / 4 completed")).toBeInTheDocument();
-  expect(screen.getByText(/Direct epic lifetime spend:/)).toHaveTextContent("$1.00 · Descendant lifetime spend: ≥ $2.00");
-  expect(screen.getByText(/Cached descendant observation:/)).toHaveTextContent("Collection delayed or unavailable");
+  expect(screen.getByText(/Direct epic lifetime spend:/)).toHaveTextContent(
+    "$1.00 · Descendant lifetime spend: ≥ $2.00",
+  );
+  expect(screen.getByText(/Cached descendant observation:/)).toHaveTextContent(
+    "Collection delayed or unavailable",
+  );
   fireEvent.click(screen.getByText("Descendant work (1)"));
-  expect(screen.getByRole("link", { name: "Active child" })).toHaveAttribute("href", "/bead/hv-child");
-  expect(screen.getByRole("link", { name: "hv-cancelled" })).toHaveAttribute("href", "/bead/hv-cancelled");
+  expect(screen.getByRole("link", { name: "Active child" })).toHaveAttribute(
+    "href",
+    "/bead/hv-child",
+  );
+  expect(screen.getByRole("link", { name: "hv-cancelled" })).toHaveAttribute(
+    "href",
+    "/bead/hv-cancelled",
+  );
+});
+
+describe("shell navigation", () => {
+  function serve() {
+    const fetcher = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.startsWith("/api/status")) return response({});
+      if (url.includes("requests=1"))
+        return response({ requests: [], next_cursor: null });
+      if (!url.startsWith("/api/feed")) return response(detail);
+      const query = new URL(url, location.origin).searchParams;
+      return response({
+        ...feed,
+        cards: query.has("cursor")
+          ? [{ ...card, key: "bead:second", title: "Second page work" }]
+          : [card],
+        next_cursor: query.has("cursor") ? null : "page-two",
+      });
+    });
+    vi.stubGlobal("fetch", fetcher);
+    return fetcher;
+  }
+  it("restores loaded extent before scroll after a detail reload and keeps project scope", async () => {
+    const fetcher = serve();
+    history.replaceState(null, "", "/?window=today&project=hive&q=collector");
+    const first = render(<App />);
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Load more work" }),
+    );
+    const second = await screen.findByRole("link", {
+      name: /Second page work/,
+    });
+    vi.stubGlobal("scrollY", 900);
+    fireEvent.scroll(window);
+    fireEvent.click(second);
+    await screen.findByRole("heading", { name: "Repair the collector" });
+    expect(screen.getByRole("link", { name: "hive" })).toHaveClass("selected");
+    expect(
+      screen.getByRole("link", { name: "← Back to newsfeed" }),
+    ).toHaveAttribute("href", "/?project=hive&window=today&q=collector");
+    first.unmount();
+    vi.stubGlobal("scrollY", 0);
+    fetcher.mockClear();
+    const scroll = vi.fn();
+    vi.stubGlobal("scrollTo", scroll);
+    render(<App />);
+    fireEvent.click(
+      await screen.findByRole("link", { name: "← Back to newsfeed" }),
+    );
+    await screen.findByRole("link", { name: /Second page work/ });
+    await waitFor(() => expect(scroll).toHaveBeenCalledWith(0, 900));
+    expect(
+      fetcher.mock.calls.some(([url]) =>
+        String(url).includes("cursor=page-two"),
+      ),
+    ).toBe(true);
+    expect(location.search).toBe("?project=hive&window=today&q=collector");
+  });
+  it("preserves independent feed entries through browser back and forward", async () => {
+    serve();
+    render(<App />);
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Load more work" }),
+    );
+    await screen.findByRole("link", { name: /Second page work/ });
+    vi.stubGlobal("scrollY", 600);
+    fireEvent.scroll(window);
+    fireEvent.click(screen.getByRole("link", { name: "battlement" }));
+    await screen.findByRole("button", { name: "Load more work" });
+    expect(screen.queryByRole("link", { name: /Second page work/ })).toBeNull();
+    vi.stubGlobal("scrollY", 0);
+    fireEvent.scroll(window);
+    act(() => history.back());
+    await screen.findByRole("link", { name: /Second page work/ });
+    await waitFor(() => expect(window.scrollTo).toHaveBeenCalledWith(0, 600));
+    act(() => history.forward());
+    await waitFor(() => expect(location.search).toBe("?project=battlement"));
+    await screen.findByRole("button", { name: "Load more work" });
+    expect(screen.queryByRole("link", { name: /Second page work/ })).toBeNull();
+  });
+  it("restores separate loaded extents for entries with identical filters", async () => {
+    serve();
+    render(<App />);
+    fireEvent.click(
+      await screen.findByRole("link", {
+        name: /Repair the collector.*tool errors/,
+      }),
+    );
+    fireEvent.click(
+      await screen.findByRole("link", { name: "← Back to newsfeed" }),
+    );
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Load more work" }),
+    );
+    await screen.findByRole("link", { name: /Second page work/ });
+    act(() => history.back());
+    await screen.findByRole("heading", { name: "Repair the collector" });
+    act(() => history.back());
+    await screen.findByRole("button", { name: "Load more work" });
+    expect(screen.queryByRole("link", { name: /Second page work/ })).toBeNull();
+  });
+  it.each(["/bead/hv-test", "/session/session-a", "/ledger/unowned/hive"])(
+    "uses a safe feed fallback on direct %s routes",
+    async (path) => {
+      serve();
+      history.replaceState(
+        {
+          id: "hostile",
+          scroll: 0,
+          feed: { search: "//evil.example", count: 50, scroll: 700 },
+        },
+        "",
+        path,
+      );
+      sessionStorage.setItem("hive-feed-url", "https://evil.example");
+      render(<App />);
+      expect(
+        await screen.findByRole("link", { name: "← Back to newsfeed" }),
+      ).toHaveAttribute("href", "/");
+      await screen.findByRole("heading", { name: "Repair the collector" });
+      const rail = document.querySelector(".rail");
+      expect(rail).not.toHaveTextContent("2");
+      expect(rail).toHaveTextContent("Local observation");
+    },
+  );
+  it("preserves query scope in project links and makes disclosures keyboard reversible", async () => {
+    serve();
+    history.replaceState(null, "", "/?window=today&role=warden&project=hive");
+    const app = render(<App />);
+    expect(
+      await screen.findByRole("link", { name: "battlement" }),
+    ).toHaveAttribute("href", "/?project=battlement&window=today&role=warden");
+    app.unmount();
+    render(
+      <Disclosure title="Inspect evidence">
+        <button>Inner action</button>
+      </Disclosure>,
+    );
+    const trigger = screen.getByRole("button", { name: "Inspect evidence" });
+    expect(trigger).toHaveAttribute("aria-expanded", "false");
+    fireEvent.click(trigger);
+    const body = document.getElementById(
+      trigger.getAttribute("aria-controls") ?? "",
+    );
+    expect(body).not.toBeNull();
+    if (!body) throw new Error("Missing disclosure content");
+    const action = within(body).getByRole("button", { name: "Inner action" });
+    action.focus();
+    fireEvent.keyDown(action, { key: "Escape" });
+    expect(trigger).toHaveAttribute("aria-expanded", "false");
+    expect(trigger).toHaveFocus();
+    expect(screen.queryByRole("button", { name: "Inner action" })).toBeNull();
+  });
 });

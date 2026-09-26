@@ -220,3 +220,21 @@ A disposable native Beads journey covers nested descendants, shared ownership an
 
 
 Resource evidence is available through explicit `telemetry resource-sample` and `telemetry resources` commands, with no background collection, database migration or admission-policy changes. Bounded regular JSONL inputs retain source hashes, inclusive native CI/process CPU and wall intervals, nested resource wait/held intervals and last-event freshness; half-open comparison windows expose missing coverage and partial intervals rather than allocating CPU by overlap. Host alignment requires matching recorded host identity. Public command fixtures cover duplicate evidence, resource/process identities, unknown CPU, parallel/inclusive measurements, sample failures by window, source immutability and malformed/oversized/FIFO inputs. A real macOS sample captured approximately 50% idle, 55 GiB used memory, zero swap and two running Tollgate candidates; explicitly selected native CI/operation logs produced 19 intervals and correctly exposed unfinished CI terminals and absent nested queue evidence. Capture bounds include provider overhead (macOS CPU is the final one-second top interval), native repository gate counters are kept separate from nested queues and host utilization, and no continuous coverage, causal diagnosis or optimal concurrency is claimed. Linux sampling is implemented but live acceptance was macOS only.
+
+## Dashboard shell and route restoration (hv-0gi.1)
+
+The approved redesign begins with a 216 px rail, shared control spacing and a
+compact narrow header that retains every project choice. Existing feed, detail,
+session and ledger views remain usable while later children change their layout.
+A shared Disclosure supplies expanded state, keyboard operation and focus return.
+
+Each browser history entry retains a validated same-app feed query, loaded extent
+and scroll position; returning refetches the complete saved extent coherently
+before restoring scroll. Identical query entries own independent caches. Direct
+detail loads fall back to the default feed, and arbitrary return URLs or old
+sessionStorage values are ignored. Navigation changes no accounting or server
+contracts and requires no resident restart. Seventeen frontend behavior tests and
+the scoped [shell review](measurements/dashboard-redesign/shell/README.md) cover
+this increment; the complete redesign acceptance remains hv-0gi.5. Native cold
+review, full Tollgate certification and promoted hot reload are recorded on the
+implementation bead.
