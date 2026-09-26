@@ -1,0 +1,15 @@
+{
+  "base_commit": "f40306c9b28f6c47f3b32772c9438ad376a87e88",
+  "route": "http://127.0.0.1:4322/bead/hv-0q1",
+  "state": "Overview, real retained resource-report task; separate live Delivery log and Diagnostics interactions",
+  "source_sha256": {
+    "Detail.tsx": "afd8cde2f78362892fb20fe3961b5fd27a3a66de0de3d81367c99765b3b25b21",
+    "DetailEvidence.tsx": "fb0a42b9fdfcb51c2a09414007ce02ca0594d86b96aa17aa123a26e83f3e35a1",
+    "DetailOverview.tsx": "7a60023a9cd82c216b8f994cc6b94354af3f88ff3b303d8f8e1a0adc105ba46a",
+    "detailState.ts": "0280363792c4bd88b5759e91e0dd20c3ce2bedea5868177cc13809c95b582a7e",
+    "Timeline.tsx": "dc5556fe272822c3282c465a81b9c4be5eb2d57b06ae55e466ab4f2df874c630",
+    "style.css": "1252f131e1305b98763f4c80af61a6a2754a2ce0fb89b07c8d8268a2c19b2de8",
+    "dashboard.test.tsx": "f72da316fdb01a2e0b93d0712f08367dde05bda4077c3b4ea32234346dde2af6",
+    "App.tsx": "c587233cf130add79f28c200c7edd74e24bf4cbfb6778b848237886fd1ec15a3"
+  }
+}

@@ -25,7 +25,7 @@ export function App() {
   const path = location.pathname,
     search = location.search;
   const query = path === "/" ? feedSearch(search) : navigation.feed.search;
-  const feed = useFeed(query, navigation.feed.count, route);
+  const feed = useFeed(query, navigation.feed.count, navigation.id);
   const restored = useRef<string | null>(null);
   const [updated, setUpdated] = useState(false),
     [incompatible, setIncompatible] = useState(false);

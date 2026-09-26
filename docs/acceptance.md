@@ -140,3 +140,14 @@ fix for disclosure loss during loading; all nine observed window roles remain
 reachable. Twenty-two frontend journeys and cold review cover exact scope, all
 item kinds/states, partial zero, findings, filter reset and retained navigation.
 Full redesign visual acceptance and detail evidence destinations remain pending.
+
+## Dashboard redesign: detail workspace checkpoint (hv-0gi.3)
+
+The [detail review](measurements/dashboard-redesign/detail/README.md) records
+thirteen contained responsive layouts, a live exact-attempt log read with focus
+return, and diagnostic kind selection. Thirty-three frontend tests cover evidence
+destinations, scope labels, reload/whitelisting, native cached records, unavailable
+logs and task-change cancellation. Cold review verified the repaired whole-session
+label. The existing timeline still needs compact presentation/readable axes and
+Recent activity begins below 900 px; those requirements remain hv-0gi.4, followed
+by the complete visual and integrated acceptance in hv-0gi.5.

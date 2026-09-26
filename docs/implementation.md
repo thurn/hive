@@ -255,6 +255,24 @@ server contracts remain unchanged. Twenty-two frontend behavior tests and the
 [work-list smoke review](measurements/dashboard-redesign/work-list/README.md) cover
 this increment; detail reorganization and full redesign acceptance remain pending.
 
+## Focused detail evidence workspace (hv-0gi.3)
+
+Detail now has Overview, Diagnostics and Delivery views, plus named sections for
+requests, all eight breakdowns, ownership/context, sessions/roles/subagents, the
+complete sanitized native task record and filed work. Explicit whole-session,
+unowned-tail, task and ledger scope remains visible. Lifetime candidate counts
+retain failures alongside successes without changing the task's native state;
+range-filtered delivery discloses hidden candidates and attempts.
+
+Validated UI query state preserves view, diagnostic kind, selected range and open
+section. API requests receive an explicit argument whitelist, keeping UI keys out
+of strict endpoints. Source reads remain user-triggered, cancel on identity change
+and show a focused excerpt with return focus on close. Cached records, unavailable
+sources and unknown-time diagnostics stay explicit. Thirty-three frontend journeys
+and the [detail smoke review](measurements/dashboard-redesign/detail/README.md)
+cover this increment. The existing chart remains; compact density bins, readable
+axes and final whole-redesign acceptance belong to hv-0gi.4 and hv-0gi.5.
+
 
 ### Incremental accounting portability (hv-qgy)
 

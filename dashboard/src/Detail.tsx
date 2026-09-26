@@ -1,390 +1,83 @@
 import { backToFeed } from "./navigation";
 import { useEffect, useRef, useState } from "react";
-import Markdown from "react-markdown";
 import {
   DetailSchema,
   cardTitle,
   RecordSchema,
-  RequestsSchema,
   diagnosticAt,
   diagnosticKind,
   duration,
   label,
   text,
   when,
-  type Beads,
-  type Candidate,
   type Detail,
   type Diagnostic,
-  type Requests,
 } from "./data";
 import { request } from "./network";
 import { EpicProgress } from "./EpicProgress";
 import { Breakdown, Timeline, inRange, type Range } from "./Timeline";
-import { Amount, Copy, Empty, Hex, Icon, Link, Panel, State } from "./ui";
-
-export function SafeMarkdown({ value }: { value: string }) {
-  return (
-    <div className="markdown">
-      <Markdown
-        skipHtml
-        urlTransform={(url) => (/^(https?:|mailto:)/i.test(url) ? url : "")}
-        components={{
-          a: ({ href, children }) =>
-            href ? (
-              <a href={href} target="_blank" rel="noopener noreferrer">
-                {children}
-              </a>
-            ) : (
-              <span>{children}</span>
-            ),
-          img: ({ alt }) => <span>{alt}</span>,
-        }}
-      >
-        {value}
-      </Markdown>
-    </div>
-  );
-}
-function BeadsPanel({ beads }: { beads: Beads }) {
-  const bead = beads.bead;
-  const metadata = RecordSchema.safeParse(bead.metadata);
-  return (
-    <Panel
-      title="Beads · read-only"
-      action={
-        <span className="muted">
-          {beads.source === "live" ? "Live" : "Cached"} ·{" "}
-          {when(beads.refreshed)}
-        </span>
-      }
-    >
-      {beads.source !== "live" && (
-        <p className="warning">
-          Live Beads data is unavailable. Showing the last collected record
-          {beads.age_seconds !== undefined
-            ? " · " + duration(beads.age_seconds * 1000) + " old"
-            : ""}
-          .
-        </p>
-      )}
-      <div className="facts">
-        {[
-          "status",
-          "priority",
-          "issue_type",
-          "assignee",
-          "owner",
-          "created_at",
-          "updated_at",
-        ].map((key) => (
-          <div key={key}>
-            <dt>{label(key)}</dt>
-            <dd>{text(bead[key])}</dd>
-          </div>
-        ))}
-      </div>
-      {["description", "acceptance_criteria", "notes"].map((key) =>
-        typeof bead[key] === "string" && bead[key] ? (
-          <details key={key} open={key === "description"}>
-            <summary>{label(key)}</summary>
-            <SafeMarkdown value={text(bead[key])} />
-          </details>
-        ) : null,
-      )}
-      {metadata.success && Object.keys(metadata.data).length > 0 && (
-        <details>
-          <summary>Metadata</summary>
-          <dl className="facts">
-            {Object.entries(metadata.data).map(([key, value]) => (
-              <div key={key}>
-                <dt>{key}</dt>
-                <dd>{text(value)}</dd>
-              </div>
-            ))}
-          </dl>
-        </details>
-      )}
-      <details>
-        <summary>Dependencies and dependents</summary>
-        <pre>{text(bead.dependencies)}</pre>
-        {beads.dependents.map((item, index) => (
-          <div className="row" key={index}>
-            {text(item.id)} · {text(item.title)} · {text(item.status)}
-          </div>
-        ))}
-      </details>
-      <details>
-        <summary>Comments ({beads.comments.length})</summary>
-        {beads.comments.map((item, index) => (
-          <div className="comment" key={text(item.id) || index}>
-            <div className="muted">
-              {text(item.author)} · {text(item.created_at)}
-            </div>
-            <SafeMarkdown value={text(item.text ?? item.body)} />
-          </div>
-        ))}
-      </details>
-      <details>
-        <summary>Event history ({beads.events.length})</summary>
-        {beads.events.map((event, index) => (
-          <div className="event" key={text(event.id) || index}>
-            <strong>{label(text(event.event_type))}</strong>
-            <span className="muted">
-              {text(event.created_at)} · {text(event.actor)}
-            </span>
-            <pre>
-              {text(event.old_value)} → {text(event.new_value)}
-            </pre>
-          </div>
-        ))}
-      </details>
-      <details>
-        <summary>Copy a native command</summary>
-        <p className="muted">
-          Replace &lt;actor&gt; with your actual session ID.
-        </p>
-        {Object.entries(beads.commands).map(([name, value]) => (
-          <div className="command" key={name}>
-            <code>{value}</code>
-            <Copy value={value} label={"Copy " + name} />
-          </div>
-        ))}
-      </details>
-    </Panel>
-  );
-}
-function Delivery({
-  candidates,
-  range,
-  onLog,
-}: {
-  candidates: Candidate[];
-  range: Range;
-  onLog: (candidate: string, step: string, attempt: string) => void;
-}) {
-  return (
-    <Panel title="Delivery">
-      {candidates.length ? (
-        candidates.map((candidate) => (
-          <article className="candidate" key={candidate.id}>
-            <header>
-              <strong>{candidate.subject || candidate.id.slice(0, 8)}</strong>
-              <span className="pill">{label(candidate.state)}</span>
-            </header>
-            <p>
-              <code>{candidate.branch}</code>
-            </p>
-            <p className="muted">
-              {candidate.links.some((l) => l.method === "transcript")
-                ? "Matched from a session"
-                : "Matched by branch"}{" "}
-              · Submitted {when(candidate.submitted_at)}
-            </p>
-            {candidate.promoted_at && (
-              <p className="muted">
-                Promoted {when(candidate.promoted_at)}
-                {candidate.submitted_at
-                  ? " · " +
-                    duration(
-                      Date.parse(candidate.promoted_at) -
-                        Date.parse(candidate.submitted_at),
-                    ) +
-                    " after submission"
-                  : ""}
-              </p>
-            )}
-            {candidate.attempts
-              .filter((a) => inRange(a.started_at ?? a.created_at ?? "", range))
-              .map((attempt) => (
-                <details key={attempt.id} open>
-                  <summary>
-                    Attempt {attempt.number} · {label(attempt.state)}
-                  </summary>
-                  {attempt.steps.length ? (
-                    attempt.steps.map((step) => (
-                      <div className="ci-step" key={step.name}>
-                        <div>
-                          <strong>{step.name}</strong>
-                          <p className="muted">
-                            {step.result_class ?? "Pending"} ·{" "}
-                            {duration(step.elapsed_ms)}
-                            {step.exit_code !== null
-                              ? " · exit " + step.exit_code
-                              : ""}
-                          </p>
-                        </div>
-                        <button
-                          onClick={() =>
-                            onLog(candidate.id, step.name, attempt.id)
-                          }
-                        >
-                          Log tail
-                        </button>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="muted">No step results yet.</p>
-                  )}
-                </details>
-              ))}
-          </article>
-        ))
-      ) : (
-        <p className="muted">No observed delivery candidates.</p>
-      )}
-    </Panel>
-  );
-}
-function RequestTable({
-  path,
-  search,
-  range,
-}: {
-  path: string;
-  search: string;
-  range: Range;
-}) {
-  const [rows, setRows] = useState<Requests | null>(null),
-    [sort, setSort] = useState("time"),
-    [error, setError] = useState(""),
-    [loading, setLoading] = useState(false);
-  const pending = useRef<AbortController | null>(null);
-  const params = new URLSearchParams(search);
-  params.set("requests", "1");
-  params.set("sort", sort);
-  if (range) {
-    params.set("since", range.since);
-    params.set("until", range.until);
-  }
-  const query = params.toString();
-  useEffect(() => {
-    const controller = new AbortController();
-    pending.current = controller;
-    setLoading(false);
-    setRows(null);
-    setError("");
-    void request("/api" + path + "?" + query, RequestsSchema, controller.signal)
-      .then((value) => {
-        if (value) setRows(value.data);
-      })
-      .catch((e) => {
-        if (!controller.signal.aborted)
-          if (!controller.signal.aborted)
-            setError(
-              e instanceof Error ? e.message : "Could not read requests",
-            );
-      });
-    return () => controller.abort();
-  }, [path, query]);
-  async function more() {
-    const controller = pending.current;
-    if (!rows?.next_cursor || !controller || loading) return;
-    setLoading(true);
-    try {
-      const value = await request(
-        "/api" +
-          path +
-          "?" +
-          query +
-          "&cursor=" +
-          encodeURIComponent(rows.next_cursor),
-        RequestsSchema,
-        controller.signal,
-      );
-      if (value && !controller.signal.aborted)
-        setRows((current) =>
-          current
-            ? {
-                requests: [...current.requests, ...value.data.requests],
-                next_cursor: value.data.next_cursor,
-              }
-            : value.data,
-        );
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not read requests");
-    } finally {
-      if (!controller.signal.aborted) setLoading(false);
-    }
-  }
-  return (
-    <Panel
-      title="Requests"
-      action={
-        <select
-          aria-label="Request sort"
-          value={sort}
-          onChange={(e) => setSort(e.target.value)}
-        >
-          <option value="time">Time</option>
-          <option value="share">Largest share</option>
-        </select>
-      }
-    >
-      {error && <p role="alert">{error}</p>}
-      <div className="table-scroll">
-        <table>
-          <thead>
-            <tr>
-              <th>Time / request</th>
-              <th>Model</th>
-              <th>Role / agent</th>
-              <th>Attributed share</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows?.requests.map((row) => (
-              <tr key={row.response}>
-                <td>
-                  {when(row.observed_at)}
-                  <details>
-                    <summary className="request-id">
-                      {row.response.slice(0, 22)}…
-                    </summary>
-                    <pre>{JSON.stringify(row, null, 2)}</pre>
-                  </details>
-                </td>
-                <td>{row.model ?? "Unknown model"}</td>
-                <td>
-                  {label(row.role ?? "unknown")}
-                  <span className="muted block">{row.agent ?? "Main"}</span>
-                </td>
-                <td>
-                  <Amount value={row.share_picos} digits={6} />
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      {!rows && !error && <p className="muted">Loading requests…</p>}
-      {rows?.requests.length === 0 && (
-        <p className="muted">No requests in this range.</p>
-      )}
-      {rows?.next_cursor && (
-        <button disabled={loading} onClick={() => void more()}>
-          {loading ? "Loading…" : "Load more requests"}
-        </button>
-      )}
-    </Panel>
-  );
-}
+import { Amount, Empty, Link, Panel, State } from "./ui";
+import { BeadsPanel, Delivery, RequestTable } from "./DetailEvidence";
+import {
+  DeliverySummary,
+  RecentActivity,
+  Sessions,
+  Ownership,
+} from "./DetailOverview";
+import {
+  detailApiQuery,
+  readDetailState,
+  writeDetailState,
+  validRange,
+  type DetailState,
+  type DetailSection,
+  type DetailTab,
+} from "./detailState";
+export { SafeMarkdown } from "./DetailEvidence";
 export function DetailView({ path, search }: { path: string; search: string }) {
   const [detail, setDetail] = useState<Detail | null>(null),
     [error, setError] = useState(""),
-    [range, setRange] = useState<Range>(null),
+    [view, setView] = useState<DetailState>(() => readDetailState(search)),
     [excerpt, setExcerpt] = useState<{
       title: string;
       value: Record<string, unknown> | null;
       error: string;
     } | null>(null);
+  const apiSearch = detailApiQuery(path, search).toString();
+  const identity = path + (apiSearch ? "?" + apiSearch : "");
+  useEffect(() => setView(readDetailState(search)), [path, search]);
+  const range = view.range;
+  function change(next: DetailState) {
+    const state = validRange(next.range)
+      ? next
+      : { ...next, range: null, invalidRange: true };
+    setView(state);
+    if (!state.invalidRange) writeDetailState(path, search, state);
+  }
+  const sectionTriggers = useRef<
+    Partial<Record<DetailSection, HTMLButtonElement | null>>
+  >({});
+  function closeSection() {
+    const previous = view.section;
+    change({ ...view, section: null });
+    if (previous) sectionTriggers.current[previous]?.focus();
+  }
+  function setRange(next: Range) {
+    change({ ...view, range: next, invalidRange: false });
+  }
+  function section(next: DetailSection) {
+    change({
+      ...view,
+      tab: "overview",
+      section: view.section === next ? null : next,
+    });
+  }
   useEffect(() => {
     const controller = new AbortController();
     setDetail(null);
-    setRange(null);
     setError("");
     setExcerpt(null);
-    void request("/api" + path + search, DetailSchema, controller.signal)
+    void request("/api" + identity, DetailSchema, controller.signal)
       .then((value) => {
         if (value) setDetail(value.data);
       })
@@ -393,15 +86,24 @@ export function DetailView({ path, search }: { path: string; search: string }) {
           setError(e instanceof Error ? e.message : "Could not read detail");
       });
     return () => controller.abort();
-  }, [path, search]);
+  }, [identity]);
   const sourceRequest = useRef<AbortController | null>(null);
+  const sourcePanel = useRef<HTMLElement | null>(null);
+  const sourceTrigger = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    if (excerpt?.title) sourcePanel.current?.focus();
+  }, [excerpt?.title]);
   useEffect(
     () => () => {
       sourceRequest.current?.abort();
     },
-    [path, search],
+    [identity],
   );
   async function readSource(title: string, url: string) {
+    sourceTrigger.current =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
     sourceRequest.current?.abort();
     const controller = new AbortController();
     sourceRequest.current = controller;
@@ -426,6 +128,10 @@ export function DetailView({ path, search }: { path: string; search: string }) {
     if (item.call_id) query.set("call", item.call_id);
     else if (item.id) query.set("event", item.id);
     else {
+      sourceTrigger.current =
+        document.activeElement instanceof HTMLElement
+          ? document.activeElement
+          : null;
       sourceRequest.current?.abort();
       setExcerpt({
         title,
@@ -445,9 +151,11 @@ export function DetailView({ path, search }: { path: string; search: string }) {
   if (!detail)
     return (
       <>
-        <Link to={backToFeed()} className="back">
-          ← Back to newsfeed
-        </Link>
+        <div className="detail-breadcrumb">
+          <Link to={backToFeed()} className="back">
+            ← Back to newsfeed
+          </Link>
+        </div>
         <Empty
           title={error ? "Detail unavailable" : "Loading this work"}
           action={
@@ -460,85 +168,164 @@ export function DetailView({ path, search }: { path: string; search: string }) {
         </Empty>
       </>
     );
-  const diagnostics = detail.diagnostics.filter((item) =>
-    inRange(diagnosticAt(item), range),
+  const allKinds = [...new Set(detail.diagnostics.map(diagnosticKind))];
+  const selectedKind = allKinds.includes(view.kind) ? view.kind : "";
+  const diagnostics = detail.diagnostics.filter(
+    (item) =>
+      inRange(diagnosticAt(item), range) &&
+      (!selectedKind || diagnosticKind(item) === selectedKind),
   );
-  const kinds = [...new Set(diagnostics.map(diagnosticKind))];
+  const sessions = [
+    ...new Set([
+      ...detail.card.owners,
+      ...detail.contributors.map((c) => c.thread),
+      ...(detail.card.thread ? [detail.card.thread] : []),
+    ]),
+  ];
+  const singleSession = sessions.length === 1 ? sessions[0] : undefined;
+  const scope =
+    detail.card.kind === "tail"
+      ? "Unowned tail · excludes owned request shares"
+      : path.startsWith("/session/")
+        ? "Whole session · includes owned and unowned requests"
+        : detail.card.kind === "small_tails"
+          ? "Small unowned tails · amounts below the individual display threshold"
+          : detail.card.kind === "unattributable"
+            ? "Unattributable spend · ownership evidence is incomplete or unreliable"
+            : "Task-attributed request shares · lifetime";
+  const tabs: readonly DetailTab[] = ["overview", "diagnostics", "delivery"];
+  const sections: readonly Readonly<{
+    id: DetailSection;
+    title: string;
+    available: boolean;
+  }>[] = [
+    {
+      id: "coverage",
+      title:
+        detail.card.coverage || detail.card.unpriced
+          ? "Coverage incomplete"
+          : "About this amount",
+      available: true,
+    },
+    {
+      id: "requests",
+      title: "View requests",
+      available: !path.startsWith("/ledger/"),
+    },
+    { id: "breakdowns", title: "View all breakdowns", available: true },
+    { id: "ownership", title: "Ownership details", available: true },
+    { id: "sessions", title: "Sessions", available: true },
+    { id: "task", title: "View task description", available: !!detail.beads },
+    {
+      id: "filed",
+      title: "Work filed here",
+      available: detail.created_beads.length > 0,
+    },
+  ];
   return (
     <>
-      <Link to={backToFeed()} className="back">
-        ← Back to newsfeed
-      </Link>
-      <header className="detail-header">
+      <div className="detail-breadcrumb">
+        <Link to={backToFeed()} className="back">
+          ← Back to newsfeed
+        </Link>
+        <span>{detail.card.project}</span>
+      </div>
+      <header className="detail-workspace-header">
         <div>
-          <div className="detail-meta">
-            <span className="emblem">
-              {detail.card.kind === "bead" ? (
-                <Hex project={detail.card.project} />
-              ) : (
-                <Icon role={detail.card.primary_role} />
-              )}
-            </span>
-            <span>
-              {detail.card.project} ·{" "}
-              <code>
-                {detail.card.bead ??
-                  detail.card.thread?.slice(0, 8) ??
-                  label(detail.card.kind)}
-              </code>
-            </span>
-            <State value={detail.card.state} />
-          </div>
+          <State value={detail.card.state} />
           <h1>{cardTitle(detail.card)}</h1>
-          <p>
-            {detail.card.subtitle ||
-              label(detail.card.kind) + " · " + label(detail.card.primary_role)}
+          <p className="detail-scope muted">{scope}</p>
+          <p className="detail-identity">
+            <code>
+              {detail.card.bead ?? detail.card.thread ?? detail.card.key}
+            </code>{" "}
+            · {label(detail.card.kind)} · {label(detail.card.primary_role)} ·{" "}
+            {sessions.length} {sessions.length === 1 ? "session" : "sessions"}
           </p>
         </div>
-        <div className="detail-total">
-          <Amount
-            value={detail.amount_picos}
-            coverage={!!detail.card.coverage}
-          />
-          <p className="muted">
-            {detail.card.coverage
-              ? "Incomplete host coverage"
-              : "Retained request estimates"}
-            {detail.card.unpriced
-              ? " · " + detail.card.unpriced + " unpriced"
-              : ""}
-          </p>
+        <div className="detail-actions">
+          {singleSession ? (
+            <Link to={"/session/" + singleSession} className="action-link">
+              Open session
+            </Link>
+          ) : sessions.length > 1 ? (
+            <button onClick={() => section("sessions")}>
+              Sessions ({sessions.length})
+            </button>
+          ) : (
+            <span className="muted">No observed session source</span>
+          )}
+          {detail.card.kind === "tail" && (
+            <Link className="action-link" to={path}>
+              View whole session
+            </Link>
+          )}
         </div>
       </header>
-      <div className="owner-chips">
-        {detail.card.owners.map((owner) => (
-          <Link key={owner} to={"/session/" + owner}>
-            Session {owner.slice(0, 8)} ↗
-          </Link>
+      <div className="detail-tabs" role="tablist" aria-label="Evidence views">
+        {tabs.map((tab) => (
+          <button
+            key={tab}
+            id={"tab-" + tab}
+            role="tab"
+            tabIndex={view.tab === tab ? 0 : -1}
+            onKeyDown={(event) => {
+              const index = tabs.indexOf(tab);
+              const next =
+                event.key === "ArrowRight"
+                  ? tabs[(index + 1) % tabs.length]
+                  : event.key === "ArrowLeft"
+                    ? tabs[(index + tabs.length - 1) % tabs.length]
+                    : event.key === "Home"
+                      ? tabs[0]
+                      : event.key === "End"
+                        ? tabs[tabs.length - 1]
+                        : undefined;
+              if (next) {
+                event.preventDefault();
+                change({ ...view, tab: next });
+                document.getElementById("tab-" + next)?.focus();
+              }
+            }}
+            aria-selected={view.tab === tab}
+            aria-controls={"view-" + tab}
+            onClick={() => change({ ...view, tab })}
+          >
+            {label(tab)}
+          </button>
         ))}
-        {detail.card.thread && (
-          <Copy value={detail.card.thread} label="Copy session ID" />
-        )}
-        {detail.card.kind === "tail" && (
-          <Link to={path}>View whole session →</Link>
-        )}
       </div>
-      {detail.epic && <EpicProgress epic={detail.epic} direct={detail.card} />}
-      <Timeline
-        detail={detail}
-        range={range}
-        onRange={setRange}
-        onDiagnostic={(item) => void readExcerpt(item)}
-      />
-      <Breakdown detail={detail} />
+      {view.invalidRange && (
+        <p role="alert" className="warning">
+          Invalid range: use valid timestamps with the start no later than the
+          end.{" "}
+          <button onClick={() => setRange(null)}>Clear invalid range</button>
+        </p>
+      )}
+      {range && (
+        <div className="selected-range" role="status">
+          <span>
+            Selected range: {when(range.since)} → {when(range.until)}. Requests
+            and evidence are filtered; totals remain lifetime.
+          </span>
+          <button onClick={() => setRange(null)}>Clear range</button>
+        </div>
+      )}
       {excerpt && (
-        <section className="panel excerpt" aria-label="Source excerpt">
+        <section
+          ref={sourcePanel}
+          tabIndex={-1}
+          className="panel excerpt"
+          aria-label="Source excerpt"
+        >
           <header>
             <h2>{excerpt.title}</h2>
             <button
               onClick={() => {
                 sourceRequest.current?.abort();
                 setExcerpt(null);
+                if (sourceTrigger.current?.isConnected)
+                  sourceTrigger.current.focus();
               }}
             >
               Close excerpt
@@ -572,140 +359,248 @@ export function DetailView({ path, search }: { path: string; search: string }) {
           )}
         </section>
       )}
-      <div className="detail-columns">
-        <div>
-          <Panel title="Diagnostics">
-            {kinds.length ? (
-              kinds.map((kind) => (
-                <details
-                  key={kind}
-                  open={kind !== "tool_call" && kind !== "intentional_wait"}
+      <section
+        id={"view-" + view.tab}
+        role="tabpanel"
+        aria-labelledby={"tab-" + view.tab}
+      >
+        {view.tab === "overview" && (
+          <>
+            <div className="overview-grid">
+              <div className="overview-main">
+                <section
+                  className="detail-recorded"
+                  aria-label="Recorded lifetime spend"
                 >
-                  <summary>
-                    {label(kind)} (
-                    {
-                      diagnostics.filter((d) => diagnosticKind(d) === kind)
-                        .length
-                    }
-                    )
-                  </summary>
-                  {diagnostics
-                    .filter((d) => diagnosticKind(d) === kind)
-                    .map((item, index) => (
-                      <div
-                        className="diagnostic-row"
-                        key={item.call_id ?? item.id ?? index}
-                      >
-                        <div>
-                          <strong>{item.tool ?? label(kind)}</strong>
-                          <p className="muted">
-                            {when(diagnosticAt(item))} · {item.host} ·{" "}
-                            {item.agent || "Main"}
-                            {item.duration_ms != null
-                              ? " · " + duration(item.duration_ms)
-                              : ""}
-                          </p>
-                          {item.amount_picos && (
-                            <Amount value={item.amount_picos} digits={4} />
-                          )}
-                        </div>
-                        <button onClick={() => void readExcerpt(item)}>
-                          Excerpt
-                        </button>
+                  <span className="muted">Recorded spend · lifetime</span>
+                  <div className="total">
+                    <Amount
+                      value={detail.amount_picos}
+                      coverage={
+                        !!detail.card.coverage || detail.card.unpriced > 0
+                      }
+                    />
+                  </div>
+                  <button
+                    ref={(node) => {
+                      sectionTriggers.current.coverage = node;
+                    }}
+                    aria-expanded={view.section === "coverage"}
+                    aria-controls="section-coverage"
+                    onClick={() => section("coverage")}
+                  >
+                    {detail.card.coverage || detail.card.unpriced
+                      ? "Coverage incomplete"
+                      : "About this amount"}
+                  </button>
+                </section>
+                <Timeline
+                  detail={detail}
+                  range={range}
+                  onRange={setRange}
+                  onDiagnostic={(item) => {
+                    change({
+                      ...view,
+                      tab: "diagnostics",
+                      kind: diagnosticKind(item),
+                    });
+                    void readExcerpt(item);
+                  }}
+                />
+                <RecentActivity detail={detail} />
+              </div>
+              <aside className="overview-support">
+                <DeliverySummary
+                  candidates={detail.candidates}
+                  open={() => change({ ...view, tab: "delivery" })}
+                />
+                <Panel title="Lifetime spend by role">
+                  <dl className="role-totals">
+                    {(detail.breakdown.role ?? []).map((role) => (
+                      <div key={role.label}>
+                        <dt>{label(role.label)}</dt>
+                        <dd>
+                          <Amount value={role.amount_picos} />
+                        </dd>
                       </div>
                     ))}
-                </details>
+                  </dl>
+                  {!detail.breakdown.role?.length && (
+                    <p className="muted">No role amounts observed.</p>
+                  )}
+                </Panel>
+                {detail.beads && (
+                  <button
+                    ref={(node) => {
+                      sectionTriggers.current.task = node;
+                    }}
+                    aria-expanded={view.section === "task"}
+                    aria-controls="section-task"
+                    onClick={() => section("task")}
+                  >
+                    View task description
+                  </button>
+                )}
+              </aside>
+            </div>
+            {detail.epic && (
+              <EpicProgress epic={detail.epic} direct={detail.card} />
+            )}
+            <div className="evidence-sections">
+              <div className="section-actions">
+                {sections
+                  .filter(
+                    (s) => s.available && !["coverage", "task"].includes(s.id),
+                  )
+                  .map((s) => (
+                    <button
+                      ref={(node) => {
+                        sectionTriggers.current[s.id] = node;
+                      }}
+                      key={s.id}
+                      aria-expanded={view.section === s.id}
+                      aria-controls={"section-" + s.id}
+                      onClick={() => section(s.id)}
+                    >
+                      {s.title}
+                    </button>
+                  ))}
+              </div>
+              {view.section &&
+                sections.some((s) => s.id === view.section && s.available) && (
+                  <section
+                    className="supporting-section"
+                    onKeyDown={(event) => {
+                      if (event.key === "Escape") {
+                        event.stopPropagation();
+                        closeSection();
+                      }
+                    }}
+                    id={"section-" + view.section}
+                    aria-label={
+                      sections.find((s) => s.id === view.section)?.title
+                    }
+                  >
+                    <button className="section-close" onClick={closeSection}>
+                      Close section
+                    </button>
+                    {view.section === "coverage" && (
+                      <Panel title="Coverage">
+                        <p>
+                          Lifetime API-equivalent retained estimates;{" "}
+                          {detail.card.unpriced} requests are unpriced and
+                          excluded.{" "}
+                          {detail.card.coverage
+                            ? "Host observation coverage is incomplete."
+                            : "No incomplete-coverage flag was reported; this does not prove every request was observed."}
+                        </p>
+                      </Panel>
+                    )}
+                    {view.section === "requests" && (
+                      <RequestTable path={path} search={search} range={range} />
+                    )}
+                    {view.section === "breakdowns" && (
+                      <Breakdown detail={detail} />
+                    )}
+                    {view.section === "ownership" && (
+                      <Ownership detail={detail} />
+                    )}
+                    {view.section === "sessions" && (
+                      <Sessions detail={detail} sessions={sessions} />
+                    )}
+                    {view.section === "task" && detail.beads && (
+                      <BeadsPanel beads={detail.beads} />
+                    )}
+                    {view.section === "filed" && (
+                      <Panel title="Work filed here">
+                        {detail.created_beads.map((b) => (
+                          <div className="row" key={b.bead}>
+                            <Link to={"/bead/" + b.bead}>{b.bead}</Link>
+                          </div>
+                        ))}
+                      </Panel>
+                    )}
+                  </section>
+                )}
+            </div>
+          </>
+        )}
+        {view.tab === "diagnostics" && (
+          <Panel title="Diagnostics">
+            <label className="diagnostic-filter">
+              Kind{" "}
+              <select
+                aria-label="Diagnostic kind"
+                value={selectedKind}
+                onChange={(event) =>
+                  change({ ...view, kind: event.target.value })
+                }
+              >
+                <option value="">All kinds</option>
+                {allKinds.map((kind) => (
+                  <option key={kind} value={kind}>
+                    {label(kind)} (
+                    {
+                      detail.diagnostics.filter(
+                        (d) =>
+                          diagnosticKind(d) === kind &&
+                          inRange(diagnosticAt(d), range),
+                      ).length
+                    }
+                    )
+                  </option>
+                ))}
+              </select>
+            </label>
+            <p className="muted">
+              {diagnostics.length} matching observations
+              {range ? " in the selected range" : " across this work"}.
+              Unknown-time events remain visible when no range is selected.
+            </p>
+            {diagnostics.length ? (
+              diagnostics.map((item, index) => (
+                <div
+                  className="diagnostic-row"
+                  key={item.call_id ?? item.id ?? index}
+                >
+                  <div>
+                    <strong>{item.tool ?? label(diagnosticKind(item))}</strong>
+                    <p className="muted">
+                      {Number.isFinite(Date.parse(diagnosticAt(item)))
+                        ? when(diagnosticAt(item))
+                        : "Unknown time"}{" "}
+                      · {label(diagnosticKind(item))} · {item.host} ·{" "}
+                      {item.agent || "Main"}
+                      {item.duration_ms != null
+                        ? " · " + duration(item.duration_ms)
+                        : ""}
+                    </p>
+                    <Link to={"/session/" + item.thread}>{item.thread}</Link>
+                    {item.amount_picos && (
+                      <Amount value={item.amount_picos} digits={4} />
+                    )}
+                  </div>
+                  <button onClick={() => void readExcerpt(item)}>
+                    Excerpt
+                  </button>
+                </div>
               ))
             ) : (
               <p className="muted">No diagnostics in this range.</p>
             )}
           </Panel>
-          {!path.startsWith("/ledger/") && (
-            <RequestTable path={path} search={search} range={range} />
-          )}
-          <Panel title="Ownership intervals">
-            {detail.intervals.length ? (
-              detail.intervals.map((i) => (
-                <div className="row" key={i.thread + i.start}>
-                  <div>
-                    <Link to={"/bead/" + i.bead}>{i.bead}</Link>
-                    <p className="muted">
-                      {when(i.start)} → {i.end ? when(i.end) : "Open"}
-                    </p>
-                  </div>
-                  <Link to={"/session/" + i.thread}>
-                    {i.thread.slice(0, 8)} ↗
-                  </Link>
-                </div>
-              ))
-            ) : (
-              <p className="muted">No observed ownership intervals.</p>
-            )}
-          </Panel>
-        </div>
-        <div>
+        )}
+        {view.tab === "delivery" && (
           <Delivery
             candidates={detail.candidates}
             range={range}
+            clearRange={() => setRange(null)}
             onLog={(candidate, step, attempt) =>
               void readLog(candidate, step, attempt)
             }
           />
-          {detail.role_spans.length > 0 && (
-            <Panel title="Roles and subagents">
-              {detail.role_spans.map((r, index) => (
-                <div className="row" key={r.thread + r.agent + r.start + index}>
-                  <span className="role-label">
-                    <Icon role={r.role} small />
-                    {label(r.role)}
-                    <span className="muted">
-                      {r.agent ? "↳ " + r.agent.slice(0, 12) : "Main"}
-                      {r.inherited ? " · inherited" : ""}
-                    </span>
-                  </span>
-                  <span className="muted">{when(r.start)}</span>
-                </div>
-              ))}
-              {detail.subagents.map((agent) => (
-                <div className="row" key={agent.label}>
-                  <span>{agent.label}</span>
-                  <Amount value={agent.amount_picos} />
-                </div>
-              ))}
-            </Panel>
-          )}
-          <Panel title="Contributors">
-            {detail.contributors.map((c) => (
-              <div className="row" key={c.thread}>
-                <Link to={"/session/" + c.thread}>
-                  {c.thread.slice(0, 8)} ↗
-                </Link>
-                <Amount value={c.amount_picos} coverage={!!c.coverage} />
-              </div>
-            ))}
-            {detail.card.kind === "unattributable" && (
-              <p className="muted">
-                Ownership evidence is incomplete or cannot be assigned reliably.
-              </p>
-            )}
-            {detail.card.kind === "small_tails" && (
-              <p className="muted">
-                Unowned amounts below the individual tail threshold.
-              </p>
-            )}
-          </Panel>
-          {detail.created_beads.length > 0 && (
-            <Panel title="Work filed here">
-              {detail.created_beads.map((b) => (
-                <div className="row" key={b.bead}>
-                  <Link to={"/bead/" + b.bead}>{b.bead} →</Link>
-                </div>
-              ))}
-            </Panel>
-          )}
-        </div>
-      </div>
-      {detail.beads && <BeadsPanel beads={detail.beads} />}
+        )}
+      </section>
     </>
   );
 }

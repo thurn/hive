@@ -428,11 +428,14 @@ describe("read-only data journeys", () => {
     vi.stubGlobal("fetch", fetcher);
     render(<DetailView path="/bead/hv-test" search="" />);
     await screen.findByRole("heading", { name: card.title });
+    fireEvent.click(screen.getByRole("tab", { name: "Delivery" }));
     expect(
       screen.getByText("Matched by branch", { exact: false }),
     ).toBeInTheDocument();
     expect(screen.getByText(/Attempt 1/)).toBeInTheDocument();
     expect(screen.getByText(/Attempt 2/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("tab", { name: "Overview" }));
+    fireEvent.click(screen.getByRole("button", { name: "View requests" }));
     fireEvent.click(
       await screen.findByRole("button", { name: "Load more requests" }),
     );
@@ -454,8 +457,10 @@ describe("read-only data journeys", () => {
       ).toBe(true),
     );
     fireEvent.click(screen.getByRole("button", { name: "Clear range" }));
+    fireEvent.click(screen.getByRole("tab", { name: "Diagnostics" }));
     fireEvent.click(screen.getByRole("button", { name: "Excerpt" }));
     await screen.findByText("Permission denied");
+    fireEvent.click(screen.getByRole("tab", { name: "Delivery" }));
     fireEvent.click(screen.getAllByRole("button", { name: "Log tail" })[0]!);
     await screen.findByText("Failed assertion");
     fireEvent.click(screen.getByRole("button", { name: "Close excerpt" }));
@@ -627,6 +632,22 @@ describe("shell navigation", () => {
     vi.stubGlobal("fetch", fetcher);
     return fetcher;
   }
+  it("keeps the project feed stable while switching detail views", async () => {
+    const fetcher = serve();
+    history.replaceState(null, "", "/bead/hv-test");
+    render(<App />);
+    await screen.findByRole("tab", { name: "Diagnostics" });
+    await screen.findByRole("link", { name: "battlement" });
+    fireEvent.click(screen.getByRole("tab", { name: "Diagnostics" }));
+    fireEvent.click(screen.getByRole("tab", { name: "Delivery" }));
+    fireEvent.click(screen.getByRole("tab", { name: "Overview" }));
+    expect(
+      fetcher.mock.calls.filter(([url]) => String(url).startsWith("/api/feed")),
+    ).toHaveLength(1);
+    expect(
+      fetcher.mock.calls.filter(([url]) => String(url).startsWith("/api/bead/")),
+    ).toHaveLength(1);
+  });
   it("restores loaded extent before scroll after a detail reload and keeps project scope", async () => {
     const fetcher = serve();
     history.replaceState(null, "", "/?window=today&project=hive&q=collector");
@@ -822,3 +843,302 @@ it("keeps filter disclosure and scope while the next query is loading", () => {
     "true",
   );
 });
+
+describe("focused detail workspace", () => {
+  it("keeps all candidate states visible without rewriting native completion", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        response({
+          ...detail,
+          candidates: [
+            ...detail.candidates,
+            {
+              ...detail.candidates[0],
+              id: "failed-candidate",
+              state: "failed",
+              attempts: [],
+            },
+          ],
+        }),
+      ),
+    );
+    render(<DetailView path="/bead/hv-test" search="" />);
+    await screen.findByRole("heading", { name: card.title });
+    expect(screen.getByText("1 Promoted")).toBeVisible();
+    expect(screen.getByText("1 Failed")).toBeVisible();
+    expect(screen.getByText("Working")).toBeVisible();
+    expect(screen.queryByLabelText("Request sort")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "View delivery" }));
+    expect(screen.getByText("Failed", { selector: "span.pill" })).toBeVisible();
+  });
+  it("reloads UI view and range without leaking UI keys to APIs", async () => {
+    const fetcher = vi.fn(async (input: RequestInfo | URL) =>
+      String(input).includes("requests=1")
+        ? response({ requests: [], next_cursor: null })
+        : response(detail),
+    );
+    vi.stubGlobal("fetch", fetcher);
+    const search =
+      "?tail=1&view=delivery&since=2026-09-24T13%3A00%3A00Z&until=2026-09-24T14%3A00%3A00Z&section=requests";
+    const view = render(
+      <DetailView path="/session/session-a" search={search} />,
+    );
+    await screen.findByRole("heading", { name: card.title });
+    expect(fetcher).toHaveBeenCalledWith(
+      "/api/session/session-a?tail=1",
+      expect.anything(),
+    );
+    expect(screen.getByRole("tab", { name: "Delivery" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    expect(
+      screen.getByText(/1 candidates and 2 attempts hidden/),
+    ).toBeVisible();
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "totals remain lifetime",
+    );
+    fireEvent.click(screen.getByRole("tab", { name: "Overview" }));
+    await screen.findByText("No requests in this range.");
+    expect(
+      fetcher.mock.calls.some(
+        ([url]) =>
+          String(url).includes("requests=1") && String(url).includes("since="),
+      ),
+    ).toBe(true);
+    expect(
+      fetcher.mock.calls.every(
+        ([url]) => !/[?&](view|section|kind)=/.test(String(url)),
+      ),
+    ).toBe(true);
+    const saved = location.search;
+    view.unmount();
+    render(<DetailView path="/session/session-a" search={saved} />);
+    await screen.findByText("No requests in this range.");
+    expect(
+      screen.getByRole("button", { name: "View requests" }),
+    ).toHaveAttribute("aria-expanded", "true");
+    fireEvent.click(screen.getByRole("button", { name: "Clear range" }));
+    expect(new URLSearchParams(location.search).has("since")).toBe(false);
+    expect(
+      within(
+        screen.getByRole("region", { name: "Recorded lifetime spend" }),
+      ).getByTitle(detail.amount_picos + " picodollars"),
+    ).toHaveTextContent("≥");
+  });
+  it("falls back from invalid view state and keeps unknown-time diagnostics reachable", async () => {
+    const fetcher = vi.fn(async () =>
+      response({
+        ...detail,
+        diagnostics: [
+          { thread: "session-a", host: "codex", agent: "", kind: "api_error" },
+        ],
+      }),
+    );
+    vi.stubGlobal("fetch", fetcher);
+    render(
+      <DetailView
+        path="/bead/hv-test"
+        search="?view=evil&section=evil&kind=%3Cscript%3E&since=oops"
+      />,
+    );
+    await screen.findByRole("heading", { name: card.title });
+    expect(screen.getByRole("tab", { name: "Overview" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    expect(screen.getByRole("alert")).toHaveTextContent("Invalid range");
+    fireEvent.click(screen.getByRole("tab", { name: "Diagnostics" }));
+    expect(screen.getByText(/Unknown time · Api error/)).toBeVisible();
+    expect(fetcher.mock.calls).toHaveLength(1);
+    fireEvent.click(screen.getByRole("button", { name: "Excerpt" }));
+    expect(
+      screen.getByText("No independently verifiable source excerpt."),
+    ).toBeVisible();
+    expect(fetcher.mock.calls).toHaveLength(1);
+  });
+  it("provides truthful session actions and keyboard-reversible supporting evidence", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        response({
+          ...detail,
+          card: { ...card, owners: ["a", "b"] },
+          contributors: [
+            { thread: "a", amount_picos: "100", coverage: 0 },
+            { thread: "b", amount_picos: "200", coverage: 1 },
+          ],
+          role_spans: [
+            {
+              thread: "a",
+              agent: "child",
+              role: "warden",
+              start: at,
+              inherited: 1,
+              evidence: "parent request",
+            },
+          ],
+          subagents: [{ label: "child", amount_picos: "300" }],
+        }),
+      ),
+    );
+    render(<DetailView path="/bead/hv-test" search="" />);
+    await screen.findByRole("heading", { name: card.title });
+    expect(screen.queryByRole("link", { name: "Open session" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Sessions (2)" }));
+    expect(screen.getByRole("link", { name: "a" })).toHaveAttribute(
+      "href",
+      "/session/a",
+    );
+    expect(screen.getByRole("link", { name: "b" })).toHaveAttribute(
+      "href",
+      "/session/b",
+    );
+    expect(screen.getByText(/inherited/)).toBeVisible();
+    fireEvent.keyDown(screen.getByRole("button", { name: "Close section" }), {
+      key: "Escape",
+    });
+    expect(screen.getByRole("button", { name: "Sessions" })).toHaveFocus();
+    fireEvent.keyDown(screen.getByRole("tab", { name: "Overview" }), {
+      key: "ArrowRight",
+    });
+    expect(screen.getByRole("tab", { name: "Diagnostics" })).toHaveFocus();
+    expect(screen.getByRole("tab", { name: "Diagnostics" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+  });
+});
+
+it.each([
+  ["", "agent", "Whole session · includes owned and unowned requests"],
+  ["?tail=1", "tail", "Unowned tail · excludes owned request shares"],
+])("keeps session scope explicit for %s", async (search, kind, scope) => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () =>
+      response({
+        ...detail,
+        card: {
+          ...card,
+          key: "session:session-a",
+          kind,
+          thread: "session-a",
+          subtitle:
+            kind === "agent"
+              ? "Whole session · includes owned and unowned requests"
+              : "Unowned tail",
+        },
+      }),
+    ),
+  );
+  render(<DetailView path="/session/session-a" search={search} />);
+  expect(await screen.findByText(scope)).toBeVisible();
+  if (kind === "tail")
+    expect(
+      screen.getByRole("link", { name: "View whole session" }),
+    ).toHaveAttribute("href", "/session/session-a");
+});
+it("retains cached native task evidence, commands and sanitized text", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () =>
+      response({
+        ...detail,
+        beads: {
+          source: "cached",
+          refreshed: at,
+          age_seconds: 90,
+          error: "Beads offline",
+          bead: {
+            status: "in_progress",
+            description: "**Full task text**",
+            acceptance_criteria: "Acceptance text",
+            notes: "Notes text",
+            metadata: { hive_project: "hive" },
+            dependencies: [{ id: "hv-parent" }],
+          },
+          commands: { show: "bd show hv-test" },
+          comments: [{ id: "one", text: "Comment evidence" }],
+          dependents: [{ id: "hv-child", title: "Child" }],
+          events: [{ id: "e", event_type: "claimed" }],
+        },
+      }),
+    ),
+  );
+  render(<DetailView path="/bead/hv-test" search="" />);
+  await screen.findByRole("heading", { name: card.title });
+  fireEvent.click(
+    screen.getByRole("button", { name: "View task description" }),
+  );
+  expect(
+    screen.getByText(/Showing the last collected record/),
+  ).toHaveTextContent("1.5 min old");
+  expect(screen.getByRole("alert")).toHaveTextContent("Beads offline");
+  expect(screen.getByText("Full task text")).toBeVisible();
+  fireEvent.click(screen.getByText("Copy a native command"));
+  expect(screen.getByRole("button", { name: "Copy show" })).toBeVisible();
+  fireEvent.click(screen.getByText("Comments (1)"));
+  expect(screen.getByText("Comment evidence")).toBeVisible();
+});
+it("keeps unavailable logs explicit and cancels source reads on task change", async () => {
+  const source: {
+    finish?: (value: Response) => void;
+    signal?: AbortSignal | null;
+  } = {};
+  const fetcher = vi.fn(
+    async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input).includes("/excerpt")) {
+        source.signal = init?.signal;
+        return new Promise<Response>((resolve) => {
+          source.finish = resolve;
+        });
+      }
+      if (String(input).includes("/ci-log"))
+        throw new Error("Retained log unavailable");
+      return response(detail);
+    },
+  );
+  vi.stubGlobal("fetch", fetcher);
+  const view = render(
+    <DetailView path="/bead/hv-test" search="?view=delivery" />,
+  );
+  await screen.findByRole("heading", { name: card.title });
+  fireEvent.click(screen.getAllByRole("button", { name: "Log tail" })[0]!);
+  expect(await screen.findByRole("alert")).toHaveTextContent(
+    "Retained log unavailable",
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Close excerpt" }));
+  fireEvent.click(screen.getByRole("tab", { name: "Diagnostics" }));
+  fireEvent.click(screen.getByRole("button", { name: "Excerpt" }));
+  await screen.findByText("Reading source…");
+  view.rerender(<DetailView path="/bead/hv-other" search="" />);
+  expect(source.signal?.aborted).toBe(true);
+  await act(async () =>
+    source.finish?.(response({ result: "Stale source must not appear" })),
+  );
+  expect(screen.queryByText("Stale source must not appear")).toBeNull();
+});
+
+it.each([[], ["one-source"]])(
+  "offers a session link only for a known single destination: %j",
+  async (...owners) => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        response({ ...detail, card: { ...card, owners }, contributors: [] }),
+      ),
+    );
+    render(<DetailView path="/bead/hv-test" search="" />);
+    await screen.findByRole("heading", { name: card.title });
+    if (owners.length === 1)
+      expect(
+        screen.getByRole("link", { name: "Open session" }),
+      ).toHaveAttribute("href", "/session/one-source");
+    else {
+      expect(screen.queryByRole("link", { name: "Open session" })).toBeNull();
+      expect(screen.getByText("No observed session source")).toBeVisible();
+    }
+  },
+);

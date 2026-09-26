@@ -12,7 +12,7 @@ import {
 } from "./data";
 import { Panel } from "./ui";
 
-export type Range = { since: string; until: string } | null;
+export type Range = Readonly<{ since: string; until: string }> | null;
 const palette = [
   "#c4b5fd",
   "#93c5fd",
@@ -108,7 +108,9 @@ export function Timeline({
   const color = (role: string) =>
     palette[roleNames.indexOf(role) % palette.length] ?? palette[0];
   const diagnostic = detail.diagnostics.filter(
-    (d) => !["tool_call", "intentional_wait"].includes(diagnosticKind(d)),
+    (d) =>
+      Number.isFinite(Date.parse(diagnosticAt(d))) &&
+      !["tool_call", "intentional_wait"].includes(diagnosticKind(d)),
   );
   const [drag, setDrag] = useState<number | null>(null),
     [hover, setHover] = useState<string>("");
@@ -132,7 +134,9 @@ export function Timeline({
       setDrag(null);
     }
   }
-  const waits = detail.diagnostics.filter((d) => d.kind === "human_wait");
+  const waits = detail.diagnostics.filter(
+    (d) => d.kind === "human_wait" && Number.isFinite(Date.parse(d.at ?? "")),
+  );
   const ownership = detail.intervals.slice(0, 5);
   const height = 260 + ownership.length * 25;
   return (
@@ -408,7 +412,6 @@ export function Timeline({
             }}
           />
         </label>
-        {range && <button onClick={() => onRange(null)}>Clear range</button>}
         <span className="muted">
           {range
             ? "Tables show the selected range."

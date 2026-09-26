@@ -1,0 +1,1146 @@
+[
+  {
+    "height": 720,
+    "overflow": 0,
+    "regions": [
+      {
+        "rect": {
+          "height": 720,
+          "width": 216,
+          "x": 0,
+          "y": 0
+        },
+        "selector": ".rail"
+      },
+      {
+        "rect": {
+          "height": 1294.9921875,
+          "width": 1064,
+          "x": 216,
+          "y": 0
+        },
+        "selector": "main"
+      },
+      {
+        "rect": {
+          "height": 144.296875,
+          "width": 984,
+          "x": 256,
+          "y": 92
+        },
+        "selector": ".detail-workspace-header"
+      },
+      {
+        "rect": {
+          "height": 51,
+          "width": 984,
+          "x": 256,
+          "y": 260.296875
+        },
+        "selector": ".detail-tabs"
+      },
+      {
+        "rect": {
+          "height": 859.6953125,
+          "width": 984,
+          "x": 256,
+          "y": 335.296875
+        },
+        "selector": ".overview-grid"
+      },
+      {
+        "rect": {
+          "height": 859.6953125,
+          "width": 634.6640625,
+          "x": 256,
+          "y": 335.296875
+        },
+        "selector": ".overview-main"
+      },
+      {
+        "rect": {
+          "height": 519.6953125,
+          "width": 317.3359375,
+          "x": 922.6640625,
+          "y": 335.296875
+        },
+        "selector": ".overview-support"
+      },
+      {
+        "rect": {
+          "height": 220,
+          "width": 634.6640625,
+          "x": 256,
+          "y": 554.4921875
+        },
+        "selector": ".timeline"
+      },
+      {
+        "rect": {
+          "height": 211,
+          "width": 634.6640625,
+          "x": 256,
+          "y": 967.9921875
+        },
+        "selector": ".recent-activity"
+      }
+    ],
+    "width": 1280
+  },
+  {
+    "height": 1000,
+    "overflow": 0,
+    "regions": [
+      {
+        "rect": {
+          "height": 1000,
+          "width": 216,
+          "x": 0,
+          "y": 0
+        },
+        "selector": ".rail"
+      },
+      {
+        "rect": {
+          "height": 1276.671875,
+          "width": 1384,
+          "x": 216,
+          "y": 0
+        },
+        "selector": "main"
+      },
+      {
+        "rect": {
+          "height": 144.296875,
+          "width": 1304,
+          "x": 256,
+          "y": 92
+        },
+        "selector": ".detail-workspace-header"
+      },
+      {
+        "rect": {
+          "height": 51,
+          "width": 1304,
+          "x": 256,
+          "y": 260.296875
+        },
+        "selector": ".detail-tabs"
+      },
+      {
+        "rect": {
+          "height": 841.375,
+          "width": 1304,
+          "x": 256,
+          "y": 335.296875
+        },
+        "selector": ".overview-grid"
+      },
+      {
+        "rect": {
+          "height": 841.375,
+          "width": 848,
+          "x": 256,
+          "y": 335.296875
+        },
+        "selector": ".overview-main"
+      },
+      {
+        "rect": {
+          "height": 519.6953125,
+          "width": 424,
+          "x": 1136,
+          "y": 335.296875
+        },
+        "selector": ".overview-support"
+      },
+      {
+        "rect": {
+          "height": 241.6796875,
+          "width": 848,
+          "x": 256,
+          "y": 554.4921875
+        },
+        "selector": ".timeline"
+      },
+      {
+        "rect": {
+          "height": 211,
+          "width": 848,
+          "x": 256,
+          "y": 949.671875
+        },
+        "selector": ".recent-activity"
+      }
+    ],
+    "width": 1600
+  },
+  {
+    "height": 900,
+    "overflow": 0,
+    "regions": [
+      {
+        "rect": {
+          "height": 900,
+          "width": 216,
+          "x": 0,
+          "y": 0
+        },
+        "selector": ".rail"
+      },
+      {
+        "rect": {
+          "height": 1254.9921875,
+          "width": 1224,
+          "x": 216,
+          "y": 0
+        },
+        "selector": "main"
+      },
+      {
+        "rect": {
+          "height": 144.296875,
+          "width": 1144,
+          "x": 256,
+          "y": 92
+        },
+        "selector": ".detail-workspace-header"
+      },
+      {
+        "rect": {
+          "height": 51,
+          "width": 1144,
+          "x": 256,
+          "y": 260.296875
+        },
+        "selector": ".detail-tabs"
+      },
+      {
+        "rect": {
+          "height": 819.6953125,
+          "width": 1144,
+          "x": 256,
+          "y": 335.296875
+        },
+        "selector": ".overview-grid"
+      },
+      {
+        "rect": {
+          "height": 819.6953125,
+          "width": 741.328125,
+          "x": 256,
+          "y": 335.296875
+        },
+        "selector": ".overview-main"
+      },
+      {
+        "rect": {
+          "height": 519.6953125,
+          "width": 370.6640625,
+          "x": 1029.328125,
+          "y": 335.296875
+        },
+        "selector": ".overview-support"
+      },
+      {
+        "rect": {
+          "height": 220,
+          "width": 741.328125,
+          "x": 256,
+          "y": 554.4921875
+        },
+        "selector": ".timeline"
+      },
+      {
+        "rect": {
+          "height": 211,
+          "width": 741.328125,
+          "x": 256,
+          "y": 927.9921875
+        },
+        "selector": ".recent-activity"
+      }
+    ],
+    "width": 1440
+  },
+  {
+    "height": 1100,
+    "overflow": 0,
+    "regions": [
+      {
+        "rect": {
+          "height": 1100,
+          "width": 216,
+          "x": 0,
+          "y": 0
+        },
+        "selector": ".rail"
+      },
+      {
+        "rect": {
+          "height": 1692.9921875,
+          "width": 784,
+          "x": 216,
+          "y": 0
+        },
+        "selector": "main"
+      },
+      {
+        "rect": {
+          "height": 179.296875,
+          "width": 704,
+          "x": 256,
+          "y": 92
+        },
+        "selector": ".detail-workspace-header"
+      },
+      {
+        "rect": {
+          "height": 51,
+          "width": 704,
+          "x": 256,
+          "y": 295.296875
+        },
+        "selector": ".detail-tabs"
+      },
+      {
+        "rect": {
+          "height": 1222.6953125,
+          "width": 704,
+          "x": 256,
+          "y": 370.296875
+        },
+        "selector": ".overview-grid"
+      },
+      {
+        "rect": {
+          "height": 819.6953125,
+          "width": 704,
+          "x": 256,
+          "y": 370.296875
+        },
+        "selector": ".overview-main"
+      },
+      {
+        "rect": {
+          "height": 371,
+          "width": 704,
+          "x": 256,
+          "y": 1221.9921875
+        },
+        "selector": ".overview-support"
+      },
+      {
+        "rect": {
+          "height": 220,
+          "width": 704,
+          "x": 256,
+          "y": 589.4921875
+        },
+        "selector": ".timeline"
+      },
+      {
+        "rect": {
+          "height": 211,
+          "width": 704,
+          "x": 256,
+          "y": 962.9921875
+        },
+        "selector": ".recent-activity"
+      }
+    ],
+    "width": 1000
+  },
+  {
+    "height": 900,
+    "overflow": 0,
+    "regions": [
+      {
+        "rect": {
+          "height": 900,
+          "width": 216,
+          "x": 0,
+          "y": 0
+        },
+        "selector": ".rail"
+      },
+      {
+        "rect": {
+          "height": 1329.9921875,
+          "width": 885,
+          "x": 216,
+          "y": 0
+        },
+        "selector": "main"
+      },
+      {
+        "rect": {
+          "height": 179.296875,
+          "width": 805,
+          "x": 256,
+          "y": 92
+        },
+        "selector": ".detail-workspace-header"
+      },
+      {
+        "rect": {
+          "height": 51,
+          "width": 805,
+          "x": 256,
+          "y": 295.296875
+        },
+        "selector": ".detail-tabs"
+      },
+      {
+        "rect": {
+          "height": 859.6953125,
+          "width": 805,
+          "x": 256,
+          "y": 370.296875
+        },
+        "selector": ".overview-grid"
+      },
+      {
+        "rect": {
+          "height": 859.6953125,
+          "width": 515.328125,
+          "x": 256,
+          "y": 370.296875
+        },
+        "selector": ".overview-main"
+      },
+      {
+        "rect": {
+          "height": 564.6953125,
+          "width": 257.6640625,
+          "x": 803.328125,
+          "y": 370.296875
+        },
+        "selector": ".overview-support"
+      },
+      {
+        "rect": {
+          "height": 220,
+          "width": 515.328125,
+          "x": 256,
+          "y": 589.4921875
+        },
+        "selector": ".timeline"
+      },
+      {
+        "rect": {
+          "height": 211,
+          "width": 515.328125,
+          "x": 256,
+          "y": 1002.9921875
+        },
+        "selector": ".recent-activity"
+      }
+    ],
+    "width": 1101
+  },
+  {
+    "height": 900,
+    "overflow": 0,
+    "regions": [
+      {
+        "rect": {
+          "height": 900,
+          "width": 216,
+          "x": 0,
+          "y": 0
+        },
+        "selector": ".rail"
+      },
+      {
+        "rect": {
+          "height": 1702.125,
+          "width": 884,
+          "x": 216,
+          "y": 0
+        },
+        "selector": "main"
+      },
+      {
+        "rect": {
+          "height": 179.296875,
+          "width": 804,
+          "x": 256,
+          "y": 92
+        },
+        "selector": ".detail-workspace-header"
+      },
+      {
+        "rect": {
+          "height": 51,
+          "width": 804,
+          "x": 256,
+          "y": 295.296875
+        },
+        "selector": ".detail-tabs"
+      },
+      {
+        "rect": {
+          "height": 1231.828125,
+          "width": 804,
+          "x": 256,
+          "y": 370.296875
+        },
+        "selector": ".overview-grid"
+      },
+      {
+        "rect": {
+          "height": 828.828125,
+          "width": 804,
+          "x": 256,
+          "y": 370.296875
+        },
+        "selector": ".overview-main"
+      },
+      {
+        "rect": {
+          "height": 371,
+          "width": 804,
+          "x": 256,
+          "y": 1231.125
+        },
+        "selector": ".overview-support"
+      },
+      {
+        "rect": {
+          "height": 229.1328125,
+          "width": 804,
+          "x": 256,
+          "y": 589.4921875
+        },
+        "selector": ".timeline"
+      },
+      {
+        "rect": {
+          "height": 211,
+          "width": 804,
+          "x": 256,
+          "y": 972.125
+        },
+        "selector": ".recent-activity"
+      }
+    ],
+    "width": 1100
+  },
+  {
+    "height": 900,
+    "overflow": 0,
+    "regions": [
+      {
+        "rect": {
+          "height": 900,
+          "width": 216,
+          "x": 0,
+          "y": 0
+        },
+        "selector": ".rail"
+      },
+      {
+        "rect": {
+          "height": 1732.9921875,
+          "width": 685,
+          "x": 216,
+          "y": 0
+        },
+        "selector": "main"
+      },
+      {
+        "rect": {
+          "height": 179.296875,
+          "width": 605,
+          "x": 256,
+          "y": 92
+        },
+        "selector": ".detail-workspace-header"
+      },
+      {
+        "rect": {
+          "height": 51,
+          "width": 605,
+          "x": 256,
+          "y": 295.296875
+        },
+        "selector": ".detail-tabs"
+      },
+      {
+        "rect": {
+          "height": 1262.6953125,
+          "width": 605,
+          "x": 256,
+          "y": 370.296875
+        },
+        "selector": ".overview-grid"
+      },
+      {
+        "rect": {
+          "height": 859.6953125,
+          "width": 605,
+          "x": 256,
+          "y": 370.296875
+        },
+        "selector": ".overview-main"
+      },
+      {
+        "rect": {
+          "height": 371,
+          "width": 605,
+          "x": 256,
+          "y": 1261.9921875
+        },
+        "selector": ".overview-support"
+      },
+      {
+        "rect": {
+          "height": 220,
+          "width": 605,
+          "x": 256,
+          "y": 589.4921875
+        },
+        "selector": ".timeline"
+      },
+      {
+        "rect": {
+          "height": 211,
+          "width": 605,
+          "x": 256,
+          "y": 1002.9921875
+        },
+        "selector": ".recent-activity"
+      }
+    ],
+    "width": 901
+  },
+  {
+    "height": 900,
+    "overflow": 0,
+    "regions": [
+      {
+        "rect": {
+          "height": 900,
+          "width": 216,
+          "x": 0,
+          "y": 0
+        },
+        "selector": ".rail"
+      },
+      {
+        "rect": {
+          "height": 1732.9921875,
+          "width": 684,
+          "x": 216,
+          "y": 0
+        },
+        "selector": "main"
+      },
+      {
+        "rect": {
+          "height": 179.296875,
+          "width": 636,
+          "x": 240,
+          "y": 92
+        },
+        "selector": ".detail-workspace-header"
+      },
+      {
+        "rect": {
+          "height": 51,
+          "width": 636,
+          "x": 240,
+          "y": 295.296875
+        },
+        "selector": ".detail-tabs"
+      },
+      {
+        "rect": {
+          "height": 1262.6953125,
+          "width": 636,
+          "x": 240,
+          "y": 370.296875
+        },
+        "selector": ".overview-grid"
+      },
+      {
+        "rect": {
+          "height": 859.6953125,
+          "width": 636,
+          "x": 240,
+          "y": 370.296875
+        },
+        "selector": ".overview-main"
+      },
+      {
+        "rect": {
+          "height": 371,
+          "width": 636,
+          "x": 240,
+          "y": 1261.9921875
+        },
+        "selector": ".overview-support"
+      },
+      {
+        "rect": {
+          "height": 220,
+          "width": 636,
+          "x": 240,
+          "y": 589.4921875
+        },
+        "selector": ".timeline"
+      },
+      {
+        "rect": {
+          "height": 211,
+          "width": 636,
+          "x": 240,
+          "y": 1002.9921875
+        },
+        "selector": ".recent-activity"
+      }
+    ],
+    "width": 900
+  },
+  {
+    "height": 900,
+    "overflow": 0,
+    "regions": [
+      {
+        "rect": {
+          "height": 900,
+          "width": 216,
+          "x": 0,
+          "y": 0
+        },
+        "selector": ".rail"
+      },
+      {
+        "rect": {
+          "height": 1889.9921875,
+          "width": 553,
+          "x": 216,
+          "y": 0
+        },
+        "selector": "main"
+      },
+      {
+        "rect": {
+          "height": 214.296875,
+          "width": 505,
+          "x": 240,
+          "y": 92
+        },
+        "selector": ".detail-workspace-header"
+      },
+      {
+        "rect": {
+          "height": 51,
+          "width": 505,
+          "x": 240,
+          "y": 330.296875
+        },
+        "selector": ".detail-tabs"
+      },
+      {
+        "rect": {
+          "height": 1328.6953125,
+          "width": 505,
+          "x": 240,
+          "y": 405.296875
+        },
+        "selector": ".overview-grid"
+      },
+      {
+        "rect": {
+          "height": 859.6953125,
+          "width": 505,
+          "x": 240,
+          "y": 405.296875
+        },
+        "selector": ".overview-main"
+      },
+      {
+        "rect": {
+          "height": 437,
+          "width": 505,
+          "x": 240,
+          "y": 1296.9921875
+        },
+        "selector": ".overview-support"
+      },
+      {
+        "rect": {
+          "height": 220,
+          "width": 505,
+          "x": 240,
+          "y": 624.4921875
+        },
+        "selector": ".timeline"
+      },
+      {
+        "rect": {
+          "height": 211,
+          "width": 505,
+          "x": 240,
+          "y": 1037.9921875
+        },
+        "selector": ".recent-activity"
+      }
+    ],
+    "width": 769
+  },
+  {
+    "height": 900,
+    "overflow": 0,
+    "regions": [
+      {
+        "rect": {
+          "height": 161.796875,
+          "width": 768,
+          "x": 0,
+          "y": 0
+        },
+        "selector": ".rail"
+      },
+      {
+        "rect": {
+          "height": 1791.6875,
+          "width": 768,
+          "x": 0,
+          "y": 161.796875
+        },
+        "selector": "main"
+      },
+      {
+        "rect": {
+          "height": 197.796875,
+          "width": 736,
+          "x": 16,
+          "y": 245.796875
+        },
+        "selector": ".detail-workspace-header"
+      },
+      {
+        "rect": {
+          "height": 51,
+          "width": 736,
+          "x": 16,
+          "y": 467.59375
+        },
+        "selector": ".detail-tabs"
+      },
+      {
+        "rect": {
+          "height": 1318.890625,
+          "width": 736,
+          "x": 16,
+          "y": 542.59375
+        },
+        "selector": ".overview-grid"
+      },
+      {
+        "rect": {
+          "height": 814.1953125,
+          "width": 736,
+          "x": 16,
+          "y": 542.59375
+        },
+        "selector": ".overview-main"
+      },
+      {
+        "rect": {
+          "height": 472.6953125,
+          "width": 736,
+          "x": 16,
+          "y": 1388.7890625
+        },
+        "selector": ".overview-support"
+      },
+      {
+        "rect": {
+          "height": 220,
+          "width": 736,
+          "x": 16,
+          "y": 756.2890625
+        },
+        "selector": ".timeline"
+      },
+      {
+        "rect": {
+          "height": 211,
+          "width": 736,
+          "x": 16,
+          "y": 1129.7890625
+        },
+        "selector": ".recent-activity"
+      }
+    ],
+    "width": 768
+  },
+  {
+    "height": 900,
+    "overflow": 0,
+    "regions": [
+      {
+        "rect": {
+          "height": 161.796875,
+          "width": 640,
+          "x": 0,
+          "y": 0
+        },
+        "selector": ".rail"
+      },
+      {
+        "rect": {
+          "height": 1864.1875,
+          "width": 640,
+          "x": 0,
+          "y": 161.796875
+        },
+        "selector": "main"
+      },
+      {
+        "rect": {
+          "height": 230.296875,
+          "width": 608,
+          "x": 16,
+          "y": 245.796875
+        },
+        "selector": ".detail-workspace-header"
+      },
+      {
+        "rect": {
+          "height": 51,
+          "width": 608,
+          "x": 16,
+          "y": 500.09375
+        },
+        "selector": ".detail-tabs"
+      },
+      {
+        "rect": {
+          "height": 1358.890625,
+          "width": 608,
+          "x": 16,
+          "y": 575.09375
+        },
+        "selector": ".overview-grid"
+      },
+      {
+        "rect": {
+          "height": 854.1953125,
+          "width": 608,
+          "x": 16,
+          "y": 575.09375
+        },
+        "selector": ".overview-main"
+      },
+      {
+        "rect": {
+          "height": 472.6953125,
+          "width": 608,
+          "x": 16,
+          "y": 1461.2890625
+        },
+        "selector": ".overview-support"
+      },
+      {
+        "rect": {
+          "height": 220,
+          "width": 608,
+          "x": 16,
+          "y": 788.7890625
+        },
+        "selector": ".timeline"
+      },
+      {
+        "rect": {
+          "height": 211,
+          "width": 608,
+          "x": 16,
+          "y": 1202.2890625
+        },
+        "selector": ".recent-activity"
+      }
+    ],
+    "width": 640
+  },
+  {
+    "height": 900,
+    "overflow": 0,
+    "regions": [
+      {
+        "rect": {
+          "height": 161.796875,
+          "width": 639,
+          "x": 0,
+          "y": 0
+        },
+        "selector": ".rail"
+      },
+      {
+        "rect": {
+          "height": 1888.6875,
+          "width": 639,
+          "x": 0,
+          "y": 161.796875
+        },
+        "selector": "main"
+      },
+      {
+        "rect": {
+          "height": 230.296875,
+          "width": 607,
+          "x": 16,
+          "y": 245.796875
+        },
+        "selector": ".detail-workspace-header"
+      },
+      {
+        "rect": {
+          "height": 51,
+          "width": 607,
+          "x": 16,
+          "y": 500.09375
+        },
+        "selector": ".detail-tabs"
+      },
+      {
+        "rect": {
+          "height": 1383.390625,
+          "width": 607,
+          "x": 16,
+          "y": 575.09375
+        },
+        "selector": ".overview-grid"
+      },
+      {
+        "rect": {
+          "height": 878.6953125,
+          "width": 607,
+          "x": 16,
+          "y": 575.09375
+        },
+        "selector": ".overview-main"
+      },
+      {
+        "rect": {
+          "height": 472.6953125,
+          "width": 607,
+          "x": 16,
+          "y": 1485.7890625
+        },
+        "selector": ".overview-support"
+      },
+      {
+        "rect": {
+          "height": 256.5,
+          "width": 900,
+          "x": 16,
+          "y": 784.7890625
+        },
+        "selector": ".timeline"
+      },
+      {
+        "rect": {
+          "height": 211,
+          "width": 607,
+          "x": 16,
+          "y": 1226.7890625
+        },
+        "selector": ".recent-activity"
+      }
+    ],
+    "width": 639
+  },
+  {
+    "height": 844,
+    "overflow": 0,
+    "regions": [
+      {
+        "rect": {
+          "height": 161.796875,
+          "width": 390,
+          "x": 0,
+          "y": 0
+        },
+        "selector": ".rail"
+      },
+      {
+        "rect": {
+          "height": 2120.6875,
+          "width": 390,
+          "x": 0,
+          "y": 161.796875
+        },
+        "selector": "main"
+      },
+      {
+        "rect": {
+          "height": 262.796875,
+          "width": 358,
+          "x": 16,
+          "y": 245.796875
+        },
+        "selector": ".detail-workspace-header"
+      },
+      {
+        "rect": {
+          "height": 51,
+          "width": 358,
+          "x": 16,
+          "y": 532.59375
+        },
+        "selector": ".detail-tabs"
+      },
+      {
+        "rect": {
+          "height": 1526.890625,
+          "width": 358,
+          "x": 16,
+          "y": 607.59375
+        },
+        "selector": ".overview-grid"
+      },
+      {
+        "rect": {
+          "height": 980.1953125,
+          "width": 358,
+          "x": 16,
+          "y": 607.59375
+        },
+        "selector": ".overview-main"
+      },
+      {
+        "rect": {
+          "height": 514.6953125,
+          "width": 358,
+          "x": 16,
+          "y": 1619.7890625
+        },
+        "selector": ".overview-support"
+      },
+      {
+        "rect": {
+          "height": 256.5,
+          "width": 900,
+          "x": 16,
+          "y": 817.2890625
+        },
+        "selector": ".timeline"
+      },
+      {
+        "rect": {
+          "height": 211,
+          "width": 358,
+          "x": 16,
+          "y": 1360.7890625
+        },
+        "selector": ".recent-activity"
+      }
+    ],
+    "width": 390
+  }
+]
