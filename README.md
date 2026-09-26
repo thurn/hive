@@ -72,3 +72,13 @@ The fast gate checks style, strict typing, boundaries, and retained accounting/l
 
 Tollgate and GitHub both run `scripts/prepare-check && scripts/check`. Validation requires the exact Python version in `.python-version` and Node version in `dashboard/.nvmrc`, with locked Python/npm dependencies and pinned Beads/Dolt tools. The shared check runner sets UTC, the C locale, UTF-8 Python I/O and a fixed Python hash seed; timezone-specific fixtures explicitly select their own timezone. These checks run natively on macOS and Linux, so wall-clock speed still depends on the machine; the same performance limits apply on both. GitHub remains an independent check after push, with no remote wait in Tollgate.
 The executor workflow can be exercised end to end by filing, claiming and delivering a trivial bead.
+
+
+Explicit resource observations can correlate native CI CPU/wall intervals, nested admission waits and host utilization without changing admission policy:
+
+```sh
+~/hive/bin/hive telemetry resource-sample --project hive --json >> samples.jsonl
+~/hive/bin/hive telemetry resources --project hive --start 2026-09-25T00:00:00Z --end 2026-09-26T00:00:00Z --input samples.jsonl --input ci.jsonl --input operations.jsonl
+```
+
+Supply native `ci.*`, `process.finished` and `resource.*` JSONL evidence explicitly (up to 16 regular files, 2 MiB each); the report records input hashes and never scans other projects. Add `--compare-start` and `--compare-end` to compare windows from the same captured evidence. Sampling is a single bounded host/Tollgate read and does not start a collector. Use `--json` for one compact JSON object per line when appending samples with shell redirection. The report separates native gate counters from nested resource events, retains source/run/owner identities, and marks stale last-event observations, missing terminals and unknown CPU coverage. Whole inclusive run, step and process measurements must not be summed or prorated over window boundaries. Host capture bounds provide approximate temporal alignment only; sparse snapshots cannot establish causality or an optimal executor count.

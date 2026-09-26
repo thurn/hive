@@ -75,6 +75,15 @@ def main() -> int:
         usage = actions.add_parser("usage")
         usage.add_argument("--task", required=True)
         actions.add_parser("status")
+        sample_parser = actions.add_parser("resource-sample")
+        sample_parser.add_argument("--project", required=True)
+        resources = actions.add_parser("resources")
+        resources.add_argument("--project", required=True)
+        resources.add_argument("--start", required=True)
+        resources.add_argument("--end", required=True)
+        resources.add_argument("--input", action="append", required=True)
+        resources.add_argument("--compare-start")
+        resources.add_argument("--compare-end")
         outcomes = actions.add_parser("outcomes")
         outcomes.add_argument("--project", required=True)
         outcomes.add_argument("--start", required=True)
@@ -258,6 +267,27 @@ def main() -> int:
         elif parsed.action == "usage":
             result = UsageStore(context.state / "telemetry.sqlite3").report(
                 CodexTaskId(parsed.task)
+            )
+        elif parsed.action in {"resources", "resource-sample"}:
+            from hive.resource_report import report as resource_report
+            from hive.resource_sample import sample as resource_sample
+
+            selected_project = next(
+                (p for p in context.projects if p.id == parsed.project), None
+            )
+            if selected_project is None:
+                raise HiveError(ErrorCode.INVALID_INPUT, "Unknown configured project")
+            result = (
+                resource_sample(selected_project)
+                if parsed.action == "resource-sample"
+                else resource_report(
+                    parsed.project,
+                    parsed.start,
+                    parsed.end,
+                    tuple(Path(p) for p in parsed.input),
+                    parsed.compare_start,
+                    parsed.compare_end,
+                )
             )
         elif parsed.action == "outcomes":
             from hive.tollgate_report import report as outcomes_report
