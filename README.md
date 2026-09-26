@@ -48,6 +48,14 @@ The actor for a claim must be the actual invoking thread ID: `CODEX_THREAD_ID` i
 
 The linked worklist comes from `hive_origin_thread` metadata, current native assignees and historical Beads ownership. Cost is observed per thread, with explicit coverage gaps; requests are attributed only to beads held at the request time, with equal sharing for overlapping claims. Claude discovery defaults to `~/.claude/projects` and can be routed with `claude_projects` in the bootstrap settings. The optional authenticated loopback OTLP receiver supplements transcripts; enabling it does not change Claude settings. Tool allocations are estimates, and exact bucket reconciliation does not establish their accuracy. An unlinked conversation is outside default collection and archival. `telemetry collect --task ID --transcript PATH` remains available for an operator-supplied thread. `telemetry watch` runs opt-in as a resident timer, launching a new source-selected batch each time. [Operations](docs/operations.md) covers reset and service setup.
 
+Repository outcomes are available from the retained collector observations:
+
+```sh
+~/hive/bin/hive telemetry outcomes --project hive --start 2026-09-25T00:00:00Z --end 2026-09-26T00:00:00Z --json
+```
+
+This selects candidates submitted in the half-open time window and reports their latest observed outcomes, including candidates with no bead attribution. Unique candidate counts, explicit retry candidates, and additional validation attempts are separate; standalone checks are excluded, and legacy records with unknown kind are reported separately until refreshed. This is a submission cohort, not the number of promotions performed during the window. Native repository snapshots and events are bounded and have no exhaustive cursor, so coverage remains partial even when polling is caught up; snapshot bounds, unresolved detail reads, and stale or unavailable observations are explicit. The command reads retained observations without contacting Tollgate; `telemetry sweep` or `watch` refreshes them. Each candidate retains a validated native status command for diagnostics, without storing provider logs.
+
 ## Install role skills
 
 Run `~/hive/scripts/install-skills`. It links the nine skills and shared instructions from the stable Hive checkout into `${CODEX_HOME:-$HOME/.codex}/skills`, or with `--agent claude` into `${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills`. It refuses conflicting names and does not change Fulcrum's live setup. Use `--source` and `--dest` for a disposable trial. Review [cutover](docs/operations.md) before making production bindings.

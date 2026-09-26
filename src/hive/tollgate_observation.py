@@ -4,13 +4,13 @@ import json
 import sqlite3
 import time
 from datetime import UTC, datetime, timedelta
-from pathlib import Path
 
 from hive.errors import ErrorCode, HiveError
 from hive.jsonvalue import parse, record, sequence, string
 from hive.launch_context import LaunchContext
 from hive.tollgate_process import TollgateProcess
-from hive.tollgate_records import TERMINAL, decode, identifier, instant
+from hive.tollgate_records import decode
+from hive.tollgate_repository import repositories, retain
 from hive.usage_store import UsageStore, row
 
 
@@ -25,64 +25,6 @@ def status(connection: sqlite3.Connection) -> dict[str, object]:
         tollgate_unavailable=error == "tollgate_unavailable",
         tollgate_behind=bool(behind),
     )
-
-
-def repositories(
-    connection: sqlite3.Connection, context: LaunchContext, raw: object, now: str
-) -> None:
-    configured = {p.repository.resolve(): p.id for p in context.projects}
-    found: list[tuple[str, str, str, str]] = []
-    branch_items: list[tuple[str, str, str]] = []
-    promotions: list[tuple[str, str]] = []
-    beads = [
-        string(row(v, 1)[0], "bead")
-        for v in sequence(
-            connection.execute("SELECT bead FROM bead_snapshots").fetchall(), "beads"
-        )
-    ]
-    for entry in sequence(raw, "Tollgate repositories"):
-        repository = record(entry, "repository")
-        state = record(repository.get("state"), "repository state")
-        path = Path(string(state.get("path"), "repository path")).resolve()
-        project = configured.get(path)
-        if project is None:
-            continue
-        repo = identifier(state.get("id"))
-        found.append((project, repo, str(path), now))
-        for entry_event in sequence(
-            repository.get("history", []), "repository history"
-        ):
-            event = record(entry_event, "history event")
-            if event.get("kind") == "promotion.completed":
-                payload = record(event.get("payload"), "promotion identity")
-                at = instant(event.get("created_at"))
-                if at is not None:
-                    promotions.append((identifier(payload.get("id")), at))
-        for key in ("queue", "history_items", "checks"):
-            for raw_candidate in sequence(repository.get(key, []), "repository items"):
-                item = record(record(raw_candidate).get("item"), "candidate item")
-                branch = record(item.get("metadata"), "metadata").get("branch")
-                if not isinstance(branch, str):
-                    continue
-                for bead in beads:
-                    if branch == bead or branch.startswith(bead + "-"):
-                        branch_items.append((identifier(item.get("id")), repo, bead))
-    # A failed/malformed refresh leaves the old mapping and rows intact.
-    connection.execute("DELETE FROM tollgate_repositories")
-    connection.executemany("INSERT INTO tollgate_repositories VALUES (?,?,?,?)", found)
-    connection.executemany(
-        "INSERT INTO tollgate_promotions VALUES (?,?) ON CONFLICT(candidate) DO UPDATE SET at=MIN(at,excluded.at)",
-        promotions,
-    )
-    for candidate, repo, bead in branch_items:
-        connection.execute(
-            "INSERT OR IGNORE INTO tollgate_branch_matches VALUES (?,?)",
-            (candidate, bead),
-        )
-        connection.execute(
-            "INSERT OR IGNORE INTO tollgate_pending(candidate,repository) VALUES (?,?)",
-            (candidate, repo),
-        )
 
 
 def poll(
@@ -126,7 +68,7 @@ def poll(
                 "INSERT OR IGNORE INTO tollgate_pending(candidate,repository) SELECT DISTINCT m.candidate,r.repository FROM tollgate_mentions m CROSS JOIN tollgate_repositories r LEFT JOIN project_sessions s ON s.thread=m.thread WHERE s.project IS NULL OR s.project=r.project"
             )
             pending: object = connection.execute(
-                "SELECT p.candidate,p.repository,r.project FROM tollgate_pending p JOIN tollgate_repositories r ON p.repository=r.repository LEFT JOIN tollgate_candidates c ON c.candidate=p.candidate WHERE (c.candidate IS NULL OR (c.repository=p.repository AND c.terminal=0)) AND (p.checked IS NULL OR (p.checked<? AND COALESCE(p.error,'')<>'not_found') OR (p.error='not_found' AND p.checked<?)) ORDER BY p.checked,p.candidate,p.repository LIMIT 32",
+                "SELECT p.candidate,p.repository,r.project FROM tollgate_pending p JOIN tollgate_repositories r ON p.repository=r.repository LEFT JOIN tollgate_candidates c ON c.candidate=p.candidate WHERE (c.candidate IS NULL OR (c.repository=p.repository AND (c.terminal=0 OR json_type(c.payload,'$.kind') IS NULL))) AND (p.checked IS NULL OR (p.checked<? AND COALESCE(p.error,'')<>'not_found') OR (p.error='not_found' AND p.checked<?)) ORDER BY p.checked,p.candidate,p.repository LIMIT 32",
                 (
                     (datetime.now(UTC) - timedelta(seconds=15)).isoformat(),
                     (datetime.now(UTC) - timedelta(minutes=5)).isoformat(),
@@ -140,10 +82,13 @@ def poll(
             )
             with store.connect(write=False) as connection:
                 known: object = connection.execute(
-                    "SELECT repository,terminal FROM tollgate_candidates WHERE candidate=?",
+                    "SELECT repository,terminal,json_type(payload,'$.kind') FROM tollgate_candidates WHERE candidate=?",
                     (candidate,),
                 ).fetchone()
-                if known is not None and (row(known, 2)[0] != repo or row(known, 2)[1]):
+                if known is not None and (
+                    row(known, 3)[0] != repo
+                    or (row(known, 3)[1] and row(known, 3)[2] is not None)
+                ):
                     continue
             issue: str | None = None
             try:
@@ -158,19 +103,7 @@ def poll(
                     )
                 error = None
                 with store.connect() as connection:
-                    connection.execute(
-                        "INSERT INTO tollgate_candidates VALUES (?,?,?,?,?,?,?,?) ON CONFLICT(candidate) DO UPDATE SET state=excluded.state,terminal=excluded.terminal,updated=excluded.updated,observed=excluded.observed,payload=excluded.payload",
-                        (
-                            candidate,
-                            repo,
-                            project,
-                            facts.state,
-                            int(facts.state in TERMINAL),
-                            facts.updated_at,
-                            now,
-                            json.dumps(facts.json(), sort_keys=True),
-                        ),
-                    )
+                    retain(connection, facts, project, now)
             except (HiveError, OSError) as failure:
                 if (
                     isinstance(failure, HiveError)
@@ -198,14 +131,14 @@ def poll(
         )
     with store.connect() as connection:
         outstanding = connection.execute(
-            "SELECT 1 FROM tollgate_pending p LEFT JOIN tollgate_candidates c ON c.candidate=p.candidate WHERE (c.candidate IS NULL OR (c.repository=p.repository AND c.terminal=0)) AND (p.checked IS NULL OR (p.checked<? AND COALESCE(p.error,'')<>'not_found') OR (p.error='not_found' AND p.checked<?)) LIMIT 1",
+            "SELECT 1 FROM tollgate_pending p LEFT JOIN tollgate_candidates c ON c.candidate=p.candidate WHERE (c.candidate IS NULL OR (c.repository=p.repository AND (c.terminal=0 OR json_type(c.payload,'$.kind') IS NULL))) AND (p.checked IS NULL OR (p.checked<? AND COALESCE(p.error,'')<>'not_found') OR (p.error='not_found' AND p.checked<?)) LIMIT 1",
             (
                 (datetime.now(UTC) - timedelta(seconds=15)).isoformat(),
                 (datetime.now(UTC) - timedelta(minutes=5)).isoformat(),
             ),
         ).fetchone()
         unresolved: object = connection.execute(
-            "SELECT p.error FROM tollgate_pending p LEFT JOIN tollgate_candidates c ON c.candidate=p.candidate WHERE p.error IN ('tollgate_gap','tollgate_unavailable') AND (c.candidate IS NULL OR (c.repository=p.repository AND c.terminal=0)) ORDER BY p.error DESC LIMIT 1"
+            "SELECT p.error FROM tollgate_pending p LEFT JOIN tollgate_candidates c ON c.candidate=p.candidate WHERE p.error IN ('tollgate_gap','tollgate_unavailable') AND (c.candidate IS NULL OR (c.repository=p.repository AND (c.terminal=0 OR json_type(c.payload,'$.kind') IS NULL))) ORDER BY p.error DESC LIMIT 1"
         ).fetchone()
         if unresolved is not None:
             error = string(row(unresolved, 1)[0], "poll error")

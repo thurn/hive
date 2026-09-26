@@ -7,7 +7,7 @@ from hive.errors import ErrorCode, HiveError
 from hive.jsonvalue import integer, parse, sequence, string
 from hive.usage import tokens
 
-VERSION = 18
+VERSION = 19
 
 SCHEMA = (
     """CREATE TABLE IF NOT EXISTS sources (
@@ -125,6 +125,9 @@ def finish(connection: sqlite3.Connection) -> None:
     from hive.tool_allocation_store import migrate_basis
 
     migrate_basis(connection)
+    from hive.tollgate_repository import create_coverage
+
+    create_coverage(connection)
     connection.execute(f"PRAGMA user_version={VERSION}")
 
 
@@ -153,7 +156,7 @@ def prepare(connection: sqlite3.Connection, *, write: bool) -> None:
                 )
             if current == VERSION:
                 return
-            if current == 17:
+            if current in (17, 18):
                 finish(connection)
                 return
             if current == 16:

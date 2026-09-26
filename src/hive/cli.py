@@ -75,6 +75,10 @@ def main() -> int:
         usage = actions.add_parser("usage")
         usage.add_argument("--task", required=True)
         actions.add_parser("status")
+        outcomes = actions.add_parser("outcomes")
+        outcomes.add_argument("--project", required=True)
+        outcomes.add_argument("--start", required=True)
+        outcomes.add_argument("--end", required=True)
         actions.add_parser("reset-bead-events")
         otlp_config = actions.add_parser("otlp-config")
         otlp_config.add_argument("--port", type=int, default=4319)
@@ -255,6 +259,16 @@ def main() -> int:
             result = UsageStore(context.state / "telemetry.sqlite3").report(
                 CodexTaskId(parsed.task)
             )
+        elif parsed.action == "outcomes":
+            from hive.tollgate_report import report as outcomes_report
+
+            if parsed.project not in {p.id for p in context.projects}:
+                raise HiveError(ErrorCode.INVALID_INPUT, "Unknown configured project")
+            store = UsageStore(context.state / "telemetry.sqlite3")
+            with store.connect(write=False) as connection:
+                result = outcomes_report(
+                    connection, parsed.project, parsed.start, parsed.end
+                )
         elif parsed.action == "status":
             result = CollectionRegistry(
                 UsageStore(context.state / "telemetry.sqlite3")

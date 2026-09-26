@@ -1,0 +1,1769 @@
+[
+  {
+    "item": {
+      "id": "01a0da9f-8386-75e1-9343-e843dd6b2530",
+      "repository_id": "01a00ae2-9411-7c00-b742-50f3abde5e7c",
+      "kind": "gate",
+      "state": "promoted",
+      "terminal_reason": null,
+      "retry_of_item_id": null,
+      "metadata": {
+        "branch": "codex/chess-browser-durability",
+        "subject": "feat(storage): acknowledge durable browser persistence",
+        "approved_at": [
+          2026,
+          268,
+          22,
+          11,
+          22,
+          128275000,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "attempts": [
+      {
+        "id": "01a0da9f-8bdf-7420-ad07-ee47974c9c0c",
+        "attempt": 1,
+        "state": "passed",
+        "created_at": [
+          2026,
+          268,
+          22,
+          11,
+          24,
+          360296000,
+          0,
+          0,
+          0
+        ],
+        "started_at": [
+          2026,
+          268,
+          22,
+          12,
+          16,
+          298417000,
+          0,
+          0,
+          0
+        ],
+        "finished_at": [
+          2026,
+          268,
+          23,
+          14,
+          57,
+          662979000,
+          0,
+          0,
+          0
+        ],
+        "step_results": [
+          {
+            "name": "ci",
+            "result_class": "success",
+            "exit_code": 0,
+            "elapsed_ms": 1972380
+          },
+          {
+            "name": "prose",
+            "result_class": "skipped",
+            "exit_code": null,
+            "elapsed_ms": 0
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "item": {
+      "id": "01a0da86-7bae-7142-b05f-127a2c2cfd0a",
+      "repository_id": "01a00ae2-9411-7c00-b742-50f3abde5e7c",
+      "kind": "gate",
+      "state": "promoted",
+      "terminal_reason": null,
+      "retry_of_item_id": null,
+      "metadata": {
+        "branch": "codex/hearts-presentation-settled",
+        "subject": "feat(reactant): gate reducer input on native completion",
+        "approved_at": [
+          2026,
+          268,
+          21,
+          44,
+          1,
+          719342000,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "attempts": [
+      {
+        "id": "01a0da86-8204-7602-bbc0-5d22909fa6ce",
+        "attempt": 1,
+        "state": "passed",
+        "created_at": [
+          2026,
+          268,
+          21,
+          44,
+          5,
+          541162000,
+          0,
+          0,
+          0
+        ],
+        "started_at": [
+          2026,
+          268,
+          21,
+          45,
+          0,
+          700808000,
+          0,
+          0,
+          0
+        ],
+        "finished_at": [
+          2026,
+          268,
+          21,
+          57,
+          42,
+          210693000,
+          0,
+          0,
+          0
+        ],
+        "step_results": [
+          {
+            "name": "ci",
+            "result_class": "success",
+            "exit_code": 0,
+            "elapsed_ms": 761235
+          },
+          {
+            "name": "prose",
+            "result_class": "skipped",
+            "exit_code": null,
+            "elapsed_ms": 0
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "item": {
+      "id": "01a0da6e-2b44-7630-81b8-25d1e9cfb1f7",
+      "repository_id": "01a00ae2-9411-7c00-b742-50f3abde5e7c",
+      "kind": "gate",
+      "state": "promoted",
+      "terminal_reason": null,
+      "retry_of_item_id": null,
+      "metadata": {
+        "branch": "codex/hv-ou5-13-chess-audio-settings",
+        "subject": "feat(chess): route audio through shared settings",
+        "approved_at": [
+          2026,
+          268,
+          21,
+          17,
+          28,
+          268520000,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "attempts": [
+      {
+        "id": "01a0da6e-32ec-7561-bec5-c347853dc640",
+        "attempt": 1,
+        "state": "passed",
+        "created_at": [
+          2026,
+          268,
+          21,
+          17,
+          30,
+          321327000,
+          0,
+          0,
+          0
+        ],
+        "started_at": [
+          2026,
+          268,
+          21,
+          18,
+          28,
+          306907000,
+          0,
+          0,
+          0
+        ],
+        "finished_at": [
+          2026,
+          268,
+          21,
+          27,
+          15,
+          926915000,
+          0,
+          0,
+          0
+        ],
+        "step_results": [
+          {
+            "name": "ci",
+            "result_class": "success",
+            "exit_code": 0,
+            "elapsed_ms": 527323
+          },
+          {
+            "name": "prose",
+            "result_class": "skipped",
+            "exit_code": null,
+            "elapsed_ms": 0
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "item": {
+      "id": "01a0da5c-cf1d-7560-8714-99b62913ea79",
+      "repository_id": "01a00ae2-9411-7c00-b742-50f3abde5e7c",
+      "kind": "gate",
+      "state": "merge-conflict",
+      "terminal_reason": "candidate could not be constructed on promoted release 0b049af34a5a18ba18cf70576273a4cafefd26c3: applying source 1100d8471782a94c383e15945b947268c4eb1c78 (source base c13e5e0f3084d327e32af4a134444500ac36f5c7) produced merge conflicts in [\"web/contracts.toml\"]. Rebase the single task commit onto the latest promoted `release` 0b049af34a5a18ba18cf70576273a4cafefd26c3, resolve and regenerate, then resubmit",
+      "retry_of_item_id": null,
+      "metadata": {
+        "branch": "codex/hv-ou5-13-chess-audio-settings",
+        "subject": "feat(chess): route audio through shared settings",
+        "approved_at": [
+          2026,
+          268,
+          20,
+          58,
+          30,
+          566566000,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "attempts": []
+  },
+  {
+    "item": {
+      "id": "01a0da55-ba3d-7330-a8d3-c7c855bf2b15",
+      "repository_id": "01a00ae2-9411-7c00-b742-50f3abde5e7c",
+      "kind": "gate",
+      "state": "canceled",
+      "terminal_reason": "canceled-by-user",
+      "retry_of_item_id": null,
+      "metadata": {
+        "branch": "codex/hv-ou5-13-chess-audio-settings",
+        "subject": "feat(chess): route audio through shared settings",
+        "approved_at": [
+          2026,
+          268,
+          20,
+          50,
+          46,
+          471603000,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "attempts": [
+      {
+        "id": "01a0da55-caac-7a61-a6cd-2bf8e0bee16b",
+        "attempt": 1,
+        "state": "invalidated",
+        "created_at": [
+          2026,
+          268,
+          20,
+          50,
+          50,
+          768378000,
+          0,
+          0,
+          0
+        ],
+        "started_at": null,
+        "finished_at": [
+          2026,
+          268,
+          20,
+          52,
+          15,
+          576617000,
+          0,
+          0,
+          0
+        ],
+        "step_results": []
+      }
+    ]
+  },
+  {
+    "item": {
+      "id": "01a0da55-b169-7db3-891f-ab9a7adfd218",
+      "repository_id": "01a00ae2-9411-7c00-b742-50f3abde5e7c",
+      "kind": "gate",
+      "state": "promoted",
+      "terminal_reason": null,
+      "retry_of_item_id": "01a0da45-1b9b-7fb0-9363-8a42f61caa5e",
+      "metadata": {
+        "branch": "codex/hearts-computation-lane",
+        "subject": "feat(reactant): add cancellable computation lane",
+        "approved_at": [
+          2026,
+          268,
+          20,
+          50,
+          44,
+          210131000,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "attempts": [
+      {
+        "id": "01a0da55-b813-7333-8246-8715461d1fa4",
+        "attempt": 2,
+        "state": "passed",
+        "created_at": [
+          2026,
+          268,
+          20,
+          50,
+          46,
+          10625000,
+          0,
+          0,
+          0
+        ],
+        "started_at": [
+          2026,
+          268,
+          20,
+          52,
+          15,
+          646432000,
+          0,
+          0,
+          0
+        ],
+        "finished_at": [
+          2026,
+          268,
+          20,
+          57,
+          57,
+          816462000,
+          0,
+          0,
+          0
+        ],
+        "step_results": [
+          {
+            "name": "ci",
+            "result_class": "success",
+            "exit_code": 0,
+            "elapsed_ms": 341915
+          },
+          {
+            "name": "prose",
+            "result_class": "skipped",
+            "exit_code": null,
+            "elapsed_ms": 0
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "item": {
+      "id": "01a0da45-1b9b-7fb0-9363-8a42f61caa5e",
+      "repository_id": "01a00ae2-9411-7c00-b742-50f3abde5e7c",
+      "kind": "gate",
+      "state": "failed",
+      "terminal_reason": "voting-validation-failed",
+      "retry_of_item_id": null,
+      "metadata": {
+        "branch": "codex/hearts-computation-lane",
+        "subject": "feat(reactant): add cancellable computation lane",
+        "approved_at": [
+          2026,
+          268,
+          20,
+          32,
+          37,
+          284272000,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "attempts": [
+      {
+        "id": "01a0da45-2374-7d51-8383-43af055db769",
+        "attempt": 1,
+        "state": "failed",
+        "created_at": [
+          2026,
+          268,
+          20,
+          32,
+          39,
+          389392000,
+          0,
+          0,
+          0
+        ],
+        "started_at": [
+          2026,
+          268,
+          20,
+          33,
+          41,
+          93126000,
+          0,
+          0,
+          0
+        ],
+        "finished_at": [
+          2026,
+          268,
+          20,
+          41,
+          44,
+          961965000,
+          0,
+          0,
+          0
+        ],
+        "step_results": [
+          {
+            "name": "ci",
+            "result_class": "exit-failure",
+            "exit_code": 1,
+            "elapsed_ms": 483709
+          },
+          {
+            "name": "prose",
+            "result_class": "skipped",
+            "exit_code": null,
+            "elapsed_ms": 0
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "item": {
+      "id": "01a0da1c-286b-78b3-af90-e71901747711",
+      "repository_id": "01a00ae2-9411-7c00-b742-50f3abde5e7c",
+      "kind": "gate",
+      "state": "promoted",
+      "terminal_reason": null,
+      "retry_of_item_id": null,
+      "metadata": {
+        "branch": "codex/hearts-reducer-sessions",
+        "subject": "feat(reactant): add guarded reducer sessions",
+        "approved_at": [
+          2026,
+          268,
+          19,
+          47,
+          53,
+          587212000,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "attempts": [
+      {
+        "id": "01a0da1c-2f73-7c33-9ee7-bfcdd86f347d",
+        "attempt": 1,
+        "state": "passed",
+        "created_at": [
+          2026,
+          268,
+          19,
+          47,
+          55,
+          481709000,
+          0,
+          0,
+          0
+        ],
+        "started_at": [
+          2026,
+          268,
+          19,
+          48,
+          49,
+          227728000,
+          0,
+          0,
+          0
+        ],
+        "finished_at": [
+          2026,
+          268,
+          19,
+          54,
+          11,
+          858182000,
+          0,
+          0,
+          0
+        ],
+        "step_results": [
+          {
+            "name": "ci",
+            "result_class": "success",
+            "exit_code": 0,
+            "elapsed_ms": 322365
+          },
+          {
+            "name": "prose",
+            "result_class": "skipped",
+            "exit_code": null,
+            "elapsed_ms": 0
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "item": {
+      "id": "01a0d9fe-204d-7890-9763-020297a5a1d8",
+      "repository_id": "01a00ae2-9411-7c00-b742-50f3abde5e7c",
+      "kind": "gate",
+      "state": "promoted",
+      "terminal_reason": null,
+      "retry_of_item_id": null,
+      "metadata": {
+        "branch": "codex/hearts-transitions",
+        "subject": "feat(hearts): implement transitions scoring and private views",
+        "approved_at": [
+          2026,
+          268,
+          19,
+          15,
+          5,
+          431754000,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "attempts": [
+      {
+        "id": "01a0d9fe-27f9-74a0-b077-7daf6f7627a3",
+        "attempt": 1,
+        "state": "passed",
+        "created_at": [
+          2026,
+          268,
+          19,
+          15,
+          7,
+          528240000,
+          0,
+          0,
+          0
+        ],
+        "started_at": [
+          2026,
+          268,
+          19,
+          16,
+          23,
+          274281000,
+          0,
+          0,
+          0
+        ],
+        "finished_at": [
+          2026,
+          268,
+          19,
+          17,
+          20,
+          944422000,
+          0,
+          0,
+          0
+        ],
+        "step_results": [
+          {
+            "name": "ci",
+            "result_class": "success",
+            "exit_code": 0,
+            "elapsed_ms": 57424
+          },
+          {
+            "name": "prose",
+            "result_class": "skipped",
+            "exit_code": null,
+            "elapsed_ms": 0
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "item": {
+      "id": "01a0d9fd-cfa9-77a1-b124-c884bc35f7e9",
+      "repository_id": "01a00ae2-9411-7c00-b742-50f3abde5e7c",
+      "kind": "gate",
+      "state": "promoted",
+      "terminal_reason": null,
+      "retry_of_item_id": null,
+      "metadata": {
+        "branch": "codex/chess-authoritative-bindings",
+        "subject": "feat(chess): honor saved gameplay bindings",
+        "approved_at": [
+          2026,
+          268,
+          19,
+          14,
+          44,
+          786194000,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "attempts": [
+      {
+        "id": "01a0d9fd-d5ba-7d81-8589-b7caefcb3f99",
+        "attempt": 1,
+        "state": "passed",
+        "created_at": [
+          2026,
+          268,
+          19,
+          14,
+          46,
+          410104000,
+          0,
+          0,
+          0
+        ],
+        "started_at": [
+          2026,
+          268,
+          19,
+          14,
+          46,
+          560342000,
+          0,
+          0,
+          0
+        ],
+        "finished_at": [
+          2026,
+          268,
+          19,
+          18,
+          27,
+          892436000,
+          0,
+          0,
+          0
+        ],
+        "step_results": [
+          {
+            "name": "ci",
+            "result_class": "success",
+            "exit_code": 0,
+            "elapsed_ms": 221041
+          },
+          {
+            "name": "prose",
+            "result_class": "skipped",
+            "exit_code": null,
+            "elapsed_ms": 0
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "item": {
+      "id": "01a0d9f0-b048-7ef2-8691-50038cb286c5",
+      "repository_id": "01a00ae2-9411-7c00-b742-50f3abde5e7c",
+      "kind": "gate",
+      "state": "promoted",
+      "terminal_reason": null,
+      "retry_of_item_id": null,
+      "metadata": {
+        "branch": "codex/hearts-domain",
+        "subject": "feat(hearts): add deterministic deals and legal choices",
+        "approved_at": [
+          2026,
+          268,
+          19,
+          0,
+          24,
+          786467000,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "attempts": [
+      {
+        "id": "01a0d9f0-b683-7761-b86a-688c54977369",
+        "attempt": 1,
+        "state": "passed",
+        "created_at": [
+          2026,
+          268,
+          19,
+          0,
+          26,
+          470035000,
+          0,
+          0,
+          0
+        ],
+        "started_at": [
+          2026,
+          268,
+          19,
+          0,
+          26,
+          598761000,
+          0,
+          0,
+          0
+        ],
+        "finished_at": [
+          2026,
+          268,
+          19,
+          1,
+          4,
+          370301000,
+          0,
+          0,
+          0
+        ],
+        "step_results": [
+          {
+            "name": "ci",
+            "result_class": "success",
+            "exit_code": 0,
+            "elapsed_ms": 37511
+          },
+          {
+            "name": "prose",
+            "result_class": "skipped",
+            "exit_code": null,
+            "elapsed_ms": 0
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "item": {
+      "id": "01a0d9e6-56ab-7561-b36f-8d12149f95a6",
+      "repository_id": "01a00ae2-9411-7c00-b742-50f3abde5e7c",
+      "kind": "gate",
+      "state": "promoted",
+      "terminal_reason": null,
+      "retry_of_item_id": null,
+      "metadata": {
+        "branch": "codex/hearts-ci-measurements",
+        "subject": "fix(ci): observe queued builds and select audio consumers",
+        "approved_at": [
+          2026,
+          268,
+          18,
+          49,
+          6,
+          486222000,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "attempts": [
+      {
+        "id": "01a0d9e6-5e36-78d0-8a8e-af8d0bbb4755",
+        "attempt": 1,
+        "state": "passed",
+        "created_at": [
+          2026,
+          268,
+          18,
+          49,
+          8,
+          498447000,
+          0,
+          0,
+          0
+        ],
+        "started_at": [
+          2026,
+          268,
+          18,
+          49,
+          8,
+          894267000,
+          0,
+          0,
+          0
+        ],
+        "finished_at": [
+          2026,
+          268,
+          18,
+          51,
+          31,
+          242780000,
+          0,
+          0,
+          0
+        ],
+        "step_results": [
+          {
+            "name": "ci",
+            "result_class": "success",
+            "exit_code": 0,
+            "elapsed_ms": 142048
+          },
+          {
+            "name": "prose",
+            "result_class": "skipped",
+            "exit_code": null,
+            "elapsed_ms": 0
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "item": {
+      "id": "01a0d9ba-8451-7da0-bfca-bcf3007c1fdc",
+      "repository_id": "01a00ae2-9411-7c00-b742-50f3abde5e7c",
+      "kind": "gate",
+      "state": "promoted",
+      "terminal_reason": null,
+      "retry_of_item_id": null,
+      "metadata": {
+        "branch": "codex/chess-exclusive-input",
+        "subject": "feat(input): add exclusive source-aware capture",
+        "approved_at": [
+          2026,
+          268,
+          18,
+          1,
+          14,
+          586612000,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "attempts": [
+      {
+        "id": "01a0d9ba-8ee8-7130-abf2-f78a378b3996",
+        "attempt": 1,
+        "state": "passed",
+        "created_at": [
+          2026,
+          268,
+          18,
+          1,
+          17,
+          399417000,
+          0,
+          0,
+          0
+        ],
+        "started_at": [
+          2026,
+          268,
+          18,
+          3,
+          3,
+          708797000,
+          0,
+          0,
+          0
+        ],
+        "finished_at": [
+          2026,
+          268,
+          18,
+          29,
+          14,
+          247648000,
+          0,
+          0,
+          0
+        ],
+        "step_results": [
+          {
+            "name": "ci",
+            "result_class": "success",
+            "exit_code": 0,
+            "elapsed_ms": 1570224
+          },
+          {
+            "name": "prose",
+            "result_class": "skipped",
+            "exit_code": null,
+            "elapsed_ms": 0
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "item": {
+      "id": "01a0d98b-5fde-7872-b6b1-8fac6a384b21",
+      "repository_id": "01a00ae2-9411-7c00-b742-50f3abde5e7c",
+      "kind": "gate",
+      "state": "promoted",
+      "terminal_reason": null,
+      "retry_of_item_id": null,
+      "metadata": {
+        "branch": "codex/hv-1pm-replay-scope",
+        "subject": "fix(ditto): classify replays only across matching scenario scopes",
+        "approved_at": [
+          2026,
+          268,
+          17,
+          9,
+          45,
+          64541000,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "attempts": [
+      {
+        "id": "01a0d98b-6b0a-72a3-836d-698c9aa25ff0",
+        "attempt": 1,
+        "state": "passed",
+        "created_at": [
+          2026,
+          268,
+          17,
+          9,
+          48,
+          516839000,
+          0,
+          0,
+          0
+        ],
+        "started_at": [
+          2026,
+          268,
+          17,
+          9,
+          48,
+          598796000,
+          0,
+          0,
+          0
+        ],
+        "finished_at": [
+          2026,
+          268,
+          17,
+          10,
+          33,
+          246522000,
+          0,
+          0,
+          0
+        ],
+        "step_results": [
+          {
+            "name": "ci",
+            "result_class": "success",
+            "exit_code": 0,
+            "elapsed_ms": 43410
+          },
+          {
+            "name": "prose",
+            "result_class": "skipped",
+            "exit_code": null,
+            "elapsed_ms": 0
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "item": {
+      "id": "01a0d985-abd8-7301-ac61-082be826e5c6",
+      "repository_id": "01a00ae2-9411-7c00-b742-50f3abde5e7c",
+      "kind": "gate",
+      "state": "promoted",
+      "terminal_reason": null,
+      "retry_of_item_id": null,
+      "metadata": {
+        "branch": "codex/hv-pwk-ditto-admission-watchdog",
+        "subject": "fix(ci): exclude owned resource admission from Ditto watchdog",
+        "approved_at": [
+          2026,
+          268,
+          17,
+          3,
+          31,
+          297095000,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "attempts": [
+      {
+        "id": "01a0d985-b420-7311-b6e1-738193c5d061",
+        "attempt": 1,
+        "state": "passed",
+        "created_at": [
+          2026,
+          268,
+          17,
+          3,
+          33,
+          526236000,
+          0,
+          0,
+          0
+        ],
+        "started_at": [
+          2026,
+          268,
+          17,
+          4,
+          38,
+          138666000,
+          0,
+          0,
+          0
+        ],
+        "finished_at": [
+          2026,
+          268,
+          17,
+          8,
+          54,
+          489174000,
+          0,
+          0,
+          0
+        ],
+        "step_results": [
+          {
+            "name": "ci",
+            "result_class": "success",
+            "exit_code": 0,
+            "elapsed_ms": 255916
+          },
+          {
+            "name": "prose",
+            "result_class": "skipped",
+            "exit_code": null,
+            "elapsed_ms": 0
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "item": {
+      "id": "01a0d984-4c54-7b40-a017-ed2e27862242",
+      "repository_id": "01a00ae2-9411-7c00-b742-50f3abde5e7c",
+      "kind": "gate",
+      "state": "promoted",
+      "terminal_reason": null,
+      "retry_of_item_id": null,
+      "metadata": {
+        "branch": "codex/hearts-warm-qualification",
+        "subject": "perf(ci): retain native Cargo targets and avoid Unity watcher stalls",
+        "approved_at": [
+          2026,
+          268,
+          17,
+          2,
+          1,
+          308335000,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "attempts": [
+      {
+        "id": "01a0d984-53d6-78f2-9051-50a32d1fee4a",
+        "attempt": 1,
+        "state": "passed",
+        "created_at": [
+          2026,
+          268,
+          17,
+          2,
+          3,
+          357076000,
+          0,
+          0,
+          0
+        ],
+        "started_at": [
+          2026,
+          268,
+          17,
+          3,
+          6,
+          84054000,
+          0,
+          0,
+          0
+        ],
+        "finished_at": [
+          2026,
+          268,
+          17,
+          15,
+          0,
+          913389000,
+          0,
+          0,
+          0
+        ],
+        "step_results": [
+          {
+            "name": "ci",
+            "result_class": "success",
+            "exit_code": 0,
+            "elapsed_ms": 714531
+          },
+          {
+            "name": "prose",
+            "result_class": "skipped",
+            "exit_code": null,
+            "elapsed_ms": 0
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "item": {
+      "id": "01a0d978-1703-7ee1-b26d-5f5608d2c328",
+      "repository_id": "01a00ae2-9411-7c00-b742-50f3abde5e7c",
+      "kind": "gate",
+      "state": "merge-conflict",
+      "terminal_reason": "candidate could not be constructed on promoted release d82218d9d5a741d6d229f66870e8b4b5ef1a846a: applying source da59503cc85d168c24e4ccbc3d98dd2175e01709 (source base 09a730ca2cb88e0d0c9f4ab54f584319e54d3ca2) produced merge conflicts in [\"Packages/com.battlement.client/Runtime/Host/BattlementAudioInstance.cs\", \"Packages/com.battlement.client/Runtime/Host/Ditto/DittoMotionController.cs\", \"Packages/com.battlement.client/Runtime/UI/BattlementMotionTimeline.cs\", \"samples/chess/ditto.lock\", \"samples/reactant/ditto.lock\"]. Rebase the single task commit onto the latest promoted `release` d82218d9d5a741d6d229f66870e8b4b5ef1a846a, resolve and regenerate, then resubmit",
+      "retry_of_item_id": null,
+      "metadata": {
+        "branch": "codex/hearts-warm-qualification",
+        "subject": "perf(ci): reuse native builds and stabilize controlled clocks",
+        "approved_at": [
+          2026,
+          268,
+          16,
+          48,
+          41,
+          228740000,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "attempts": []
+  },
+  {
+    "item": {
+      "id": "01a0d96b-345b-7ad3-a8e0-874bd1315b2e",
+      "repository_id": "01a00ae2-9411-7c00-b742-50f3abde5e7c",
+      "kind": "gate",
+      "state": "promoted",
+      "terminal_reason": null,
+      "retry_of_item_id": null,
+      "metadata": {
+        "branch": "codex/hv-xen-ci-wait-status",
+        "subject": "fix(ci): label wait diagnostics as historical observations",
+        "approved_at": [
+          2026,
+          268,
+          16,
+          34,
+          36,
+          775409000,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "attempts": [
+      {
+        "id": "01a0d96b-3fcd-78a1-9eb1-42c31c69b047",
+        "attempt": 1,
+        "state": "passed",
+        "created_at": [
+          2026,
+          268,
+          16,
+          45,
+          14,
+          64613000,
+          0,
+          0,
+          0
+        ],
+        "started_at": [
+          2026,
+          268,
+          16,
+          45,
+          14,
+          258382000,
+          0,
+          0,
+          0
+        ],
+        "finished_at": [
+          2026,
+          268,
+          16,
+          46,
+          0,
+          819316000,
+          0,
+          0,
+          0
+        ],
+        "step_results": [
+          {
+            "name": "ci",
+            "result_class": "success",
+            "exit_code": 0,
+            "elapsed_ms": 46272
+          },
+          {
+            "name": "prose",
+            "result_class": "skipped",
+            "exit_code": null,
+            "elapsed_ms": 0
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "item": {
+      "id": "01a0d961-613a-78d3-8cda-e3391bfe7198",
+      "repository_id": "01a00ae2-9411-7c00-b742-50f3abde5e7c",
+      "kind": "gate",
+      "state": "promoted",
+      "terminal_reason": null,
+      "retry_of_item_id": null,
+      "metadata": {
+        "branch": "codex/chess-crash-report-control",
+        "subject": "feat(chess): apply saved crash reporting controls",
+        "approved_at": [
+          2026,
+          268,
+          16,
+          23,
+          52,
+          900938000,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "attempts": [
+      {
+        "id": "01a0d961-6ade-7943-9d53-8864772cedc7",
+        "attempt": 1,
+        "state": "passed",
+        "created_at": [
+          2026,
+          268,
+          16,
+          23,
+          55,
+          508331000,
+          0,
+          0,
+          0
+        ],
+        "started_at": [
+          2026,
+          268,
+          16,
+          25,
+          22,
+          119919000,
+          0,
+          0,
+          0
+        ],
+        "finished_at": [
+          2026,
+          268,
+          16,
+          54,
+          13,
+          895432000,
+          0,
+          0,
+          0
+        ],
+        "step_results": [
+          {
+            "name": "ci",
+            "result_class": "success",
+            "exit_code": 0,
+            "elapsed_ms": 1731424
+          },
+          {
+            "name": "prose",
+            "result_class": "skipped",
+            "exit_code": null,
+            "elapsed_ms": 0
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "item": {
+      "id": "01a0d960-1183-7593-9c4f-0a6dd134c645",
+      "repository_id": "01a00ae2-9411-7c00-b742-50f3abde5e7c",
+      "kind": "gate",
+      "state": "promoted",
+      "terminal_reason": null,
+      "retry_of_item_id": null,
+      "metadata": {
+        "branch": "codex/hv-5h3-build-diagnostics",
+        "subject": "fix(ditto): contextualize native build setup failures",
+        "approved_at": [
+          2026,
+          268,
+          16,
+          22,
+          26,
+          957599000,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "attempts": [
+      {
+        "id": "01a0d960-1ccc-76b0-aef2-1d2ef311a323",
+        "attempt": 1,
+        "state": "passed",
+        "created_at": [
+          2026,
+          268,
+          16,
+          22,
+          29,
+          940567000,
+          0,
+          0,
+          0
+        ],
+        "started_at": [
+          2026,
+          268,
+          16,
+          23,
+          36,
+          702839000,
+          0,
+          0,
+          0
+        ],
+        "finished_at": [
+          2026,
+          268,
+          16,
+          45,
+          1,
+          491219000,
+          0,
+          0,
+          0
+        ],
+        "step_results": [
+          {
+            "name": "ci",
+            "result_class": "success",
+            "exit_code": 0,
+            "elapsed_ms": 1284399
+          },
+          {
+            "name": "prose",
+            "result_class": "skipped",
+            "exit_code": null,
+            "elapsed_ms": 0
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "item": {
+      "id": "01a0d947-5e82-7971-87e8-30d40e105f4f",
+      "repository_id": "01a00ae2-9411-7c00-b742-50f3abde5e7c",
+      "kind": "gate",
+      "state": "promoted",
+      "terminal_reason": null,
+      "retry_of_item_id": null,
+      "metadata": {
+        "branch": "codex/hv-08r-replay-evidence",
+        "subject": "fix(ditto): compare replay transcripts from retained raw evidence",
+        "approved_at": [
+          2026,
+          268,
+          15,
+          55,
+          28,
+          273216000,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "attempts": [
+      {
+        "id": "01a0d954-5162-7d50-8d33-640900717ba7",
+        "attempt": 1,
+        "state": "passed",
+        "created_at": [
+          2026,
+          268,
+          16,
+          9,
+          42,
+          945329000,
+          0,
+          0,
+          0
+        ],
+        "started_at": [
+          2026,
+          268,
+          16,
+          9,
+          43,
+          361568000,
+          0,
+          0,
+          0
+        ],
+        "finished_at": [
+          2026,
+          268,
+          16,
+          10,
+          21,
+          266030000,
+          0,
+          0,
+          0
+        ],
+        "step_results": [
+          {
+            "name": "ci",
+            "result_class": "success",
+            "exit_code": 0,
+            "elapsed_ms": 37630
+          },
+          {
+            "name": "prose",
+            "result_class": "skipped",
+            "exit_code": null,
+            "elapsed_ms": 0
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "item": {
+      "id": "01a0d943-ce85-7b60-9f04-61503f4b84d1",
+      "repository_id": "01a00ae2-9411-7c00-b742-50f3abde5e7c",
+      "kind": "gate",
+      "state": "failed",
+      "terminal_reason": "voting-validation-failed",
+      "retry_of_item_id": null,
+      "metadata": {
+        "branch": "codex/chess-crash-report-control",
+        "subject": "feat(chess): apply saved crash reporting controls",
+        "approved_at": [
+          2026,
+          268,
+          15,
+          51,
+          34,
+          800630000,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "attempts": [
+      {
+        "id": "01a0d943-d893-7562-bcf6-5151dd25a887",
+        "attempt": 1,
+        "state": "failed",
+        "created_at": [
+          2026,
+          268,
+          15,
+          51,
+          37,
+          469887000,
+          0,
+          0,
+          0
+        ],
+        "started_at": [
+          2026,
+          268,
+          15,
+          52,
+          41,
+          669554000,
+          0,
+          0,
+          0
+        ],
+        "finished_at": [
+          2026,
+          268,
+          16,
+          9,
+          36,
+          863705000,
+          0,
+          0,
+          0
+        ],
+        "step_results": [
+          {
+            "name": "ci",
+            "result_class": "exit-failure",
+            "exit_code": 1,
+            "elapsed_ms": 1014600
+          },
+          {
+            "name": "prose",
+            "result_class": "skipped",
+            "exit_code": null,
+            "elapsed_ms": 0
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "item": {
+      "id": "01a0d93f-9a90-7f11-9b1f-273a25a4f73d",
+      "repository_id": "01a00ae2-9411-7c00-b742-50f3abde5e7c",
+      "kind": "gate",
+      "state": "promoted",
+      "terminal_reason": null,
+      "retry_of_item_id": null,
+      "metadata": {
+        "branch": "codex/hv-sbs-replay-session",
+        "subject": "fix(ditto): normalize generated input session identities",
+        "approved_at": [
+          2026,
+          268,
+          15,
+          46,
+          59,
+          354515000,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "attempts": [
+      {
+        "id": "01a0d93f-a1d4-7152-81d9-77d4b398d9ad",
+        "attempt": 1,
+        "state": "passed",
+        "created_at": [
+          2026,
+          268,
+          15,
+          47,
+          1,
+          311783000,
+          0,
+          0,
+          0
+        ],
+        "started_at": [
+          2026,
+          268,
+          15,
+          48,
+          7,
+          227947000,
+          0,
+          0,
+          0
+        ],
+        "finished_at": [
+          2026,
+          268,
+          15,
+          48,
+          56,
+          825587000,
+          0,
+          0,
+          0
+        ],
+        "step_results": [
+          {
+            "name": "ci",
+            "result_class": "success",
+            "exit_code": 0,
+            "elapsed_ms": 49362
+          },
+          {
+            "name": "prose",
+            "result_class": "skipped",
+            "exit_code": null,
+            "elapsed_ms": 0
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "item": {
+      "id": "01a0d932-c045-73f0-af38-596fccb2c7d8",
+      "repository_id": "01a00ae2-9411-7c00-b742-50f3abde5e7c",
+      "kind": "gate",
+      "state": "promoted",
+      "terminal_reason": null,
+      "retry_of_item_id": null,
+      "metadata": {
+        "branch": "codex/hv-7tk-instant-motion-time",
+        "subject": "fix(ditto): advance deterministic clocks only for finite motion",
+        "approved_at": [
+          2026,
+          268,
+          15,
+          32,
+          57,
+          36790000,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "attempts": [
+      {
+        "id": "01a0d932-c5ac-7533-8f54-1a76de30fb7a",
+        "attempt": 1,
+        "state": "passed",
+        "created_at": [
+          2026,
+          268,
+          15,
+          32,
+          58,
+          505506000,
+          0,
+          0,
+          0
+        ],
+        "started_at": [
+          2026,
+          268,
+          15,
+          33,
+          59,
+          714564000,
+          0,
+          0,
+          0
+        ],
+        "finished_at": [
+          2026,
+          268,
+          15,
+          41,
+          22,
+          296883000,
+          0,
+          0,
+          0
+        ],
+        "step_results": [
+          {
+            "name": "ci",
+            "result_class": "success",
+            "exit_code": 0,
+            "elapsed_ms": 442324
+          },
+          {
+            "name": "prose",
+            "result_class": "skipped",
+            "exit_code": null,
+            "elapsed_ms": 0
+          }
+        ]
+      }
+    ]
+  }
+]

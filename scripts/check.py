@@ -232,7 +232,7 @@ def main() -> int:
                 "-s",
                 "tests",
                 "-p",
-                "test_tollgate_observation.py",
+                "test_tollgate*.py",
                 "-v",
             ]
         )

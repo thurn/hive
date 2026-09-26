@@ -120,9 +120,21 @@ class Candidate:
     promoted_at: str | None
     updated_at: str
     attempts: tuple[Attempt, ...]
+    kind: str
+    retry_of: str | None
 
     def json(self) -> dict[str, object]:
-        return dict(asdict(self))
+        return {
+            **asdict(self),
+            "diagnostic_command": [
+                "tg",
+                "--repository",
+                self.repository,
+                "status",
+                self.id,
+                "--json",
+            ],
+        }
 
 
 def decode(raw: object) -> Candidate:
@@ -190,4 +202,10 @@ def decode(raw: object) -> Candidate:
         promoted,
         max(times),
         tuple(attempts),
+        string(item.get("kind", "gate"), "candidate kind"),
+        (
+            None
+            if item.get("retry_of_item_id") is None
+            else identifier(item.get("retry_of_item_id"))
+        ),
     )

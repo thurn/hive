@@ -355,7 +355,7 @@ class SchemaMigrationTests(unittest.TestCase):
             self.assertEqual(result["parse_gaps"], 0)
             self.assertEqual(result["observed_estimate_usd"], "0.123456789000")
             with sqlite3.connect(store.path) as db:
-                self.assertEqual(db.execute("PRAGMA user_version").fetchone(), (18,))
+                self.assertEqual(db.execute("PRAGMA user_version").fetchone(), (19,))
                 self.assertEqual(
                     db.execute("SELECT host,cache_write_1h FROM responses").fetchone(),
                     ("codex", 0),

@@ -1,5 +1,6 @@
 """Telemetry database contention is a structured Busy outcome, never a crash."""
 
+import json
 import os
 import sqlite3
 import subprocess
@@ -9,6 +10,7 @@ import unittest
 from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
+from unittest.mock import patch
 
 from test_cost import context, observed
 from test_usage import ROOT, TASK, counters, header
@@ -73,7 +75,27 @@ class ContentionTests(unittest.TestCase):
         )
         self.store = UsageStore(self.root / "state/telemetry.sqlite3")
         self.store.collect(TASK, self.transcript)
+        self.enterContext(
+            patch.dict(
+                os.environ,
+                {
+                    "HIVE_PROJECTS": json.dumps(
+                        [dict(id="sample", repository=str(ROOT))]
+                    )
+                },
+            )
+        )
         self.commands = {
+            "outcomes": (
+                "telemetry",
+                "outcomes",
+                "--project",
+                "sample",
+                "--start",
+                "2026-09-25T00:00:00Z",
+                "--end",
+                "2026-09-26T00:00:00Z",
+            ),
             "status": ("telemetry", "status"),
             "usage": ("telemetry", "usage", "--task", TASK),
             "cost": ("cost", "--task", TASK),
@@ -112,7 +134,7 @@ class ContentionTests(unittest.TestCase):
     ) -> None:
         hive(self.root, *self.commands["status"])
         with held(self.store.path, "IMMEDIATE"):
-            for name in ("status", "usage", "cost"):
+            for name in ("status", "usage", "cost", "outcomes"):
                 with self.subTest(name):
                     completed = hive(self.root, *self.commands[name])
                     self.assertEqual(completed.returncode, 0, completed.stderr)
