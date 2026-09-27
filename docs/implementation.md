@@ -290,3 +290,7 @@ The promoted `54fe010` master run then exposed a separate wall-time flake: run `
 ## Dashboard browser launch (hv-ojc0)
 
 `hive dashboard serve` opens the local dashboard URL after binding successfully, honors `--port`, and supports `--no-browser`. Browser integration runs separately with a five-second launch timeout so HTTP serving continues if desktop integration fails or stalls; stderr retains the URL for manual access. Black-box server coverage uses a disposable browser command to check launch readiness, opt-out, failure fallback, and no launch when binding fails. Local and Linux delivery evidence is recorded on the bead after validation.
+
+## Project-specific executor validation (hv-d753)
+
+Shared delivery guidance resolves validation through the configured project's instructions and executable entrypoints. Read-only inspection of configured Battlement confirmed it has no `scripts/check-fast`: its `AGENTS.md` requires staging intended inputs before `./scripts/ci.py`, which owns selected aggregate validation. Hive retains its own `scripts/prepare-check`, `scripts/check-fast`, focused checks and Tollgate `scripts/check` requirements. This guidance change does not modify either project's CI policy or substitute focused checks for aggregate validation and native certification.
