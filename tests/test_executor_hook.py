@@ -213,7 +213,13 @@ class ExecutorHookTests(unittest.TestCase):
                     "prompt": "$executor",
                 },
             )
-            invoke("start", "--project", "hive")
+            scoped = invoke("start", "--project", "hive")
+            self.assertFalse(scoped["continuous"])
+            self.assertEqual(invoke("hook", payload=payload), {})
+            # Scope survives process boundaries and does not silently inherit a
+            # previous queue opt-in after new user input.
+            continuous = invoke("start", "--project", "hive", "--continuous")
+            self.assertTrue(continuous["continuous"])
             second = invoke("hook", payload={**payload, "turn_id": "turn-3"})
             self.assertEqual(second["decision"], "block")
             self.assertIn(ready, str(second["reason"]))
@@ -230,6 +236,7 @@ class ExecutorHookTests(unittest.TestCase):
                 )
                 self.assertEqual(invoke("hook", payload=payload), {})
                 invoke("start", "--project", "hive")
+                self.assertEqual(invoke("hook", payload=payload), {})
             # Hook identity wins over inherited CODEX_THREAD_ID.
             self.assertEqual(
                 invoke("hook", payload={**payload, "session_id": OTHER}), {}
@@ -246,6 +253,7 @@ class ExecutorHookTests(unittest.TestCase):
             self.assertEqual(invoke("hook", payload=payload), {})
             invoke("start", "--project", "hive")
             native("update", ready, "--status", "open")
+            invoke("start", "--project", "hive", "--continuous")
             # New source takes effect without installing or restarting a hook.
             path = repository / "src/hive/executor_hook.py"
             path.write_text(

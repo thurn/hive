@@ -40,6 +40,11 @@ def main() -> int:
         executor_actions = executor.add_subparsers(dest="action", required=True)
         executor_start = executor_actions.add_parser("start")
         executor_start.add_argument("--project", required=True)
+        executor_start.add_argument(
+            "--continuous",
+            action="store_true",
+            help="Continue explicitly authorized queue work",
+        )
         executor_stop = executor_actions.add_parser("stop")
         from hive.executor_state import StopKind
 
@@ -118,7 +123,7 @@ def main() -> int:
             from hive.executor_hook import configuration, handle, start, stop
 
             if parsed.action == "start":
-                result = start(context, parsed.project)
+                result = start(context, parsed.project, continuous=parsed.continuous)
             elif parsed.action == "stop":
                 result = stop(
                     context, parsed.reason, StopKind(parsed.kind), parsed.recovery

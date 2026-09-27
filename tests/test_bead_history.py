@@ -265,23 +265,44 @@ class BeadHistoryTests(unittest.TestCase):
             native: Callable[[BeadsProcess, str], object] = BeadsProcess.bead_events
             calls: list[str] = []
 
+            class WorkClock:
+                now: float = 0.0
+
+                def monotonic(self) -> float:
+                    return self.now
+
+            clock: WorkClock = WorkClock()
+
             def interrupted(process: BeadsProcess, identity: str) -> object:
                 calls.append(identity)
                 if len(calls) == 2:
                     raise HiveError(
                         ErrorCode.PROVIDER_UNAVAILABLE, "Interrupted legacy rebuild"
                     )
-                return native(process, identity)
+                result = native(process, identity)
+                if len(calls) in (1, 3):
+                    clock.now = 10.0
+                return result
 
-            with patch.object(
-                BeadsProcess, "bead_events", autospec=True, side_effect=interrupted
+            expected = [identities[0], identities[1], identities[1], identities[2]]
+            with (
+                patch.object(
+                    BeadsProcess, "bead_events", autospec=True, side_effect=interrupted
+                ),
+                patch("time.monotonic", clock.monotonic),
             ):
-                refresh(store, process, time.monotonic() + 2)
-                refresh(store, process, time.monotonic() + 2)
-                refresh(store, process, time.monotonic() + 2)
-            self.assertEqual(
-                calls[:4], [identities[0], identities[1], identities[1], identities[2]]
-            )
+                # End the budget after a successful bead, then inject a provider
+                # failure on its successor. Each later pass must resume there.
+                # Native reads get a real ten-second timeout; host speed does not
+                # decide which controlled scheduling checkpoint exhausts time.
+                for count in range(1, 5):
+                    clock.now = 0.0
+                    refresh(store, process, 10.0)
+                    self.assertEqual(calls, expected[:count])
+                    self.assertEqual(
+                        CollectionRegistry(store).status()["bead_events_caught_up"],
+                        count == 4,
+                    )
             status = CollectionRegistry(store).status()
             self.assertTrue(status["bead_events_caught_up"])
             self.assertEqual(status["interval_unknown_beads"], 3)

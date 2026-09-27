@@ -7,10 +7,11 @@ import os
 import platform
 import signal
 import sqlite3
-import subprocess
 import sys
 import time
 from pathlib import Path
+
+from check_runner import run_checks
 
 ROOT: Path = Path(__file__).resolve().parents[1]
 
@@ -44,25 +45,6 @@ def boundary_rules() -> int:
     for failure in failures:
         print(failure, file=sys.stderr)
     return 1 if failures else 0
-
-
-def run(command: list[str], deadline: float) -> int:
-    remaining = deadline - time.monotonic()
-    if remaining <= 0:
-        return 124
-    print("+ " + " ".join(command[1:]), flush=True)
-    process = subprocess.Popen(command, cwd=ROOT, process_group=0)
-    try:
-        return process.wait(timeout=remaining)
-    except subprocess.TimeoutExpired:
-        print("Check deadline exceeded", file=sys.stderr)
-        return 124
-    finally:
-        try:
-            os.killpg(process.pid, signal.SIGKILL)
-        except ProcessLookupError:
-            pass
-        process.wait()
 
 
 def main() -> int:
@@ -159,6 +141,19 @@ def main() -> int:
             "test_dashboard_budget.py",
             "-v",
             *(["-k", "constrained_pages"] if fast else []),
+        ]
+    )
+    commands.append(
+        [
+            python,
+            "-m",
+            "unittest",
+            "discover",
+            "-s",
+            "tests",
+            "-p",
+            "test_check_runner.py",
+            "-v",
         ]
     )
     commands.append(
@@ -398,12 +393,37 @@ def main() -> int:
                 ],
             )
         )
-    for command in commands:
-        result = run(command, deadline)
-        if result:
-            return result
-    return 0
+    result = run_checks(commands[:4], ROOT, deadline)
+    if result:
+        return result
+    # Keep performance assertions and controlled budgets outside suite parallelism.
+    exclusive = {"test_dashboard_api.py", "test_dashboard_budget.py"}
+    suites = commands[4:]
+    result = run_checks(
+        [command for command in suites if any(name in command for name in exclusive)],
+        ROOT,
+        deadline,
+    )
+    if result:
+        return result
+    independent = [
+        command for command in suites if not any(name in command for name in exclusive)
+    ]
+    # Start the longest retained suites first to avoid a serial tail.
+    longest = ("test_bead_cost.py", "test_dashboard_server.py", "test_executor_hook.py")
+    independent.sort(
+        key=lambda command: next(
+            (index for index, name in enumerate(longest) if name in command),
+            len(longest),
+        )
+    )
+    return run_checks(independent, ROOT, deadline, jobs=2)
 
 
 if __name__ == "__main__":
+
+    def terminate(number: int, _frame: object) -> None:
+        raise SystemExit(128 + number)
+
+    signal.signal(signal.SIGTERM, terminate)
     raise SystemExit(main())

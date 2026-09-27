@@ -17,16 +17,23 @@ from hive.locking import file_lock
 from hive_bootstrap.settings import read_settings
 
 
-def start(context: LaunchContext, project: str) -> dict[str, object]:
+def start(
+    context: LaunchContext, project: str, *, continuous: bool = False
+) -> dict[str, object]:
     settings = read_settings()
     if project not in {item.id for item in settings.projects}:
         raise ValueError("Executor project must be registered in bootstrap settings")
     store = ExecutorStore(context.state, os.environ.get("CODEX_THREAD_ID", ""))
-    store.start(project)
+    store.start(project, continuous=continuous)
     return _receipt(
         context,
         Receipt("start", "activated", store.session),
-        {"code": "ExecutorStarted", "project": project, "session": store.session},
+        {
+            "code": "ExecutorStarted",
+            "project": project,
+            "session": store.session,
+            "continuous": continuous,
+        },
     )
 
 
@@ -142,7 +149,11 @@ def _handle(
         raise ValueError("Stop requires stop_hook_active")
     process = BeadsProcess(BeadsConnection.read(context.beads), timeout=2)
     assigned = _ids(process.assigned(store.session), state.project, store.session)
-    ready = _ids(process.ready(state.project, store.session), state.project, None)
+    ready = (
+        _ids(process.ready(state.project, store.session), state.project, None)
+        if state.continuous
+        else ()
+    )
     if not assigned and not ready:
         return {}, "drained"
     stop_command = _command(
@@ -155,7 +166,8 @@ def _handle(
         "Reconcile remaining acceptance, writers and delivery before stopping; "
         "promotion alone does not complete acceptance. Inspect candidate scope, "
         "prerequisite outcomes, approvals, ownership and resource pressure before "
-        "claiming. Continue eligible work under the executor skill. Before treating "
+        "claiming. Continue only authorized work under the executor skill; scoped "
+        "requests do not authorize unrelated ready work. Before treating "
         "a blocker, retry cutoff, timing miss or resource pressure as a reason to "
         "end work, invoke the justiciar skill in this same task: inspect evidence, "
         "repair or relax agent-imposed constraints within existing authority, "
@@ -163,7 +175,8 @@ def _handle(
         "explicit user acceptance or broaden authorization. A retry limit ends "
         "identical retries, not useful recovery. For a genuine remaining external "
         "dependency or capacity limit, checkpoint and settle writers/delivery, "
-        "then consider independent eligible work. Record an intentional stop with "
+        "then consider independent work only within the authorized scope. "
+        "Record an intentional stop with "
         f"`{stop_command}`; blocked/pressure kinds also require `--recovery` "
         "with evidence of that recovery and what remains beyond your authority. "
         "Other kinds are pause, approval, drained and scope; classify truthfully "

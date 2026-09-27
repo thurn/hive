@@ -31,6 +31,7 @@ class ExecutorState:
     corrected_turn: str
     revision: str
     continuation: str = ""
+    continuous: bool = False
 
 
 @dataclass(frozen=True)
@@ -58,6 +59,9 @@ class ExecutorStore:
         active = value.get("active")
         if not isinstance(active, bool):
             raise ValueError("Invalid executor activation")
+        continuous = value.get("continuous", False)
+        if not isinstance(continuous, bool):
+            raise ValueError("Invalid executor continuation mode")
         return ExecutorState(
             string(value.get("project"), "project"),
             active,
@@ -65,6 +69,7 @@ class ExecutorStore:
             string(value.get("corrected_turn"), "corrected turn", empty=True),
             string(value.get("revision"), "revision"),
             string(value.get("continuation", ""), "continuation", empty=True),
+            continuous,
         )
 
     def save(self, state: ExecutorState) -> None:
@@ -80,7 +85,7 @@ class ExecutorStore:
         finally:
             temporary.unlink(missing_ok=True)
 
-    def start(self, project: str) -> None:
+    def start(self, project: str, *, continuous: bool = False) -> None:
         with file_lock(self.lock_path, timeout=0.2):
             previous = self.read()
             if previous is not None and previous.project != project:
@@ -93,6 +98,7 @@ class ExecutorStore:
                     previous.corrected_turn if previous else "",
                     str(uuid4()),
                     previous.continuation if previous else "",
+                    continuous,
                 )
             )
 
