@@ -39,6 +39,8 @@ def setup(root: Path) -> tuple[Path, dict[str, str]]:
     tools = root / "tools"
     tools.mkdir()
     scripts = {
+        "browser": "import os,sys\nfrom pathlib import Path\nwith Path(os.environ['TEST_BROWSER']).open('a') as f:f.write(sys.argv[1]+'\\n')\n",
+        "browser-stop": "import os,signal\nos.kill(os.getppid(),signal.SIGTERM)\n",
         "node": "print('v24.16.0')\n",
         "npm": "import os,shutil,sys\nfrom pathlib import Path\nif Path(os.environ['TEST_NPM_FAILURE']).exists():sys.exit(1)\np=Path('node_modules/.bin');p.mkdir(parents=True)\nfor n in ('tsc','vite'):shutil.copyfile(Path(__file__).with_name(n),p/n);(p/n).chmod(0o755)\n",
         "tsc": "from pathlib import Path\nimport sys\nsys.exit(1 if Path('message.txt').read_text()=='typefail' else 0)\n",
@@ -50,6 +52,11 @@ def setup(root: Path) -> tuple[Path, dict[str, str]]:
         path.chmod(0o755)
     environment.update(
         PATH=str(tools) + os.pathsep + environment["PATH"],
+        # BROWSER normally falls back to desktop apps after a failed test opener.
+        BROWSER=os.pathsep.join(
+            str(tools / name) + " %s" for name in ("browser", "browser-stop")
+        ),
+        TEST_BROWSER=str(root / "browser.txt"),
         TEST_BUILDS=str(root / "builds.txt"),
         TEST_NPM_FAILURE=str(root / "npm-failure"),
     )
@@ -89,7 +96,7 @@ def get(
 
 
 @contextmanager
-def server(root: Path, environment: dict[str, str]) -> Iterator[int]:
+def server(root: Path, environment: dict[str, str], *options: str) -> Iterator[int]:
     with socket.socket() as socket_:
         socket_.bind(("127.0.0.1", 0))
         port = socket_.getsockname()[1]
@@ -103,6 +110,7 @@ def server(root: Path, environment: dict[str, str]) -> Iterator[int]:
                 "--port",
                 str(port),
                 "--json",
+                *options,
             ],
             env=environment,
             stdout=log,
@@ -144,6 +152,52 @@ def ready(port: int, text: bytes) -> bytes:
 
 
 class DashboardServerTests(unittest.TestCase):
+    def test_browser_opens_ready_url_and_can_be_disabled(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary).resolve()
+            _, environment = setup(root)
+            browser = root / "tools/browser"
+            browser.write_text(
+                "#!/usr/bin/env python3\n"
+                "import os,sys,urllib.error,urllib.request\nfrom pathlib import Path\n"
+                "try: urllib.request.urlopen(sys.argv[1]+'unknown',timeout=2)\n"
+                "except urllib.error.HTTPError as e: assert e.code == 404\n"
+                "Path(os.environ['TEST_BROWSER']).write_text(sys.argv[1])\n"
+            )
+            with server(root, environment) as port:
+                deadline = time.monotonic() + 5
+                while not (root / "browser.txt").exists():
+                    if time.monotonic() > deadline:
+                        self.fail((root / "server.log").read_text())
+                    time.sleep(0.025)
+                self.assertEqual(
+                    (root / "browser.txt").read_text(), f"http://127.0.0.1:{port}/"
+                )
+            (root / "browser.txt").unlink()
+            with server(root, environment, "--no-browser") as port:
+                self.assertEqual(get(port, "/unknown")[0], 404)
+            self.assertFalse((root / "browser.txt").exists())
+
+    def test_browser_failure_keeps_server_available(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary).resolve()
+            _, environment = setup(root)
+            (root / "tools/browser").write_text(
+                "#!/usr/bin/env python3\nraise SystemExit(1)\n"
+            )
+            with server(root, environment) as port:
+                deadline = time.monotonic() + 5
+                while (
+                    "Could not open a browser" not in (root / "server.log").read_text()
+                ):
+                    if time.monotonic() > deadline:
+                        self.fail((root / "server.log").read_text())
+                    time.sleep(0.025)
+                self.assertEqual(get(port, "/unknown")[0], 404)
+                self.assertIn(
+                    f"http://127.0.0.1:{port}/", (root / "server.log").read_text()
+                )
+
     def test_loopback_build_cache_security_and_source_reload(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary).resolve()
@@ -442,6 +496,7 @@ class DashboardServerTests(unittest.TestCase):
                 capture_output=True,
                 timeout=10,
             )
+            self.assertFalse((root / "browser.txt").exists())
             self.assertNotEqual(result.returncode, 0)
             self.assertIn(b"Cannot bind dashboard", result.stdout + result.stderr)
             with socket.create_connection(("127.0.0.1", port), timeout=1):

@@ -25,6 +25,9 @@ def add_parser[ParserType: argparse.ArgumentParser](
     operations = dashboard.add_subparsers(dest="action", required=True)
     server = operations.add_parser("serve")
     server.add_argument("--port", type=int, default=4320)
+    server.add_argument(
+        "--no-browser", action="store_true", help="Serve without opening a browser"
+    )
     build = operations.add_parser("build")
     build.add_argument("commit")
     build.add_argument("--retry", action="store_true")
@@ -110,7 +113,12 @@ def dispatch(context: LaunchContext, args: argparse.Namespace) -> dict[str, obje
     if args.action == "serve":
         from hive.dashboard_transport import run
 
-        return run(context.state, context.repository / "scripts/hive.py", args.port)
+        return run(
+            context.state,
+            context.repository / "scripts/hive.py",
+            args.port,
+            open_browser=not args.no_browser,
+        )
     if args.action in {"build", "page"}:
         from hive.dashboard_build import build
         from hive.dashboard_build import page as document

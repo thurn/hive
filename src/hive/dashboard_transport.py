@@ -4,6 +4,7 @@ import asyncio
 import json
 import os
 import signal
+import subprocess
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -255,7 +256,32 @@ class Server:
             writer.close()
 
 
-async def serve(state: Path, launcher: Path, port: int) -> None:
+async def browse(url: str) -> None:
+    # Isolate desktop integration so a slow browser cannot block HTTP serving.
+    try:
+        result = await asyncio.to_thread(
+            subprocess.run,
+            [
+                sys.executable,
+                "-I",
+                "-c",
+                "import sys, webbrowser; sys.exit(not webbrowser.open(sys.argv[1]))",
+                url,
+            ],
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            timeout=5,
+            check=False,
+        )
+        if result.returncode == 0:
+            return
+    except (OSError, subprocess.TimeoutExpired):
+        pass
+    print(f"Could not open a browser; open {url} manually.", file=sys.stderr)
+
+
+async def serve(state: Path, launcher: Path, port: int, *, open_browser: bool) -> None:
     receiver = Server(state, launcher, port)
     stopped = asyncio.Event()
     loop = asyncio.get_running_loop()
@@ -265,6 +291,10 @@ async def serve(state: Path, launcher: Path, port: int) -> None:
         try:
             for s in signals:
                 loop.add_signal_handler(s, stopped.set)
+            url = f"http://127.0.0.1:{port}/"
+            print(f"Dashboard: {url}", file=sys.stderr, flush=True)
+            if open_browser:
+                await browse(url)
             await stopped.wait()
         finally:
             server.close()
@@ -274,10 +304,12 @@ async def serve(state: Path, launcher: Path, port: int) -> None:
                 signal.signal(s, previous[s])
 
 
-def run(state: Path, launcher: Path, port: int) -> dict[str, object]:
+def run(
+    state: Path, launcher: Path, port: int, *, open_browser: bool = True
+) -> dict[str, object]:
     if not 1 <= port <= 65535:
         raise HiveError(
             ErrorCode.INVALID_INPUT, "Dashboard port must be 1 through 65535"
         )
-    asyncio.run(serve(state, launcher, port))
+    asyncio.run(serve(state, launcher, port, open_browser=open_browser))
     return dict[str, object](code="DashboardStopped")
