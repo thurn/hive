@@ -104,6 +104,22 @@ def launch(root: Path, repo: Path, beads: Path | None = None) -> LaunchContext:
     )
 
 
+def claude_line(task: str, cwd: Path, at: datetime, content: str = "fixture") -> str:
+    record = {
+        "type": "user",
+        "sessionId": task,
+        "cwd": str(cwd),
+        "timestamp": at.isoformat(),
+        "message": {"content": content},
+    }
+    return json.dumps(record) + "\n"
+
+
+def collected(store: UsageStore) -> set[str]:
+    with sqlite3.connect(store.path) as db:
+        return {str(row[0]) for row in db.execute("SELECT task FROM collection_tasks")}
+
+
 class ProjectObservationTests(unittest.TestCase):
     def test_git_membership_cutoff_claude_and_spawned_folding(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -353,3 +369,104 @@ class ProjectObservationTests(unittest.TestCase):
             self.assertIsNotNone(failure["discovery_error"])
             self.assertTrue(failure["event_retention_skipped"])
             self.assertEqual(store.report(task)["observed_responses"], 2)
+
+    def test_copied_claude_history_is_skipped_until_the_copy_continues(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            index = root / "native.sqlite3"
+            native_index(index)
+            at = datetime(2026, 9, 25, tzinfo=UTC)
+            original, copy = str(UUID(int=40)), str(UUID(int=41))
+            # The desktop app can copy a session's records under a new session ID.
+            copies, later = root / "claude/a-copies", root / "claude/b-later"
+            copies.mkdir(parents=True)
+            later.mkdir()
+            copied = copies / f"{copy}.jsonl"
+            copied.write_text(
+                claude_line(original, root, at)
+                + json.dumps({"type": "custom-title", "sessionId": copy})
+                + "\n"
+            )
+            (later / f"{original}.jsonl").write_text(claude_line(original, root, at))
+            context = launch(root, root)
+            store = UsageStore(context.state / "telemetry.sqlite3")
+            for _ in range(20):
+                result = sweep(context, index, 32)
+                self.assertIsNone(result["discovery_error"], result)
+                if result["discovery_behind"] is False:
+                    break
+            self.assertEqual(collected(store), {original})
+            # A continued copy registers from its own first record, while
+            # collection still rejects the copied history visibly.
+            with copied.open("a") as stream:
+                stream.write(claude_line(copy, root, at + timedelta(minutes=1)))
+            rejected = "Transcript is for another task"
+            failures = ""
+            for _ in range(20):
+                result = sweep(context, index, 32)
+                self.assertIsNone(result["discovery_error"], result)
+                failures += str(result["results"])
+                if collected(store) == {original, copy} and rejected in failures:
+                    break
+            self.assertEqual(collected(store), {original, copy})
+            self.assertIn(rejected, failures)
+
+    def test_long_or_unfinished_claude_copies_resume_discovery(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            index = root / "native.sqlite3"
+            native_index(index)
+            at = datetime(2026, 9, 25, tzinfo=UTC)
+            original, copy = str(UUID(int=42)), str(UUID(int=43))
+            copies, later = root / "claude/a-copies", root / "claude/b-later"
+            copies.mkdir(parents=True)
+            later.mkdir()
+            copied = copies / f"{copy}.jsonl"
+            # The third line is oversize and crosses the first 1 MiB chunk, and
+            # the last copied line is still being written.
+            long = claude_line(original, root, at, "x" * 600_000)
+            unfinished = claude_line(original, root, at)
+            copied.write_text(
+                claude_line(original, root, at) + long * 2 + unfinished[:-20]
+            )
+            (later / f"{original}.jsonl").write_text(claude_line(original, root, at))
+            context = launch(root, root)
+            store = UsageStore(context.state / "telemetry.sqlite3")
+            # Later sweeps resume the copy mid-line, then wait on its tail.
+            for n in range(20):
+                result = sweep(context, index, 32)
+                self.assertIsNone(result["discovery_error"], result)
+                if n >= 3 and result["discovery_behind"] is False:
+                    break
+            self.assertEqual(collected(store), {original})
+            with copied.open("a") as stream:
+                stream.write(
+                    unfinished[-20:]
+                    + claude_line(copy, root, at + timedelta(minutes=1))
+                )
+            for _ in range(20):
+                result = sweep(context, index, 32)
+                self.assertIsNone(result["discovery_error"], result)
+                if collected(store) == {original, copy}:
+                    break
+            self.assertEqual(collected(store), {original, copy})
+
+    def test_claude_record_without_its_session_id_is_a_visible_error(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            index = root / "native.sqlite3"
+            native_index(index)
+            at = datetime(2026, 9, 25, tzinfo=UTC)
+            folder = root / "claude/native"
+            folder.mkdir(parents=True)
+            line = {"type": "user", "cwd": str(root), "timestamp": at.isoformat()}
+            (folder / f"{UUID(int=44)}.jsonl").write_text(json.dumps(line) + "\n")
+            context = launch(root, root)
+            error: object = None
+            for _ in range(20):
+                error = sweep(context, index, 32)["discovery_error"]
+                if error is not None:
+                    break
+            self.assertIn("Claude discovery identity mismatch", str(error))

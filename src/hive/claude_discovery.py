@@ -26,10 +26,14 @@ def inspect(
         "SELECT device,inode,size,position,matched FROM claude_discovery_files WHERE path=?",
         (str(path),),
     ).fetchone()
+    # Size -1 marks an unmatched file that has not been read to its end.
     before = (
         None
         if saved is None
-        else tuple(integer(v, "Claude discovery cursor") for v in row(saved, 5))
+        else tuple(
+            integer(v, "Claude discovery cursor", minimum=-1 if n == 2 else 0)
+            for n, v in enumerate(row(saved, 5))
+        )
     )
     if (
         before is not None
@@ -49,7 +53,12 @@ def inspect(
     with os.fdopen(descriptor, "rb") as stream:
         if not stat.S_ISREG(os.fstat(stream.fileno()).st_mode):
             raise ValueError("Discovery transcript is not regular")
-        chunk = read(stream, position, False, MAX_BATCH)
+        skipping = False
+        if position > 0:
+            # Only a skipped oversize line leaves the cursor mid-line.
+            stream.seek(position - 1)
+            skipping = stream.read(1) != b"\n"
+        chunk = read(stream, position, skipping, MAX_BATCH)
         for line in chunk.records:
             if not isinstance(line, Line):
                 continue
@@ -57,8 +66,12 @@ def inspect(
             if not isinstance(value.get("cwd"), str) or value.get("timestamp") is None:
                 continue
             task = thread_id(path.stem)
-            if task is None or value.get("sessionId") != task:
+            session = thread_id(value.get("sessionId"))
+            if task is None or session is None:
                 raise ValueError("Claude discovery identity mismatch")
+            # Copied or forked transcripts begin with another session's records.
+            if session != task:
+                continue
             cwd = string(value["cwd"], "cwd")
             started = timestamp(value["timestamp"])
             project, _ = resolve(connection, cwd, projects)
