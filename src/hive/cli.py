@@ -43,8 +43,9 @@ def main() -> int:
         executor_start.add_argument(
             "--continuous",
             action="store_true",
-            help="Continue explicitly authorized queue work",
+            help="Continue through the project's ready queue (the executor default)",
         )
+        executor_start.add_argument("--session")
         executor_stop = executor_actions.add_parser("stop")
         from hive.executor_state import StopKind
 
@@ -53,8 +54,12 @@ def main() -> int:
             "--kind", choices=[kind.value for kind in StopKind], required=True
         )
         executor_stop.add_argument("--recovery")
+        executor_stop.add_argument("--session")
         executor_actions.add_parser("hook")
-        executor_actions.add_parser("hook-config")
+        executor_hook_config = executor_actions.add_parser("hook-config")
+        executor_hook_config.add_argument(
+            "--host", choices=["codex", "claude-code"], default="codex"
+        )
         executor_diagnostics = executor_actions.add_parser("diagnostics")
         executor_diagnostics.add_argument("--session")
         cost = groups.add_parser("cost")
@@ -123,13 +128,22 @@ def main() -> int:
             from hive.executor_hook import configuration, handle, start, stop
 
             if parsed.action == "start":
-                result = start(context, parsed.project, continuous=parsed.continuous)
+                result = start(
+                    context,
+                    parsed.project,
+                    continuous=parsed.continuous,
+                    session=parsed.session,
+                )
             elif parsed.action == "stop":
                 result = stop(
-                    context, parsed.reason, StopKind(parsed.kind), parsed.recovery
+                    context,
+                    parsed.reason,
+                    StopKind(parsed.kind),
+                    parsed.recovery,
+                    parsed.session,
                 )
             elif parsed.action == "hook-config":
-                result = configuration(context)
+                result = configuration(context, parsed.host)
             elif parsed.action == "diagnostics":
                 from hive.executor_diagnostics import identity, read
 

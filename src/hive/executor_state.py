@@ -41,7 +41,9 @@ class ExecutorStore:
 
     def __post_init__(self) -> None:
         if thread_id(self.session) is None:
-            raise ValueError("Executor requires a native Codex session UUID")
+            raise ValueError(
+                "Executor requires a native Codex or Claude Code session UUID"
+            )
 
     @property
     def path(self) -> Path:

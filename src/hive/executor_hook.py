@@ -1,4 +1,4 @@
-"""Bounded stop feedback for explicitly opted-in Codex executors."""
+"""Bounded stop feedback for explicitly opted-in Codex and Claude Code executors."""
 
 import os
 import shlex
@@ -16,14 +16,45 @@ from hive.launch_context import LaunchContext
 from hive.locking import file_lock
 from hive_bootstrap.settings import read_settings
 
+HOSTS = ("codex", "claude-code")
+
+
+# Claude Code fires UserPromptSubmit for prompts the host injects as well; only
+# prompts from a person (or the SDK host relaying one) are new input.
+INJECTED_PROMPT_SOURCES: frozenset[str] = frozenset(
+    {"system", "loop_wakeup", "schedule_wakeup", "poll_event"}
+)
+
+
+def _host_session(explicit: str | None) -> str:
+    """The invoking agent's own native session, never a guess between hosts.
+
+    Pass it explicitly; the environment is a fallback only when exactly one host's
+    variable is present, because Claude Code can inherit CODEX_THREAD_ID.
+    """
+    if explicit is not None:
+        return explicit
+    codex = os.environ.get("CODEX_THREAD_ID", "")
+    claude = os.environ.get("CLAUDE_CODE_SESSION_ID", "")
+    if codex and claude and codex != claude:
+        raise ValueError(
+            "Both CODEX_THREAD_ID and CLAUDE_CODE_SESSION_ID are set; pass "
+            "--session with your own host's session ID"
+        )
+    return codex or claude
+
 
 def start(
-    context: LaunchContext, project: str, *, continuous: bool = False
+    context: LaunchContext,
+    project: str,
+    *,
+    continuous: bool = False,
+    session: str | None = None,
 ) -> dict[str, object]:
     settings = read_settings()
     if project not in {item.id for item in settings.projects}:
         raise ValueError("Executor project must be registered in bootstrap settings")
-    store = ExecutorStore(context.state, os.environ.get("CODEX_THREAD_ID", ""))
+    store = ExecutorStore(context.state, _host_session(session))
     store.start(project, continuous=continuous)
     return _receipt(
         context,
@@ -38,7 +69,11 @@ def start(
 
 
 def stop(
-    context: LaunchContext, reason: str, kind: StopKind, recovery: str | None = None
+    context: LaunchContext,
+    reason: str,
+    kind: StopKind,
+    recovery: str | None = None,
+    session: str | None = None,
 ) -> dict[str, object]:
     """Require a recovery attestation for impediments, without judging its truth.
 
@@ -59,7 +94,7 @@ def stop(
     evidence = f"{kind.value}: {reason}"
     if recovery is not None:
         evidence += f"\nJusticiar recovery: {recovery}"
-    store = ExecutorStore(context.state, os.environ.get("CODEX_THREAD_ID", ""))
+    store = ExecutorStore(context.state, _host_session(session))
     outcome = store.stop(evidence)
     return _receipt(
         context,
@@ -96,7 +131,7 @@ def handle(context: LaunchContext, payload: str) -> dict[str, object]:
     except (HiveError, ValueError):
         pass
     session = identity(value.get("session_id"))
-    turn = identity(value.get("turn_id"))
+    turn = identity(_turn(value))
     event = value.get("hook_event_name")
     name = (
         event
@@ -128,14 +163,12 @@ def _handle(
         return {}, "ignored"
     # Native hook identity is authoritative, never the inherited shell identity.
     store = ExecutorStore(context.state, string(value.get("session_id"), "session"))
+    if event == "UserPromptSubmit" and value.get("source") in INJECTED_PROMPT_SOURCES:
+        return {}, "injected"
     if event != "Stop":
         outcome = store.stop(
             f"{event}: executor must explicitly opt in again",
-            new_input=(
-                string(value.get("prompt"), "prompt")
-                if event == "UserPromptSubmit"
-                else None
-            ),
+            new_input=_prompt(value) if event == "UserPromptSubmit" else None,
         )
         return {}, outcome
     state = store.read()
@@ -143,10 +176,13 @@ def _handle(
         return {}, "unbound"
     if not state.active:
         return {}, "inactive"
-    turn = string(value.get("turn_id"), "turn")
-    active = value.get("stop_hook_active")
+    # Any marker bounds the correction when a host sends no turn identifier.
+    raw_turn = _turn(value)
+    turn = string(raw_turn, "turn") if raw_turn is not None else str(uuid4())
+    # Both hosts send stop_hook_active; corrected_turn bounds correction regardless.
+    active = value.get("stop_hook_active", False)
     if not isinstance(active, bool):
-        raise ValueError("Stop requires stop_hook_active")
+        raise ValueError("Stop requires a boolean stop_hook_active")
     process = BeadsProcess(BeadsConnection.read(context.beads), timeout=2)
     assigned = _ids(process.assigned(store.session), state.project, store.session)
     ready = (
@@ -166,8 +202,8 @@ def _handle(
         "Reconcile remaining acceptance, writers and delivery before stopping; "
         "promotion alone does not complete acceptance. Inspect candidate scope, "
         "prerequisite outcomes, approvals, ownership and resource pressure before "
-        "claiming. Continue only authorized work under the executor skill; scoped "
-        "requests do not authorize unrelated ready work. Before treating "
+        "claiming. Continue eligible project work under the executor skill unless "
+        "the user explicitly limited the request to named work. Before treating "
         "a blocker, retry cutoff, timing miss or resource pressure as a reason to "
         "end work, invoke the justiciar skill in this same task: inspect evidence, "
         "repair or relax agent-imposed constraints within existing authority, "
@@ -175,7 +211,7 @@ def _handle(
         "explicit user acceptance or broaden authorization. A retry limit ends "
         "identical retries, not useful recovery. For a genuine remaining external "
         "dependency or capacity limit, checkpoint and settle writers/delivery, "
-        "then consider independent work only within the authorized scope. "
+        "then consider independent eligible work in the project queue. "
         "Record an intentional stop with "
         f"`{stop_command}`; blocked/pressure kinds also require `--recovery` "
         "with evidence of that recovery and what remains beyond your authority. "
@@ -201,6 +237,16 @@ def _handle(
     return {"decision": "block", "reason": message}, "correction"
 
 
+def _turn(value: dict[str, object]) -> object:
+    """Codex sends turn_id; Claude Code identifies the prompt with prompt_id."""
+    return value.get("turn_id", value.get("prompt_id"))
+
+
+def _prompt(value: dict[str, object]) -> str:
+    """Prompt text for continuation matching; absent text still disarms."""
+    return string(value["prompt"], "prompt", empty=True) if "prompt" in value else ""
+
+
 def _ids(value: object, project: str, owner: str | None) -> tuple[str, ...]:
     result: list[str] = []
     for raw in sequence(value, "beads"):
@@ -222,8 +268,18 @@ def _ids(value: object, project: str, owner: str | None) -> tuple[str, ...]:
     return tuple(sorted(result))
 
 
-def configuration(context: LaunchContext) -> dict[str, object]:
-    """Emit mergeable host settings without changing hooks or their trust state."""
+def configuration(context: LaunchContext, host: str = "codex") -> dict[str, object]:
+    """Emit mergeable host settings without changing hooks or their trust state.
+
+    Claude Code has no interrupt hook; its next prompt disarms instead.
+    """
+    if host not in HOSTS:
+        raise ValueError(f"Unknown executor hook host: {host}")
+    events = (
+        ("Stop", "UserPromptSubmit")
+        if host == "claude-code"
+        else ("Stop", "UserPromptSubmit", "Interrupt")
+    )
     command = _command(context, "hook", "--json")
     return {
         "hooks": {
@@ -239,7 +295,7 @@ def configuration(context: LaunchContext) -> dict[str, object]:
                     ]
                 }
             ]
-            for event in ("Stop", "UserPromptSubmit", "Interrupt")
+            for event in events
         }
     }
 

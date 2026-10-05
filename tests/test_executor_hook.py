@@ -10,6 +10,7 @@ import tempfile
 import time
 import unittest
 from pathlib import Path
+from typing import Protocol
 
 from server_fixture import private_server
 from test_source_selection import commit, fixture
@@ -22,6 +23,130 @@ THREAD = "01a0d688-285b-7990-9cc0-b828aa12bac7"
 OTHER = "01a0d65f-a2a7-7220-b392-58490c20ec97"
 
 
+class Invoke(Protocol):
+    def __call__(
+        self,
+        *args: str,
+        payload: dict[str, object] | None = None,
+        success: bool = True,
+    ) -> dict[str, object]: ...
+
+
+class Native(Protocol):
+    def __call__(self, *args: str) -> object: ...
+
+
+class Create(Protocol):
+    def __call__(self, title: str, project: str = "hive") -> str: ...
+
+
+def harness(
+    test: unittest.TestCase,
+    tmp: str,
+    connection: BeadsConnection,
+    host_session: dict[str, str],
+) -> tuple[
+    Path,
+    Path,
+    dict[str, str],
+    dict[str, object],
+    Invoke,
+    Native,
+    Create,
+]:
+    """Selected-source repository, bootstrap settings and native Beads helpers."""
+    root: Path = Path(tmp)
+    environment: dict[str, str]
+    repository, environment = fixture(root)
+    shutil.copytree(ROOT / "src/hive", repository / "src/hive", dirs_exist_ok=True)
+    shutil.copyfile(
+        ROOT / "src/hive_bootstrap/settings.py",
+        repository / "src/hive_bootstrap/settings.py",
+    )
+    commit(repository, "feat: executor check")
+    config = Path(environment["HIVE_BOOTSTRAP_CONFIG"])
+    settings = record(parse(config.read_text()))
+    settings.update(
+        beads=str(connection.directory),
+        projects=[
+            {
+                "id": name,
+                "repository": str(repository),
+                "invariants": str(repository / "AGENTS.md"),
+            }
+            for name in ("hive", "other")
+        ],
+    )
+    config.write_text(json.dumps(settings))
+    # The test host's own session must never leak into the fixture.
+    environment.pop("CODEX_THREAD_ID", None)
+    environment.pop("CLAUDE_CODE_SESSION_ID", None)
+    environment.update(
+        **host_session,
+        BEADS_DIR=str(root / "wrong"),
+        BEADS_DOLT_AUTO_START="1",
+        BEADS_DOLT_SERVER_DATABASE="wrong",
+        GIT_DIR="/wrong",
+    )
+
+    def invoke(
+        *args: str,
+        payload: dict[str, object] | None = None,
+        success: bool = True,
+    ) -> dict[str, object]:
+        result = subprocess.run(
+            [
+                sys.executable,
+                str(ROOT / "scripts/hive.py"),
+                "executor",
+                *args,
+                "--json",
+            ],
+            input=json.dumps(payload) if payload is not None else None,
+            env=environment,
+            cwd=root,
+            text=True,
+            capture_output=True,
+            timeout=20,
+        )
+        test.assertEqual(result.returncode == 0, success, result.stderr)
+        return record(parse(result.stdout if success else result.stderr))
+
+    def native(*args: str) -> object:
+        result = subprocess.run(
+            [
+                "bd",
+                "--sandbox",
+                "--dolt-auto-commit",
+                "off",
+                "--actor",
+                THREAD,
+                *args,
+                "--json",
+            ],
+            cwd=connection.directory,
+            env=connection.environment(),
+            text=True,
+            capture_output=True,
+            check=True,
+            timeout=10,
+        )
+        return parse(result.stdout)
+
+    def create(title: str, project: str = "hive") -> str:
+        result = record(
+            native(
+                "create",
+                title,
+                "--metadata",
+                json.dumps({"hive_project": project}),
+            )
+        )
+        return str(result["id"])
+
+    return root, repository, environment, settings, invoke, native, create
+
+
 class ExecutorHookTests(unittest.TestCase):
     def test_native_lifecycle_and_source_reload(self) -> None:
         connection: BeadsConnection
@@ -30,93 +155,9 @@ class ExecutorHookTests(unittest.TestCase):
             private_server() as (connection, server),
             tempfile.TemporaryDirectory() as tmp,
         ):
-            root: Path = Path(tmp)
-            repository, environment = fixture(root)
-            shutil.copytree(
-                ROOT / "src/hive", repository / "src/hive", dirs_exist_ok=True
+            root, repository, environment, settings, invoke, native, create = harness(
+                self, tmp, connection, {"CODEX_THREAD_ID": THREAD}
             )
-            shutil.copyfile(
-                ROOT / "src/hive_bootstrap/settings.py",
-                repository / "src/hive_bootstrap/settings.py",
-            )
-            commit(repository, "feat: executor check")
-            config = Path(environment["HIVE_BOOTSTRAP_CONFIG"])
-            settings = record(parse(config.read_text()))
-            settings.update(
-                beads=str(connection.directory),
-                projects=[
-                    {
-                        "id": name,
-                        "repository": str(repository),
-                        "invariants": str(repository / "AGENTS.md"),
-                    }
-                    for name in ("hive", "other")
-                ],
-            )
-            config.write_text(json.dumps(settings))
-            environment.update(
-                CODEX_THREAD_ID=THREAD,
-                BEADS_DIR=str(root / "wrong"),
-                BEADS_DOLT_AUTO_START="1",
-                BEADS_DOLT_SERVER_DATABASE="wrong",
-                GIT_DIR="/wrong",
-            )
-
-            def invoke(
-                *args: str,
-                payload: dict[str, object] | None = None,
-                success: bool = True,
-            ) -> dict[str, object]:
-                result = subprocess.run(
-                    [
-                        sys.executable,
-                        str(ROOT / "scripts/hive.py"),
-                        "executor",
-                        *args,
-                        "--json",
-                    ],
-                    input=json.dumps(payload) if payload is not None else None,
-                    env=environment,
-                    cwd=root,
-                    text=True,
-                    capture_output=True,
-                    timeout=20,
-                )
-                self.assertEqual(result.returncode == 0, success, result.stderr)
-                return record(parse(result.stdout if success else result.stderr))
-
-            def native(*args: str) -> object:
-                result = subprocess.run(
-                    [
-                        "bd",
-                        "--sandbox",
-                        "--dolt-auto-commit",
-                        "off",
-                        "--actor",
-                        THREAD,
-                        *args,
-                        "--json",
-                    ],
-                    cwd=connection.directory,
-                    env=connection.environment(),
-                    text=True,
-                    capture_output=True,
-                    check=True,
-                    timeout=10,
-                )
-                return parse(result.stdout)
-
-            def create(title: str, project: str = "hive") -> str:
-                result = record(
-                    native(
-                        "create",
-                        title,
-                        "--metadata",
-                        json.dumps({"hive_project": project}),
-                    )
-                )
-                return str(result["id"])
-
             payload: dict[str, object] = {
                 "hook_event_name": "Stop",
                 "session_id": THREAD,
@@ -392,3 +433,67 @@ class ExecutorHookTests(unittest.TestCase):
             )
             self.assertIn("systemMessage", malformed)
             self.assertNotIn("SECRET", json.dumps(invoke("diagnostics")))
+
+    def test_claude_code_session_lifecycle(self) -> None:
+        """Claude Code binds by its own session ID; injected prompts keep it armed."""
+        with (
+            private_server() as (connection, _server),
+            tempfile.TemporaryDirectory() as tmp,
+        ):
+            _, _, environment, _, invoke, native, create = harness(
+                self, tmp, connection, {"CLAUDE_CODE_SESSION_ID": THREAD}
+            )
+            payload: dict[str, object] = {
+                "hook_event_name": "Stop",
+                "session_id": THREAD,
+                "prompt_id": "01a0d688-285b-7990-9cc0-b828aa12bac9",
+                "transcript_path": "/tmp/transcript.jsonl",
+                "stop_hook_active": False,
+            }
+            ready = create("Next eligible work")
+            self.assertEqual(invoke("hook", payload=payload), {})
+            started = invoke("start", "--project", "hive", "--continuous")
+            self.assertEqual(started["session"], THREAD)
+            first = invoke("hook", payload=payload)
+            self.assertEqual(first["decision"], "block")
+            self.assertIn(ready, str(first["reason"]))
+            # One correction per execution, then a visible warning, even when a
+            # later Stop reports neither an active hook nor the same prompt.
+            repeated = invoke(
+                "hook",
+                payload={
+                    **payload,
+                    "prompt_id": "01a0d688-285b-7990-9cc0-b828aa12bad0",
+                },
+            )
+            self.assertNotIn("decision", repeated)
+            self.assertIn("unresolved", str(repeated["systemMessage"]))
+            # Host-injected prompts are not new input and keep execution armed.
+            prompt = {**payload, "hook_event_name": "UserPromptSubmit"}
+            invoke("hook", payload={**prompt, "source": "system", "prompt": "go on"})
+            self.assertIn("systemMessage", invoke("hook", payload=payload))
+            # A person's prompt disarms; Claude Code has no interrupt hook.
+            invoke("hook", payload={**prompt, "source": "user", "prompt": "pause"})
+            self.assertEqual(invoke("hook", payload=payload), {})
+            # An inherited Codex thread never silently claims the Claude session.
+            environment["CODEX_THREAD_ID"] = OTHER
+            ambiguous = invoke("start", "--project", "hive", success=False)
+            self.assertIn("--session", str(ambiguous))
+            invoke("start", "--project", "hive", "--continuous", "--session", THREAD)
+            # New input reset the correction budget, so this is a fresh correction.
+            self.assertEqual(invoke("hook", payload=payload)["decision"], "block")
+            native("close", ready)
+            invoke(
+                "stop",
+                "--kind",
+                "drained",
+                "--reason",
+                "No eligible ready work",
+                "--session",
+                THREAD,
+            )
+            self.assertEqual(invoke("hook", payload=payload), {})
+            claude = record(invoke("hook-config", "--host", "claude-code")["hooks"])
+            self.assertEqual(set(claude), {"Stop", "UserPromptSubmit"})
+            codex = record(invoke("hook-config")["hooks"])
+            self.assertEqual(set(codex), {"Stop", "UserPromptSubmit", "Interrupt"})
