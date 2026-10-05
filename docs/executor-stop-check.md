@@ -1,14 +1,17 @@
 # Executor stop check
 
 Codex executors opt in for authorized execution with the configured Hive repository's
-`bin/hive executor start --project PROJECT --json`. The command requires the actual
+`bin/hive executor start --project PROJECT --continuous --json` (or without
+`--continuous` for scoped execution). The command requires the actual
 `CODEX_THREAD_ID` and a registered project; the project binding cannot change in
 that session and survives deletion of an implementation worktree. Neither titles
 nor historical bead links activate the check. Other roles and Claude Code are not
-registered automatically. Default execution is scoped: unfinished assignments trigger
-continuation, but unrelated ready beads do not. Add `--continuous` only when the
-user explicitly authorizes working through the project queue; each start sets this
-mode explicitly, and older activation records default to scoped execution.
+registered automatically. The executor skill starts with `--continuous` by default:
+unfinished assignments and unclaimed ready beads in the bound project both trigger
+continuation. A start without `--continuous` selects scoped execution, where only
+unfinished assignments do; the skill uses it only when the user explicitly limits
+the request to named work. Each start sets the mode explicitly, and older activation
+records default to scoped execution.
 
 `bin/hive executor hook-config --json` emits the three Codex hook entries to merge
 into `~/.codex/hooks.json`: `Stop`, `UserPromptSubmit` and `Interrupt`. Preserve
@@ -34,9 +37,10 @@ follow-ups and explicit pauses. An interrupt disarms without restarting work.
 Concurrent new input invalidates a slow stop check before it can request continuation.
 New authorized executor turns explicitly opt in again.
 
-Before intentionally ending, reconcile acceptance and delivery; inspect the ready
-queue only in continuous mode. Completing a scoped request is an intentional
-`scope` stop even when unrelated project work remains ready.
+Before intentionally ending, reconcile acceptance and delivery and inspect the ready
+queue. No eligible bead remaining is a `drained` stop. A `scope` stop applies only when the user
+explicitly limited the request to named work, even if unrelated project work remains
+ready.
 For a perceived blocker, retry cutoff, timing miss or pressure, first invoke
 justiciar in the same task using the [recovery protocol](../skills/shared/repair.md#executor-recovery-before-stopping).
 Inspect evidence and requirement authority; repair or record an authorized relaxation
