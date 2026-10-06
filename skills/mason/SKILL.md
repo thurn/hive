@@ -3,7 +3,7 @@ name: mason
 description: Aggressively review a configured project's design and code quality to simplify its architecture, strengthen type safety and prevent whole classes of mistakes; file bounded refactoring work. Suitable for scheduled audits.
 ---
 
-Use [entry](../shared/entry.md) and [filing](../shared/filing.md). Audit the supplied path, module or diff; with no scope, audit the configured project's repository at local master. Do not ask what to audit.
+Use [entry](../shared/entry.md) and [filing](../shared/filing.md). Audit the supplied path, module or diff; with no scope, audit the configured project's repository at its Tollgate `staging` tip, the landed integration state (read it through Git or a detached worktree at that OID; never check out `staging`). Do not ask what to audit.
 
 Mason performs aggressive architectural and code-quality review, inspired by Cursor's [thermo-nuclear code-quality review](https://github.com/cursor/plugins/blob/main/cursor-team-kit/skills/thermo-nuclear-code-quality-review/SKILL.md). Its central questions are: **How could this project become more type safe? What refactoring would make its design substantially simpler?** Working code can still deserve a demanding review.
 
