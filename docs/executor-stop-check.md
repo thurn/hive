@@ -22,9 +22,25 @@ into `~/.codex/hooks.json`: `Stop`, `UserPromptSubmit` and `Interrupt`.
 `UserPromptSubmit` entries for the `hooks` object of `~/.claude/settings.json`.
 Claude Code has no interrupt hook, so its next prompt disarms instead. Its Stop input
 identifies the turn with `prompt_id` rather than `turn_id`; the handler accepts either.
-Its `UserPromptSubmit` also fires for prompts the host injects (`source` of `system`,
-`loop_wakeup`, `schedule_wakeup` or `poll_event`); those are recorded as `injected`
-and do not disarm. Preserve existing entries. For Codex, review/trust the new
+Its `UserPromptSubmit` also fires for prompts the host injects; those are recorded
+as `injected` and do not disarm. Injection is recognized by a `source` of `system`,
+`loop_wakeup`, `schedule_wakeup` or `poll_event`, or, because Claude Code 2.1.293
+sends no `source`, by a prompt beginning with `<task-notification>`, which a finished
+background subagent, shell, monitor or workflow submits. Other host-injected prompts,
+such as `/loop` or `ScheduleWakeup` firings and cross-session messages, carry no
+marker the hook receives and still disarm.
+Claude Code also ends a turn to wait for background work. A Stop listing a
+`background_tasks` entry of type `shell`, `subagent`, `monitor` or `workflow`, or a
+non-recurring `session_crons` wakeup, is recorded as `waiting`: no correction or
+warning, and the correction budget is unchanged. Other task types (such as `dream`,
+`auto-mode scan` and `teammate` entries) and recurring crons do not count,
+because they would hold the check off without waking the session. A one-shot
+wakeup (`ScheduleWakeup` or a dynamic `/loop`) does count, but its firing carries
+no marker and disarms, so an executor that ends a turn on one gets no correction
+and is then disarmed. The check runs
+again at the next turn end without such work, so a process left running
+indefinitely, such as a background dev server or an ambient monitor (the hook cannot
+tell those apart from monitors the agent started), suppresses it until it ends. Preserve existing entries. For Codex, review/trust the new
 definitions through its native hook interface (`/hooks` in the CLI); never write
 trusted hashes yourself, and install all three entries together so new input and
 interruptions clear opt-in. Claude Code has no trust step: merge both entries into
@@ -91,8 +107,8 @@ Each receipt contains its UTC timestamp, selected source commit, native session
 and turn UUID when valid, event, fixed outcome code and intentional stop category.
 Activation and intentional stop receipts survive resume until aged out of the
 global ring. A handler invocation is recorded before native reads and a decision
-afterward: unbound, inactive, drained, correction, warning, superseded, disarmed,
-continuation-preserved, injected or unavailable. No prompt, assistant response, provider
+afterward: unbound, inactive, waiting, drained, correction, warning, superseded,
+disarmed, continuation-preserved, injected or unavailable. No prompt, assistant response, provider
 payload or free-form stop/recovery text is copied into this diagnostic log.
 Malformed identity fields are omitted. The activation file still holds the latest
 explicit stop reason until resumed, as before.

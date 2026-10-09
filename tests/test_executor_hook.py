@@ -454,7 +454,34 @@ class ExecutorHookTests(unittest.TestCase):
             self.assertEqual(invoke("hook", payload=payload), {})
             started = invoke("start", "--project", "hive", "--continuous")
             self.assertEqual(started["session"], THREAD)
-            first = invoke("hook", payload=payload)
+            # A turn ending to wait for background work or a wakeup is not a
+            # stop and spends no correction.
+            for field, entry in (
+                ("background_tasks", {"id": "a1", "type": "subagent"}),
+                ("background_tasks", {"id": "b1", "type": "shell"}),
+                ("session_crons", {"id": "c1", "recurring": False}),
+            ):
+                self.assertEqual(
+                    invoke("hook", payload={**payload, field: [entry]}), {}
+                )
+            malformed = invoke("hook", payload={**payload, "background_tasks": {}})
+            self.assertIn("unavailable", str(malformed["systemMessage"]))
+            # The background task reports back without disarming execution.
+            prompt = {**payload, "hook_event_name": "UserPromptSubmit"}
+            notification = "<task-notification>\n<status>completed</status>"
+            invoke("hook", payload={**prompt, "prompt": notification})
+            # Ambient work and recurring crons never end the wait for a stop.
+            first = invoke(
+                "hook",
+                payload={
+                    **payload,
+                    "background_tasks": [
+                        {"id": "d1", "type": "dream"},
+                        {"id": "d2", "type": ["subagent"]},
+                    ],
+                    "session_crons": [{"id": "c2", "recurring": True}],
+                },
+            )
             self.assertEqual(first["decision"], "block")
             self.assertIn(ready, str(first["reason"]))
             # One correction per execution, then a visible warning, even when a
@@ -469,11 +496,14 @@ class ExecutorHookTests(unittest.TestCase):
             self.assertNotIn("decision", repeated)
             self.assertIn("unresolved", str(repeated["systemMessage"]))
             # Host-injected prompts are not new input and keep execution armed.
-            prompt = {**payload, "hook_event_name": "UserPromptSubmit"}
             invoke("hook", payload={**prompt, "source": "system", "prompt": "go on"})
             self.assertIn("systemMessage", invoke("hook", payload=payload))
-            # A person's prompt disarms; Claude Code has no interrupt hook.
-            invoke("hook", payload={**prompt, "source": "user", "prompt": "pause"})
+            # A person's prompt disarms, even when it quotes a notification;
+            # Claude Code has no interrupt hook.
+            invoke(
+                "hook",
+                payload={**prompt, "source": "user", "prompt": f"why {notification}"},
+            )
             self.assertEqual(invoke("hook", payload=payload), {})
             # An inherited Codex thread never silently claims the Claude session.
             environment["CODEX_THREAD_ID"] = OTHER
@@ -497,3 +527,13 @@ class ExecutorHookTests(unittest.TestCase):
             self.assertEqual(set(claude), {"Stop", "UserPromptSubmit"})
             codex = record(invoke("hook-config")["hooks"])
             self.assertEqual(set(codex), {"Stop", "UserPromptSubmit", "Interrupt"})
+            receipts = sequence(
+                invoke("diagnostics", "--session", THREAD)["receipts"], "receipts"
+            )
+            outcomes = [
+                str(row["outcome"])
+                for row in map(record, receipts)
+                if row["event"] in {"Stop", "UserPromptSubmit"}
+            ]
+            self.assertEqual(outcomes.count("waiting"), 3)
+            self.assertEqual(outcomes.count("injected"), 2)

@@ -24,6 +24,14 @@ HOSTS = ("codex", "claude-code")
 INJECTED_PROMPT_SOURCES: frozenset[str] = frozenset(
     {"system", "loop_wakeup", "schedule_wakeup", "poll_event"}
 )
+# Claude Code 2.1.293 sends no `source`, so a finished background subagent, shell
+# or monitor is recognized by the notification it submits as the prompt.
+TASK_NOTIFICATION = "<task-notification>"
+# Claude Code also lists ambient work (memory dreams, auto-mode scans,
+# teammates) that never wakes the session; only these task types report back.
+WAKING_TASK_TYPES: frozenset[str] = frozenset(
+    {"shell", "subagent", "monitor", "workflow"}
+)
 
 
 def _host_session(explicit: str | None) -> str:
@@ -163,7 +171,7 @@ def _handle(
         return {}, "ignored"
     # Native hook identity is authoritative, never the inherited shell identity.
     store = ExecutorStore(context.state, string(value.get("session_id"), "session"))
-    if event == "UserPromptSubmit" and value.get("source") in INJECTED_PROMPT_SOURCES:
+    if event == "UserPromptSubmit" and _injected(value):
         return {}, "injected"
     if event != "Stop":
         outcome = store.stop(
@@ -176,6 +184,9 @@ def _handle(
         return {}, "unbound"
     if not state.active:
         return {}, "inactive"
+    # Claude Code ends a turn to wait for background work that will wake it.
+    if _waiting(value):
+        return {}, "waiting"
     # Any marker bounds the correction when a host sends no turn identifier.
     raw_turn = _turn(value)
     turn = string(raw_turn, "turn") if raw_turn is not None else str(uuid4())
@@ -240,6 +251,36 @@ def _handle(
 def _turn(value: dict[str, object]) -> object:
     """Codex sends turn_id; Claude Code identifies the prompt with prompt_id."""
     return value.get("turn_id", value.get("prompt_id"))
+
+
+def _injected(value: dict[str, object]) -> bool:
+    source = value.get("source")
+    if isinstance(source, str) and source in INJECTED_PROMPT_SOURCES:
+        return True
+    return _prompt(value).lstrip().startswith(TASK_NOTIFICATION)
+
+
+def _waiting(value: dict[str, object]) -> bool:
+    """A Claude Code turn ended for background work or a one-shot wakeup.
+
+    A recurring cron would hold the check off for the rest of the session, so
+    only a single scheduled wakeup counts. Codex sends neither field.
+    """
+    tasks = (
+        record(task, "background task") for task in _list(value, "background_tasks")
+    )
+    crons = (record(cron, "session cron") for cron in _list(value, "session_crons"))
+    return any(_waking(task.get("type")) for task in tasks) or any(
+        cron.get("recurring") is False for cron in crons
+    )
+
+
+def _waking(kind: object) -> bool:
+    return isinstance(kind, str) and kind in WAKING_TASK_TYPES
+
+
+def _list(value: dict[str, object], field: str) -> list[object]:
+    return sequence(value[field], field) if field in value else []
 
 
 def _prompt(value: dict[str, object]) -> str:
