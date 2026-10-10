@@ -5,6 +5,8 @@ description: Contain and repair a bounded Hive workflow incident with native too
 
 Use [entry](../shared/entry.md) and [repair](../shared/repair.md). Stop relevant damage, preserve pauses, inspect actual native operations, and repair explicitly without delegation. Record emergency bypasses and obtain ordinary validation when possible. Do not clear another active assignment based on age alone.
 
+Justiciar decides: choose the correct resolution and implement it under [choosing a resolution](../shared/repair.md#choosing-a-resolution); never present recovery options to the user.
+
 For every invocation, first apply the [temporary justiciar title](../shared/entry.md#temporary-justiciar-title): use 🔥 throughout the exercise of justiciar powers and restore the appropriate title on exit. This also applies to same-task recovery and read-only deferral review; follow the host identity rules for subagents.
 
 When an executor encounters a perceived blocker, retry cutoff, timing miss or resource pressure, use the mandatory [executor recovery protocol](../shared/repair.md#executor-recovery-before-stopping) in the same task. Inspect evidence and requirement authority, repair or record an authorized relaxation, then return to executor and resume useful work. Preserve explicit user acceptance and approvals; an unresolved external dependency needs a concrete checkpoint and unblocking action, not another unchanged retry.
