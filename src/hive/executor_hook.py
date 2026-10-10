@@ -10,7 +10,8 @@ from hive.beads_connection import BeadsConnection
 from hive.beads_process import BeadsProcess
 from hive.errors import HiveError
 from hive.executor_diagnostics import Receipt, append, identity
-from hive.executor_state import ExecutorStore, StopKind
+from hive.executor_queue import await_work, ids, peers, settled_ready
+from hive.executor_state import ExecutorState, ExecutorStore, StopKind
 from hive.jsonvalue import parse, record, sequence, string
 from hive.launch_context import LaunchContext
 from hive.locking import file_lock
@@ -116,6 +117,42 @@ def stop(
     )
 
 
+def wait(
+    context: LaunchContext,
+    session: str | None = None,
+    timeout: float = 1800,
+    interval: float = 30,
+) -> dict[str, object]:
+    """Block an armed executor until peer executors leave it work to claim.
+
+    It reads the bound project's queue and never claims, so the agent still
+    checks scope and prerequisite outcomes before claiming what it reports.
+    """
+    if timeout < 0 or interval <= 0:
+        raise ValueError("Await requires a non-negative timeout and positive interval")
+    store: ExecutorStore = ExecutorStore(context.state, _host_session(session))
+    state = store.read()
+    if state is None or not state.active:
+        raise ValueError("Await requires an armed executor; run executor start first")
+
+    revision: str = state.revision
+
+    def armed() -> bool:
+        # A stop, new input or a fresh start replaces the revision this wait
+        # began under; Claude Code records a background wait without saving.
+        current = store.read()
+        return current is not None and current.revision == revision
+
+    return await_work(
+        BeadsProcess(BeadsConnection.read(context.beads), timeout=10),
+        state.project,
+        store.session,
+        timeout=timeout,
+        interval=interval,
+        active=armed,
+    )
+
+
 def _receipt(
     context: LaunchContext, receipt: Receipt, response: dict[str, object]
 ) -> dict[str, object]:
@@ -187,25 +224,45 @@ def _handle(
     # Claude Code ends a turn to wait for background work that will wake it.
     if _waiting(value):
         return {}, "waiting"
-    # Any marker bounds the correction when a host sends no turn identifier.
-    raw_turn = _turn(value)
-    turn = string(raw_turn, "turn") if raw_turn is not None else str(uuid4())
     # Both hosts send stop_hook_active; corrected_turn bounds correction regardless.
     active = value.get("stop_hook_active", False)
     if not isinstance(active, bool):
         raise ValueError("Stop requires a boolean stop_hook_active")
     process = BeadsProcess(BeadsConnection.read(context.beads), timeout=2)
-    assigned = _ids(process.assigned(store.session), state.project, store.session)
+    assigned = ids(process.assigned(store.session), state.project, store.session)
     ready = (
-        _ids(process.ready(state.project, store.session), state.project, None)
+        ids(process.ready(state.project, store.session), state.project, None)
         if state.continuous
         else ()
     )
-    if not assigned and not ready:
-        return {}, "drained"
     stop_command = _command(
         context, "stop", "--kind", "KIND", "--reason", "CONCRETE EVIDENCE"
     )
+    if not assigned and not ready:
+        if not state.continuous:
+            return {}, "drained"
+        # Peer executors may still land work that unblocks the rest of the queue.
+        found = peers(process, state.project, store.session, ready)
+        ready = settled_ready(process, state.project, store.session, found)
+        if not ready:
+            if not found.pending:
+                return {}, "drained"
+            await_command = _command(
+                context, "await", "--session", store.session, "--json"
+            )
+            message = (
+                f"Hive executor {state.project}: no unfinished assignment or unclaimed "
+                f"ready bead, but peer executors hold {', '.join(found.held)} while "
+                f"{', '.join(found.waiting)} wait. The queue is not drained. Run "
+                f"`{await_command}` (in Claude Code as a background command, then end "
+                "the turn; in Codex in the foreground, repeating it on a timeout) and "
+                "resume executor work when it reports ready or assigned work. It "
+                "reports a drained queue once peers hold nothing that open beads wait "
+                "on. Stop instead only for an explicit pause, an outstanding approval, "
+                "a user scope limit or a blocker that survived justiciar recovery, "
+                f"recorded with `{stop_command}`."
+            )
+            return _correct(store, state, value, active, message)
     message = (
         f"Hive executor {state.project}: unfinished assignments: "
         f"{', '.join(assigned) or 'none'}; unclaimed ready candidates: "
@@ -232,6 +289,19 @@ def _handle(
         "optional feedback alone is not a blocker. Never release an assignment "
         "until its writers and external effects are settled."
     )
+    return _correct(store, state, value, active, message)
+
+
+def _correct(
+    store: ExecutorStore,
+    state: ExecutorState,
+    value: dict[str, object],
+    active: bool,
+    message: str,
+) -> tuple[dict[str, object], str]:
+    # Any marker bounds the correction when a host sends no turn identifier.
+    raw_turn = _turn(value)
+    turn = string(raw_turn, "turn") if raw_turn is not None else str(uuid4())
     # Interrupt/new input must win over a slow read of Beads.
     with file_lock(store.lock_path, timeout=0.2):
         if store.read() != state:
@@ -286,27 +356,6 @@ def _list(value: dict[str, object], field: str) -> list[object]:
 def _prompt(value: dict[str, object]) -> str:
     """Prompt text for continuation matching; absent text still disarms."""
     return string(value["prompt"], "prompt", empty=True) if "prompt" in value else ""
-
-
-def _ids(value: object, project: str, owner: str | None) -> tuple[str, ...]:
-    result: list[str] = []
-    for raw in sequence(value, "beads"):
-        bead = record(raw, "bead")
-        metadata = record(bead.get("metadata", {}), "bead metadata")
-        if metadata.get("hive_project") != project:
-            continue
-        status = bead.get("status")
-        if owner is None:
-            if status != "open" or bead.get("assignee") not in (None, ""):
-                continue
-        elif bead.get("assignee") != owner or status not in {
-            "open",
-            "in_progress",
-            "blocked",
-        }:
-            continue
-        result.append(string(bead.get("id"), "bead id"))
-    return tuple(sorted(result))
 
 
 def configuration(context: LaunchContext, host: str = "codex") -> dict[str, object]:

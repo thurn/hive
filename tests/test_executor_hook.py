@@ -537,3 +537,153 @@ class ExecutorHookTests(unittest.TestCase):
             ]
             self.assertEqual(outcomes.count("waiting"), 3)
             self.assertEqual(outcomes.count("injected"), 2)
+
+    def test_peer_executors_share_a_project_queue(self) -> None:
+        """Work peers still hold keeps an executor waiting instead of draining."""
+        with (
+            private_server() as (connection, _server),
+            tempfile.TemporaryDirectory() as tmp,
+        ):
+            _, _, environment, _, invoke, native, create = harness(
+                self, tmp, connection, {"CLAUDE_CODE_SESSION_ID": THREAD}
+            )
+            payload: dict[str, object] = {
+                "hook_event_name": "Stop",
+                "session_id": THREAD,
+                "prompt_id": "01a0d688-285b-7990-9cc0-b828aa12bad1",
+                "stop_hook_active": False,
+            }
+            unbound = invoke("await", "--timeout", "0", success=False)
+            self.assertIn("executor start", str(unbound))
+            invoke("start", "--project", "hive", "--continuous")
+            held = create("Peer holds the shared module")
+            native("update", held, "--assignee", OTHER, "--status", "in_progress")
+            serialized = create("Serialized after the peer's bead")
+            native("dep", "add", serialized, held)
+            create("Other project work", "other")
+            # A stop while a peer's bead still blocks open work is corrected
+            # toward waiting, not accepted as a drained queue.
+            corrected = invoke("hook", payload=payload)
+            self.assertEqual(corrected["decision"], "block")
+            reason = str(corrected["reason"])
+            for expected in (held, serialized, "executor await", THREAD):
+                self.assertIn(expected, reason)
+            timed_out = invoke("await", "--timeout", "0.3", "--interval", "0.1")
+            self.assertEqual(timed_out["code"], "ExecutorAwaitTimeout")
+            self.assertEqual(timed_out["held"], [held])
+            self.assertEqual(timed_out["waiting"], [serialized])
+            # The peer lands its bead while this executor waits.
+            pending = subprocess.Popen(
+                [
+                    sys.executable,
+                    str(ROOT / "scripts/hive.py"),
+                    "executor",
+                    "await",
+                    "--timeout",
+                    "15",
+                    "--interval",
+                    "0.1",
+                    "--json",
+                ],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                env=environment,
+                cwd=tmp,
+                text=True,
+            )
+            try:
+                native("update", held, "--set-metadata", "hive_resolution=completed")
+                native("close", held)
+                output, error = pending.communicate(timeout=20)
+            finally:
+                if pending.poll() is None:
+                    pending.kill()
+                    pending.communicate(timeout=5)
+            self.assertEqual(pending.returncode, 0, error)
+            woken = record(parse(output))
+            self.assertEqual(woken["code"], "ExecutorWorkReady")
+            self.assertEqual(woken["ready"], [serialized])
+            # Its own assignment takes precedence over the queue.
+            native("update", serialized, "--claim")
+            assigned = invoke("await", "--timeout", "0")
+            self.assertEqual(assigned["code"], "ExecutorWorkAssigned")
+            native("update", serialized, "--set-metadata", "hive_resolution=completed")
+            native("close", serialized)
+            # A peer's bead with nothing waiting on it leaves the queue drained.
+            alone = create("Peer's independent work")
+            native("update", alone, "--assignee", OTHER, "--status", "in_progress")
+            drained = invoke("await", "--timeout", "5")
+            self.assertEqual(drained["code"], "ExecutorQueueDrained")
+            self.assertEqual(drained["held"], [alone])
+            self.assertEqual(
+                invoke("hook", payload={**payload, "prompt_id": "turn-2"}), {}
+            )
+            # New input disarms the session, which ends a wait in progress.
+            blocked = create("Waits on the peer's independent work")
+            native("dep", "add", blocked, alone)
+            # Disarm only once the wait is reading Beads, so it began armed.
+            executable = shutil.which("bd")
+            self.assertIsNotNone(executable)
+            wrapper = Path(tmp) / "wrapper"
+            wrapper.mkdir()
+            marker = Path(tmp) / "await-reading"
+            (wrapper / "bd").write_text(
+                "#!/bin/sh\ntouch "
+                + shlex.quote(str(marker))
+                + "\nexec "
+                + shlex.quote(str(executable))
+                + ' "$@"\n'
+            )
+            (wrapper / "bd").chmod(0o700)
+            environment["PATH"] = str(wrapper) + os.pathsep + environment["PATH"]
+            pending = subprocess.Popen(
+                [
+                    sys.executable,
+                    str(ROOT / "scripts/hive.py"),
+                    "executor",
+                    "await",
+                    "--timeout",
+                    "15",
+                    "--interval",
+                    "0.1",
+                    "--json",
+                ],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                env=environment,
+                cwd=tmp,
+                text=True,
+            )
+            try:
+                deadline = time.monotonic() + 10
+                while not marker.exists() and time.monotonic() < deadline:
+                    time.sleep(0.01)
+                self.assertTrue(marker.exists())
+                invoke(
+                    "hook",
+                    payload={
+                        **payload,
+                        "hook_event_name": "UserPromptSubmit",
+                        "source": "user",
+                        "prompt": "stop after this bead",
+                    },
+                )
+                output, error = pending.communicate(timeout=20)
+            finally:
+                if pending.poll() is None:
+                    pending.kill()
+                    pending.communicate(timeout=5)
+            self.assertEqual(pending.returncode, 0, error)
+            self.assertEqual(record(parse(output))["code"], "ExecutorInactive")
+            environment["PATH"] = environment["PATH"].split(os.pathsep, 1)[1]
+            inactive = invoke("await", "--timeout", "0", success=False)
+            self.assertIn("armed", str(inactive))
+            receipts = sequence(
+                invoke("diagnostics", "--session", THREAD)["receipts"], "receipts"
+            )
+            outcomes = [
+                str(row["outcome"])
+                for row in map(record, receipts)
+                if row["event"] == "Stop"
+            ]
+            self.assertEqual(outcomes, ["correction", "drained"])

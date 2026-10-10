@@ -55,6 +55,10 @@ def main() -> int:
         )
         executor_stop.add_argument("--recovery")
         executor_stop.add_argument("--session")
+        executor_await = executor_actions.add_parser("await")
+        executor_await.add_argument("--session")
+        executor_await.add_argument("--timeout", type=float, default=1800)
+        executor_await.add_argument("--interval", type=float, default=30)
         executor_actions.add_parser("hook")
         executor_hook_config = executor_actions.add_parser("hook-config")
         executor_hook_config.add_argument(
@@ -125,7 +129,7 @@ def main() -> int:
                 "directory": str(context.source),
             }
         elif parsed.group == "executor":
-            from hive.executor_hook import configuration, handle, start, stop
+            from hive.executor_hook import configuration, handle, start, stop, wait
 
             if parsed.action == "start":
                 result = start(
@@ -142,6 +146,8 @@ def main() -> int:
                     parsed.recovery,
                     parsed.session,
                 )
+            elif parsed.action == "await":
+                result = wait(context, parsed.session, parsed.timeout, parsed.interval)
             elif parsed.action == "hook-config":
                 result = configuration(context, parsed.host)
             elif parsed.action == "diagnostics":

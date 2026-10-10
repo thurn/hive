@@ -132,6 +132,10 @@ Full validation also caught an eager import of executor configuration during bas
 
 The executor candidate passed the complete Tollgate suite before integration encountered the concurrent hv-rcg documentation/deadline changes; fresh validation of the reconciled source remains required.
 
+## Peer executors (hv-2z45)
+
+Several executor sessions may work one project at once. In continuous mode the stop check corrects a stop when other sessions hold unfinished project beads while unclaimed beads still wait, and `executor await` blocks an armed executor until it has an assignment or ready work, peers hold nothing beside waiting beads, new input disarms it, or a timeout. Both read native Beads only and never claim or release. A native disposable journey covers a serialization edge on a peer's bead, the corrected stop, a timeout, waking when the peer closes its bead, an assignment taking precedence, a drained queue beside a peer's independent work, and disarming during a wait. Filing guidance adds serialization edges so readiness alone is concurrency-safe, executor guidance covers draining and waiting, repair guidance releases an abandoned assignment without transferring its worktree, and cold review goes to the other model family's CLI with a recorded same-family fallback; these are instruction-level conventions. No live multi-session run, background-await wakeup in Claude Code or cross-family review from a Codex session has been observed.
+
 ## Executor diagnostic receipts (hv-48p)
 
 The executor retains a private global ring of 128 lifecycle and handler receipts,

@@ -4,6 +4,10 @@ On a lost native response, inspect the affected bead and assignee before retryin
 
 Stop relevant damage, identify affected writers and native operations, inspect worktree, candidate and Beads state, preserve explicit pauses, and use native commands for repair. Reassign only after prior writers and external work are settled. Otherwise leave the assignment for investigation. Coordinate exceptional server maintenance with shared users. Other beads remain available through native atomic claiming; there is no Hive-wide write barrier.
 
+## Abandoned assignments
+
+A session can end while it still holds a bead: it was killed, closed or never resumed. The host that can resume that session resumes it, and its re-entry finds the assignment. Otherwise, once the user confirms the session will not return (quiet alone is no evidence: it may be waiting out a usage limit), justiciar settles the assignment for a peer: confirm with Tollgate that no candidate for it is queued or running, confirm no live process writes its worktree, and record the worktree, branch, last candidate and checkpoint on the bead. Then clear the assignee, setting the bead back to open, so another executor can claim it. Worktree ownership never transfers: the next claimant restarts from a fresh worktree and may read the recorded checkpoint commit only as reference, and the abandoned worktree stays for the user or its owning session to remove.
+
 ## Choosing a resolution
 
 Justiciar decides. When an incident has several possible resolutions, choose the correct one and implement it; do not present recovery options to the user. Involve the user only for an explicit pause, a required approval, or access you lack. A requirement whose authority is unclear stays in force and is not relaxed; when it alone blocks progress, treat the one decision it needs as a required approval and ask for exactly that.

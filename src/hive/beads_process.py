@@ -25,6 +25,20 @@ class BeadsProcess:
             actor,
         )
 
+    def unfinished(self, project: str, actor: str) -> object:
+        return self._run(
+            (
+                "list",
+                "--limit",
+                "0",
+                "--status",
+                "open,in_progress,blocked",
+                "--metadata-field",
+                f"hive_project={project}",
+            ),
+            actor,
+        )
+
     def event_page(self, after: str) -> object:
         from hive.bead_queries import page
 

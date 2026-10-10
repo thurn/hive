@@ -55,6 +55,32 @@ Readiness is only a candidate signal: the agent still checks scope, prerequisite
 completed outcomes, approvals and resource pressure before claiming. The hook
 never modifies Beads, claims work, starts a server or releases an assignment.
 
+Several executors may share one project. In continuous mode, when the session has
+no unfinished assignment and no unclaimed ready candidate, the check also lists the
+project's unfinished beads: those another session holds, and the unclaimed open or
+blocked beads that are not ready. When both lists are non-empty, peers may still land
+work that unblocks the rest of the queue, so the stop is corrected toward waiting
+rather than accepted as `drained`. Readiness edges decide which waiting beads a held
+bead blocks; the check does not inspect the graph, so a peer holding unrelated work
+beside an unrelated open bead also keeps a session waiting. Epics are ignored.
+
+`bin/hive executor await [--session SESSION] [--timeout SECONDS] [--interval SECONDS] --json`
+is that wait. It requires an armed executor and reads its bound project every
+`--interval` seconds (default 30) until one of these holds, reported as `code`:
+`ExecutorWorkAssigned` (the session owns unfinished work), `ExecutorWorkReady`
+(unclaimed ready candidates, listed in `ready`), `ExecutorQueueDrained` (no peer
+holds work beside waiting beads), `ExecutorInactive` (new input, a stop or a fresh
+start replaced the activation the wait began under, which also wins over a read in
+flight) or `ExecutorAwaitTimeout` within a few seconds of `--timeout` (default 1800),
+since each Beads call is bounded by the remaining time, with a one-second floor. A drained verdict, here and in
+the stop check, rereads readiness after the peer state, so a peer landing its blocker
+between the two reads yields ready work rather than a drain. Drained and timeout
+results list `held` and `waiting`; a Beads outage is retried until the deadline and
+reported as `error`. It never claims: the agent still checks
+scope, prerequisite outcomes and approvals before claiming what it reports. Claude
+Code runs it as a background command and ends the turn, which the check records as
+`waiting`; Codex runs it in the foreground and repeats it after a timeout.
+
 On premature stopping it returns one corrective prompt. Repeated stops in that
 execution return a visible warning; `stop_hook_active` also prevents correction.
 The exact generated continuation prompt preserves opt-in if Codex delivers it
