@@ -556,6 +556,11 @@ class ExecutorHookTests(unittest.TestCase):
             unbound = invoke("await", "--timeout", "0", success=False)
             self.assertIn("executor start", str(unbound))
             invoke("start", "--project", "hive", "--continuous")
+            epic = create("Project phase container")
+            native("update", epic, "--type", "epic")
+            self.assertEqual(
+                invoke("await", "--timeout", "0")["code"], "ExecutorQueueDrained"
+            )
             held = create("Peer holds the shared module")
             native("update", held, "--assignee", OTHER, "--status", "in_progress")
             serialized = create("Serialized after the peer's bead")
@@ -615,6 +620,12 @@ class ExecutorHookTests(unittest.TestCase):
             drained = invoke("await", "--timeout", "5")
             self.assertEqual(drained["code"], "ExecutorQueueDrained")
             self.assertEqual(drained["held"], [alone])
+            native("update", epic, "--claim")
+            assigned_epic = invoke("await", "--timeout", "0")
+            self.assertEqual(assigned_epic["code"], "ExecutorWorkAssigned")
+            self.assertEqual(assigned_epic["assigned"], [epic])
+            native("update", epic, "--set-metadata", "hive_resolution=completed")
+            native("close", epic)
             self.assertEqual(
                 invoke("hook", payload={**payload, "prompt_id": "turn-2"}), {}
             )

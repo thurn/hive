@@ -30,7 +30,7 @@ class Peers:
 
 
 def ids(value: object, project: str, owner: str | None) -> tuple[str, ...]:
-    """Unclaimed open beads (owner None) or one owner's unfinished beads."""
+    """Unclaimed open tasks (owner None) or one owner's unfinished beads."""
     result: list[str] = []
     for raw in sequence(value, "beads"):
         bead = record(raw, "bead")
@@ -38,7 +38,7 @@ def ids(value: object, project: str, owner: str | None) -> tuple[str, ...]:
             continue
         status = bead.get("status")
         if owner is None:
-            if status != "open" or _assignee(bead):
+            if status != "open" or _assignee(bead) or bead.get("issue_type") == "epic":
                 continue
         elif _assignee(bead) != owner or status not in UNFINISHED:
             continue
