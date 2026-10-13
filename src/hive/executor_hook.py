@@ -10,7 +10,13 @@ from hive.beads_connection import BeadsConnection
 from hive.beads_process import BeadsProcess
 from hive.errors import HiveError
 from hive.executor_diagnostics import Receipt, append, identity
-from hive.executor_queue import await_work, ids, peers, settled_ready
+from hive.executor_queue import (
+    WAIT_TIMEOUT_SECONDS,
+    await_work,
+    ids,
+    peers,
+    settled_ready,
+)
 from hive.executor_state import ExecutorState, ExecutorStore, StopKind
 from hive.jsonvalue import parse, record, sequence, string
 from hive.launch_context import LaunchContext
@@ -120,7 +126,7 @@ def stop(
 def wait(
     context: LaunchContext,
     session: str | None = None,
-    timeout: float = 1800,
+    timeout: float = WAIT_TIMEOUT_SECONDS,
     interval: float = 30,
 ) -> dict[str, object]:
     """Block an armed executor until peer executors leave it work to claim.
@@ -255,7 +261,12 @@ def _handle(
                 f"ready bead, but peer executors hold {', '.join(found.held)} while "
                 f"{', '.join(found.waiting)} wait. The queue is not drained. Run "
                 f"`{await_command}` (in Claude Code as a background command, then end "
-                "the turn; in Codex in the foreground, repeating it on a timeout) and "
+                "the turn; in Codex retain one foreground wait for the default 65 "
+                "minutes, using the executor skill's shared waiting guidance). "
+                "Keep pending process-output collection inside one long-yield tool "
+                "cell; do not shorten the native timeout to 60 seconds, poll Beads "
+                "from the agent, or narrate unchanged state. Repeat only after the "
+                "native long wait returns ExecutorAwaitTimeout, and "
                 "resume executor work when it reports ready or assigned work. It "
                 "reports a drained queue once peers hold nothing that open beads wait "
                 "on. Stop instead only for an explicit pause, an outstanding approval, "

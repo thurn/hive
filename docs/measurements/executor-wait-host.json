@@ -1,0 +1,48 @@
+{
+  "bead": "hv-n2ye",
+  "host_completed_wait": {
+    "native_session": "01a13315-7d9a-74e0-8226-6e7f36debef8",
+    "hold_seconds": 125,
+    "timeout_seconds": 3900,
+    "interval_seconds": 1,
+    "model_queue_polls": 0,
+    "source_base": "dcf7df34e20f73f9d20b6965c649919940ef1e96",
+    "started_utc": "2026-10-13T02:37:20.348461+00:00",
+    "unblocked_after_seconds": 125.15721474999737,
+    "elapsed_seconds": 125.51838949999365,
+    "exit_code": 0,
+    "result": {
+      "code": "ExecutorWorkReady",
+      "project": "hive",
+      "ready": [
+        "hv-dpx"
+      ]
+    },
+    "wake_errors": [],
+    "wake_latency_seconds": 0.3611747499962803,
+    "dependent_assignee": "",
+    "status": "passed",
+    "completed_utc": "2026-10-13T02:39:25.960051+00:00"
+  },
+  "host_cancelled_wait": {
+    "status": "cancelled",
+    "reason": "Removed agent-created physical-hour promotion gate; controlled-clock and host composition validation suffice.",
+    "started_utc": "2026-10-13T02:32:52.601679+00:00",
+    "cancelled_utc": "2026-10-13T02:57:15.977124+00:00",
+    "observed_pending_seconds": 1463.375445,
+    "terminal_work_result_observed": false,
+    "remaining_after_cancel": []
+  },
+  "streaming_output": {
+    "initial_chunk": "{\"code\":",
+    "complete_code": "ExecutorWorkReady",
+    "status": "passed"
+  },
+  "routine_default_budget_test": "test_default_wait_spans_an_hour_with_a_controlled_clock",
+  "limitations": [
+    "Completed host wait used one-second verification interval, not production30s.",
+    "Longer retained native run was cancelled without terminal readiness; no physical-hour completion claim.",
+    "The long cell yielded once to allow independent implementation; only the125s cell suspended the model throughout.",
+    "Await never claims; this is not an exclusive wake-one dispatcher."
+  ]
+}

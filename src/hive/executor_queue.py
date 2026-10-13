@@ -11,6 +11,7 @@ from hive.errors import HiveError
 from hive.jsonvalue import record, sequence, string
 
 UNFINISHED: frozenset[str] = frozenset({"open", "in_progress", "blocked"})
+WAIT_TIMEOUT_SECONDS: float = 3900
 
 
 @dataclass(frozen=True)

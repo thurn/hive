@@ -57,7 +57,11 @@ def main() -> int:
         executor_stop.add_argument("--session")
         executor_await = executor_actions.add_parser("await")
         executor_await.add_argument("--session")
-        executor_await.add_argument("--timeout", type=float, default=1800)
+        from hive.executor_queue import WAIT_TIMEOUT_SECONDS
+
+        executor_await.add_argument(
+            "--timeout", type=float, default=WAIT_TIMEOUT_SECONDS
+        )
         executor_await.add_argument("--interval", type=float, default=30)
         executor_actions.add_parser("hook")
         executor_hook_config = executor_actions.add_parser("hook-config")

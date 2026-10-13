@@ -148,6 +148,55 @@ def harness(
 
 
 class ExecutorHookTests(unittest.TestCase):
+    def test_default_wait_spans_an_hour_with_a_controlled_clock(self) -> None:
+        """Public await spends its 65-minute budget without real elapsed delay."""
+        with (
+            private_server() as (connection, _server),
+            tempfile.TemporaryDirectory() as tmp,
+        ):
+            root, repository, _, _, invoke, native, create = harness(
+                self, tmp, connection, {"CODEX_THREAD_ID": THREAD}
+            )
+            held = create("Controlled peer prerequisite")
+            native("update", held, "--assignee", OTHER, "--status", "in_progress")
+            waiting = create("Controlled pending dependent")
+            native("dep", "add", waiting, held)
+            invoke("start", "--project", "hive", "--continuous")
+
+            # Replace only this fixture's idle clock; native Beads and subprocess
+            # deadlines still use real time. The selected entrypoint invokes the
+            # public CLI unchanged, recording the actual requested sleep budget.
+            slept = root / "slept-seconds.json"
+            entry = repository / "scripts/entry.py"
+            source = entry.read_text()
+            clock = (
+                "import json, time\n"
+                "from hive import executor_queue\n"
+                "class IdleClock:\n"
+                "    skipped = 0.0\n"
+                "    def monotonic(self):\n"
+                "        return time.monotonic() + self.skipped\n"
+                "    def sleep(self, seconds):\n"
+                "        self.skipped += seconds\n"
+                f"        Path({str(slept)!r}).write_text(json.dumps(seconds))\n"
+                "executor_queue.time = IdleClock()\n"
+            )
+            entry.write_text(
+                source.replace(
+                    'if __name__ == "__main__":', clock + '\nif __name__ == "__main__":'
+                )
+            )
+            commit(repository, "test: control executor idle clock")
+            result = invoke("await", "--interval", "4000")
+            self.assertEqual(result["code"], "ExecutorAwaitTimeout")
+            self.assertEqual(result["held"], [held])
+            self.assertEqual(result["waiting"], [waiting])
+            # A short timeout, including the old 30-minute default, fails this
+            # externally recorded budget without spending an hour in the gate.
+            requested = json.loads(slept.read_text())
+            self.assertGreater(requested, 3890)
+            self.assertLessEqual(requested, 3900)
+
     def test_native_lifecycle_and_source_reload(self) -> None:
         connection: BeadsConnection
         environment: dict[str, str]
@@ -584,8 +633,6 @@ class ExecutorHookTests(unittest.TestCase):
                     str(ROOT / "scripts/hive.py"),
                     "executor",
                     "await",
-                    "--timeout",
-                    "15",
                     "--interval",
                     "0.1",
                     "--json",
