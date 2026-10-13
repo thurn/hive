@@ -67,16 +67,20 @@ beside an unrelated open bead also keeps a session waiting. Epics are ignored.
 `bin/hive executor await [--session SESSION] [--timeout SECONDS] [--interval SECONDS] --json`
 is that wait. It requires an armed executor and reads its bound project every
 `--interval` seconds (default 30) until one of these holds, reported as `code`:
-`ExecutorWorkAssigned` (the session owns unfinished work), `ExecutorWorkReady`
-(unclaimed ready candidates, listed in `ready`), `ExecutorQueueDrained` (no peer
-holds work beside waiting beads), `ExecutorInactive` (new input, a stop or a fresh
+`ExecutorWorkAssigned` (the session owns unfinished work with no native blocker), `ExecutorWorkReady`
+(unclaimed ready candidates, listed in `ready`), `ExecutorQueueDrained` (no owned
+checkpoint is blocked and no peer holds work beside waiting beads), `ExecutorInactive` (new input, a stop or a fresh
 start replaced the activation the wait began under, which also wins over a read in
 flight) or `ExecutorAwaitTimeout` within a few seconds of `--timeout` (default 3900,
 65 minutes),
 since each Beads call is bounded by the remaining time, with a one-second floor. A drained verdict, here and in
 the stop check, rereads readiness after the peer state, so a peer landing its blocker
 between the two reads yields ready work rather than a drain. Drained and timeout
-results list `held` and `waiting`; a Beads outage is retried until the deadline and
+results list `held` and `waiting`. A claimed checkpoint with a native blocking
+prerequisite remains in `waiting`; it keeps the queue pending even when no
+unclaimed dependent is left. Once the prerequisite closes, the same assignment
+wakes its owner without releasing or reclaiming it. Actionable owned work takes
+precedence over unclaimed ready work. A Beads outage is retried until the deadline and
 reported as `error`. It never claims: the agent still checks
 scope, prerequisite outcomes and approvals before claiming what it reports. Claude
 Code runs it as a background command and ends the turn, which the check records as

@@ -135,16 +135,26 @@ def _poll(
         return replace(process, timeout=max(1.0, min(process.timeout, remaining)))
 
     assigned = ids(bounded().assigned(session), project, session)
-    if assigned:
+    blocked = ids(bounded().blocked(session), project, session) if assigned else ()
+    waiting_assigned = tuple(
+        identifier for identifier in assigned if identifier in blocked
+    )
+    actionable = tuple(
+        identifier for identifier in assigned if identifier not in blocked
+    )
+    if actionable:
         return {
             "code": "ExecutorWorkAssigned",
             "project": project,
-            "assigned": list(assigned),
+            "assigned": list(actionable),
         }, Peers((), ())
     ready = ids(bounded().ready(project, session), project, None)
     found = Peers((), ())
     if not ready:
         found = peers(bounded(), project, session, ready)
+        found = replace(
+            found, waiting=tuple(sorted(set(found.waiting).union(waiting_assigned)))
+        )
         ready = settled_ready(bounded(), project, session, found)
     if ready:
         return {
@@ -152,7 +162,7 @@ def _poll(
             "project": project,
             "ready": list(ready),
         }, (found)
-    if not found.pending:
+    if not found.pending and not waiting_assigned:
         return {
             "code": "ExecutorQueueDrained",
             "project": project,

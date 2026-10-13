@@ -325,3 +325,24 @@ The guidance distinguishes released work (in local `release`) from published wor
 Unclaimed open epics are project containers rather than executable ready work. The shared ready selector excludes them for both executor hooks and peer waits; explicitly assigned unfinished beads retain their existing visibility. Project, ownership and status filtering, the settled readiness reread, inactive-session handling and deadline behavior use the existing paths.
 
 A live Dreamtides peer wait returned its three phase epics immediately while peers held the remaining executable work. The disposable native Beads CLI regression reproduces that result against the previous selector and covers an epic-only queue, waiting behind a peer, wakeup for an actual child, and an explicitly assigned epic. Local checks, cold review, certified promotion and exact-commit Linux acceptance are recorded on the native bead until settled. No resident service restart or shared configuration change is required.
+
+
+## Claimed checkpoints in peer waits (hv-141r)
+
+Native await classifies owned unfinished work using Beads' blocker evidence. A
+claimed checkpoint with an unfinished prerequisite remains waiting, including
+when it is the only dependent or its prerequisite is an unassigned external
+hold. Closing the prerequisite wakes its existing owner; actionable assignments
+take precedence over unclaimed ready work. All reads retain the remaining
+deadline bound, project filtering and session-disarming behavior. Source selection
+uses the ordinary local-master hot reload without a resident restart.
+
+The public CLI regression against disposable native Beads reproduced the
+premature assigned result on the base implementation, then passed with the
+repair. Five executor lifecycle/queue tests passed in 41.992 seconds, including
+the controlled default 65-minute budget; scripts/check-fast passed in 22.958
+seconds. An intermediate fixture cleanup attempted to close a blocked task; its
+failed receipts remain in the session evidence and the fixture closes its
+prerequisite first. Cold review, Tollgate certification and exact promoted-commit
+Linux acceptance remain tracked on the native bead until settled. The originating
+Dreamtides content checkpoint retains its weighted300 and browser acceptance.

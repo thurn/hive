@@ -19,6 +19,9 @@ class BeadsProcess:
     def assigned(self, actor: str) -> object:
         return self._run(("list", "--all", "--limit", "0", "--assignee", actor), actor)
 
+    def blocked(self, actor: str) -> object:
+        return self._run(("blocked",), actor)
+
     def ready(self, project: str, actor: str) -> object:
         return self._run(
             ("ready", "--limit", "0", "--metadata-field", f"hive_project={project}"),

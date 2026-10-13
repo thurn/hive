@@ -587,6 +587,83 @@ class ExecutorHookTests(unittest.TestCase):
             self.assertEqual(outcomes.count("waiting"), 3)
             self.assertEqual(outcomes.count("injected"), 2)
 
+    def test_owned_checkpoint_waits_for_its_peer_prerequisite(self) -> None:
+        """Native blockers keep a claimed checkpoint waiting without releasing it."""
+        with (
+            private_server() as (connection, _server),
+            tempfile.TemporaryDirectory() as tmp,
+        ):
+            _, _, environment, _, invoke, native, create = harness(
+                self, tmp, connection, {"CODEX_THREAD_ID": THREAD}
+            )
+            invoke("start", "--project", "hive", "--continuous")
+            held = create("Peer implements the discovered prerequisite")
+            native("update", held, "--assignee", OTHER, "--status", "in_progress")
+            checkpoint = create("Owned checkpoint awaiting prerequisite")
+            native("update", checkpoint, "--claim")
+            native("dep", "add", checkpoint, held)
+            waiting = invoke("await", "--timeout", "0")
+            self.assertEqual(waiting["code"], "ExecutorAwaitTimeout")
+            self.assertEqual(waiting["held"], [held])
+            self.assertEqual(waiting["waiting"], [checkpoint])
+
+            independent = create("Actionable work beside the checkpoint")
+            ready = invoke("await", "--timeout", "0")
+            self.assertEqual(ready["code"], "ExecutorWorkReady")
+            self.assertEqual(ready["ready"], [independent])
+            native("update", independent, "--claim")
+            assigned = invoke("await", "--timeout", "0")
+            self.assertEqual(assigned["code"], "ExecutorWorkAssigned")
+            self.assertEqual(assigned["assigned"], [independent])
+            native("close", independent)
+
+            pending = subprocess.Popen(
+                [
+                    sys.executable,
+                    str(ROOT / "scripts/hive.py"),
+                    "executor",
+                    "await",
+                    "--interval",
+                    "0.1",
+                    "--json",
+                ],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                env=environment,
+                cwd=tmp,
+                text=True,
+            )
+            try:
+                native("update", held, "--set-metadata", "hive_resolution=completed")
+                native("close", held)
+                output, error = pending.communicate(timeout=20)
+            finally:
+                if pending.poll() is None:
+                    pending.kill()
+                    pending.communicate(timeout=5)
+            self.assertEqual(pending.returncode, 0, error)
+            resumed = record(parse(output))
+            self.assertEqual(resumed["code"], "ExecutorWorkAssigned")
+            self.assertEqual(resumed["assigned"], [checkpoint])
+            external = create("External prerequisite awaiting authorization")
+            native("update", external, "--status", "deferred")
+            native("dep", "add", checkpoint, external)
+            waiting = invoke("await", "--timeout", "0")
+            self.assertEqual(waiting["code"], "ExecutorAwaitTimeout")
+            self.assertEqual(waiting["held"], [])
+            self.assertEqual(waiting["waiting"], [checkpoint])
+            native("close", external)
+            native("close", checkpoint)
+
+            foreign = create("Other project's checkpoint", "other")
+            native("update", foreign, "--claim")
+            blocker = create("Other project's prerequisite", "other")
+            native("update", blocker, "--assignee", OTHER, "--status", "in_progress")
+            native("dep", "add", foreign, blocker)
+            self.assertEqual(
+                invoke("await", "--timeout", "0")["code"], "ExecutorQueueDrained"
+            )
+
     def test_peer_executors_share_a_project_queue(self) -> None:
         """Work peers still hold keeps an executor waiting instead of draining."""
         with (
