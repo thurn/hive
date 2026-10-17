@@ -64,6 +64,22 @@ rather than accepted as `drained`. Readiness edges decide which waiting beads a 
 bead blocks; the check does not inspect the graph, so a peer holding unrelated work
 beside an unrelated open bead also keeps a session waiting. Epics are ignored.
 
+A project may be split into streams. `executor start --stream NAME` binds the
+session to the beads whose metadata carries `hive_stream=NAME`; a session started
+without `--stream` works the default stream, the beads with no `hive_stream`. The
+binding cannot change in the session. Ready candidates and the unclaimed waiting
+beads are read within the session's stream; beads other sessions hold, and the
+session's own assignments, are read project-wide, so a blocker held in another
+stream keeps a wait pending instead of draining it. The start, await and ready
+results of a stream session carry `stream`, and the stop check's text names it.
+`bin/hive executor ready [--session SESSION] --json` returns the bound stream's
+unclaimed ready beads as native records, in native order, as `ExecutorReady`
+with `beads`; it requires a bound executor and never claims. It reads the same
+stream-filtered candidate set as the wait and the check, though the wait
+reports actionable assignments first and the check reports candidates only in
+continuous mode. Stream names are lowercase slugs; a bead whose `hive_stream`
+is any other value matches no session.
+
 `bin/hive executor await [--session SESSION] [--timeout SECONDS] [--interval SECONDS] --json`
 is that wait. It requires an armed executor and reads its bound project every
 `--interval` seconds (default 30) until one of these holds, reported as `code`:

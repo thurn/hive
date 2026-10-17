@@ -21,6 +21,7 @@ from hive.jsonvalue import parse, record, sequence
 ROOT: Path = Path(__file__).resolve().parents[1]
 THREAD = "01a0d688-285b-7990-9cc0-b828aa12bac7"
 OTHER = "01a0d65f-a2a7-7220-b392-58490c20ec97"
+PEER = "01a0d6a4-3c1e-7b55-9d2f-6e8a10c4b7d3"
 
 
 class Invoke(Protocol):
@@ -822,3 +823,154 @@ class ExecutorHookTests(unittest.TestCase):
                 if row["event"] == "Stop"
             ]
             self.assertEqual(outcomes, ["correction", "drained"])
+
+    def test_streams_partition_a_project_queue(self) -> None:
+        """Stream sessions see only their stream's work; held work spans streams."""
+        with (
+            private_server() as (connection, _server),
+            tempfile.TemporaryDirectory() as tmp,
+        ):
+            invoke: Invoke
+            native: Native
+            create: Create
+            _, _, _, _, invoke, native, create = harness(
+                self, tmp, connection, {"CLAUDE_CODE_SESSION_ID": THREAD}
+            )
+
+            def streamed(title: str) -> str:
+                identifier = create(title)
+                native("update", identifier, "--set-metadata", "hive_stream=d97")
+                return identifier
+
+            def ready_ids(*args: str) -> list[str]:
+                beads = sequence(invoke("ready", *args)["beads"], "beads")
+                return [str(record(bead)["id"]) for bead in beads]
+
+            main = create("Default stream work")
+            d97 = streamed("Stream work")
+            unbound = invoke("ready", success=False)
+            self.assertIn("executor start", str(unbound))
+            # A session started without a stream works the default stream only.
+            started = invoke("start", "--project", "hive", "--continuous")
+            self.assertNotIn("stream", started)
+            self.assertEqual(ready_ids(), [main])
+            default_wait = invoke("await", "--timeout", "0")
+            self.assertEqual(default_wait["code"], "ExecutorWorkReady")
+            self.assertEqual(default_wait["ready"], [main])
+            rebound = invoke(
+                "start", "--project", "hive", "--stream", "d97", success=False
+            )
+            self.assertIn("stream binding", str(rebound))
+            invalid = invoke(
+                "start",
+                "--project",
+                "hive",
+                "--stream",
+                "D97 plan",
+                "--session",
+                PEER,
+                success=False,
+            )
+            self.assertIn("stream", str(invalid))
+            # A stream session sees only beads naming its stream.
+            stream_start = invoke(
+                "start",
+                "--project",
+                "hive",
+                "--stream",
+                "d97",
+                "--continuous",
+                "--session",
+                OTHER,
+            )
+            self.assertEqual(stream_start["stream"], "d97")
+            self.assertEqual(ready_ids("--session", OTHER), [d97])
+            stream_wait = invoke("await", "--session", OTHER, "--timeout", "0")
+            self.assertEqual(stream_wait["code"], "ExecutorWorkReady")
+            self.assertEqual(stream_wait["ready"], [d97])
+            self.assertEqual(stream_wait["stream"], "d97")
+
+            def stop_reason(session: str, prompt: str) -> str:
+                corrected = invoke(
+                    "hook",
+                    payload={
+                        "hook_event_name": "Stop",
+                        "session_id": session,
+                        "prompt_id": prompt,
+                        "stop_hook_active": False,
+                    },
+                )
+                self.assertEqual(corrected["decision"], "block")
+                return str(corrected["reason"])
+
+            # The stop check offers each session only its own stream's work and
+            # points it at stream-aware selection.
+            default_reason = stop_reason(THREAD, "01a0d6a4-3c1e-7b55-9d2f-6e8a10c4b7e2")
+            self.assertIn(main, default_reason)
+            self.assertNotIn(d97, default_reason)
+            self.assertIn("executor ready", default_reason)
+            stream_reason = stop_reason(OTHER, "01a0d6a4-3c1e-7b55-9d2f-6e8a10c4b7e3")
+            self.assertIn(d97, stream_reason)
+            self.assertNotIn(main, stream_reason)
+            # New input disarms; the session re-arms only on its own stream.
+            invoke(
+                "hook",
+                payload={
+                    "hook_event_name": "UserPromptSubmit",
+                    "session_id": OTHER,
+                    "source": "user",
+                    "prompt": "next bead",
+                },
+            )
+            unstreamed = invoke(
+                "start", "--project", "hive", "--session", OTHER, success=False
+            )
+            self.assertIn("d97", str(unstreamed))
+            rearmed = invoke(
+                "start",
+                "--project",
+                "hive",
+                "--stream",
+                "d97",
+                "--continuous",
+                "--session",
+                OTHER,
+            )
+            self.assertEqual(rearmed["stream"], "d97")
+            # A peer holds default-stream work that stream work waits on: the
+            # stream session keeps waiting, and the default session never counts
+            # the stream's dependent as its own waiting work.
+            native("update", main, "--assignee", PEER, "--status", "in_progress")
+            native("update", d97, "--assignee", PEER, "--status", "in_progress")
+            dependent = streamed("Stream work after the default-stream bead")
+            native("dep", "add", dependent, main)
+            self.assertEqual(ready_ids("--session", OTHER), [])
+            waiting = invoke(
+                "await", "--session", OTHER, "--timeout", "0.3", "--interval", "0.1"
+            )
+            self.assertEqual(waiting["code"], "ExecutorAwaitTimeout")
+            self.assertEqual(waiting["held"], sorted([d97, main]))
+            self.assertEqual(waiting["waiting"], [dependent])
+            corrected = invoke(
+                "hook",
+                payload={
+                    "hook_event_name": "Stop",
+                    "session_id": OTHER,
+                    "prompt_id": "01a0d6a4-3c1e-7b55-9d2f-6e8a10c4b7e1",
+                    "stop_hook_active": False,
+                },
+            )
+            self.assertEqual(corrected["decision"], "block")
+            for expected in ("stream d97", main, dependent, "executor await"):
+                self.assertIn(expected, str(corrected["reason"]))
+            drained = invoke("await", "--timeout", "5")
+            self.assertEqual(drained["code"], "ExecutorQueueDrained")
+            self.assertEqual(drained["waiting"], [])
+            # The held default-stream bead lands, which frees the stream's work.
+            native("update", main, "--set-metadata", "hive_resolution=completed")
+            native("close", main)
+            freed = invoke("await", "--session", OTHER, "--timeout", "5")
+            self.assertEqual(freed["code"], "ExecutorWorkReady")
+            self.assertEqual(freed["ready"], [dependent])
+            self.assertEqual(ready_ids("--session", OTHER), [dependent])
+            self.assertEqual(ready_ids(), [])

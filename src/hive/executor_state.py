@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import re
 from dataclasses import asdict, dataclass
 from enum import StrEnum
 from pathlib import Path
@@ -12,6 +13,9 @@ from uuid import uuid4
 from hive.jsonvalue import parse, record, string
 from hive.locking import file_lock
 from hive.thread_links import thread_id
+
+# A stream partitions one project's queue; the default stream is unnamed.
+STREAM_NAME: re.Pattern[str] = re.compile(r"[a-z0-9][a-z0-9_-]{0,63}")
 
 
 class StopKind(StrEnum):
@@ -32,6 +36,7 @@ class ExecutorState:
     revision: str
     continuation: str = ""
     continuous: bool = False
+    stream: str = ""
 
 
 @dataclass(frozen=True)
@@ -72,6 +77,7 @@ class ExecutorStore:
             string(value.get("revision"), "revision"),
             string(value.get("continuation", ""), "continuation", empty=True),
             continuous,
+            string(value.get("stream", ""), "stream", empty=True),
         )
 
     def save(self, state: ExecutorState) -> None:
@@ -87,11 +93,22 @@ class ExecutorStore:
         finally:
             temporary.unlink(missing_ok=True)
 
-    def start(self, project: str, *, continuous: bool = False) -> None:
+    def start(
+        self, project: str, *, continuous: bool = False, stream: str = ""
+    ) -> None:
+        if stream and not STREAM_NAME.fullmatch(stream):
+            raise ValueError(
+                "Executor stream must be lowercase letters, digits, '-' or '_'"
+            )
         with file_lock(self.lock_path, timeout=0.2):
             previous = self.read()
             if previous is not None and previous.project != project:
                 raise ValueError("Executor project binding cannot change in a session")
+            if previous is not None and previous.stream != stream:
+                bound = previous.stream or "the default stream"
+                raise ValueError(
+                    f"Executor stream binding cannot change in a session (bound to {bound})"
+                )
             self.save(
                 ExecutorState(
                     project,
@@ -101,6 +118,7 @@ class ExecutorStore:
                     str(uuid4()),
                     previous.continuation if previous else "",
                     continuous,
+                    stream,
                 )
             )
 
@@ -123,6 +141,7 @@ class ExecutorStore:
                         reason,
                         "" if new_input is not None else previous.corrected_turn,
                         str(uuid4()),
+                        stream=previous.stream,
                     )
                 )
                 return "disarmed"

@@ -13,6 +13,7 @@ from hive.executor_diagnostics import Receipt, append, identity
 from hive.executor_queue import (
     WAIT_TIMEOUT_SECONDS,
     await_work,
+    claimable,
     ids,
     peers,
     settled_ready,
@@ -65,22 +66,46 @@ def start(
     *,
     continuous: bool = False,
     session: str | None = None,
+    stream: str | None = None,
 ) -> dict[str, object]:
     settings = read_settings()
     if project not in {item.id for item in settings.projects}:
         raise ValueError("Executor project must be registered in bootstrap settings")
     store = ExecutorStore(context.state, _host_session(session))
-    store.start(project, continuous=continuous)
-    return _receipt(
-        context,
-        Receipt("start", "activated", store.session),
-        {
-            "code": "ExecutorStarted",
-            "project": project,
-            "session": store.session,
-            "continuous": continuous,
-        },
+    store.start(project, continuous=continuous, stream=stream or "")
+    response: dict[str, object] = {
+        "code": "ExecutorStarted",
+        "project": project,
+        "session": store.session,
+        "continuous": continuous,
+    }
+    if stream:
+        response["stream"] = stream
+    return _receipt(context, Receipt("start", "activated", store.session), response)
+
+
+def ready(context: LaunchContext, session: str | None = None) -> dict[str, object]:
+    """The bound project stream's unclaimed ready beads, as native records.
+
+    It reads exactly what `await` and the stop check would report as ready, in
+    native order, so the agent selects from the same candidates. It never claims.
+    """
+    store = ExecutorStore(context.state, _host_session(session))
+    state = store.read()
+    if state is None:
+        raise ValueError("Ready requires a bound executor; run executor start first")
+    process = BeadsProcess(BeadsConnection.read(context.beads), timeout=10)
+    beads = claimable(
+        process.ready(state.project, store.session), state.project, state.stream
     )
+    response: dict[str, object] = {
+        "code": "ExecutorReady",
+        "project": state.project,
+        "beads": list(beads),
+    }
+    if state.stream:
+        response["stream"] = state.stream
+    return response
 
 
 def stop(
@@ -156,6 +181,7 @@ def wait(
         timeout=timeout,
         interval=interval,
         active=armed,
+        stream=state.stream,
     )
 
 
@@ -236,28 +262,37 @@ def _handle(
         raise ValueError("Stop requires a boolean stop_hook_active")
     process = BeadsProcess(BeadsConnection.read(context.beads), timeout=2)
     assigned = ids(process.assigned(store.session), state.project, store.session)
-    ready = (
-        ids(process.ready(state.project, store.session), state.project, None)
+    candidates = (
+        ids(
+            process.ready(state.project, store.session),
+            state.project,
+            None,
+            state.stream,
+        )
         if state.continuous
         else ()
     )
     stop_command = _command(
         context, "stop", "--kind", "KIND", "--reason", "CONCRETE EVIDENCE"
     )
-    if not assigned and not ready:
+    ready_command = _command(context, "ready", "--session", store.session, "--json")
+    queue = f"{state.project} stream {state.stream}" if state.stream else state.project
+    if not assigned and not candidates:
         if not state.continuous:
             return {}, "drained"
         # Peer executors may still land work that unblocks the rest of the queue.
-        found = peers(process, state.project, store.session, ready)
-        ready = settled_ready(process, state.project, store.session, found)
-        if not ready:
+        found = peers(process, state.project, store.session, candidates, state.stream)
+        candidates = settled_ready(
+            process, state.project, store.session, found, state.stream
+        )
+        if not candidates:
             if not found.pending:
                 return {}, "drained"
             await_command = _command(
                 context, "await", "--session", store.session, "--json"
             )
             message = (
-                f"Hive executor {state.project}: no unfinished assignment or unclaimed "
+                f"Hive executor {queue}: no unfinished assignment or unclaimed "
                 f"ready bead, but peer executors hold {', '.join(found.held)} while "
                 f"{', '.join(found.waiting)} wait. The queue is not drained. Run "
                 f"`{await_command}` (in Claude Code as a background command, then end "
@@ -275,11 +310,14 @@ def _handle(
             )
             return _correct(store, state, value, active, message)
     message = (
-        f"Hive executor {state.project}: unfinished assignments: "
+        f"Hive executor {queue}: unfinished assignments: "
         f"{', '.join(assigned) or 'none'}; unclaimed ready candidates: "
-        f"{', '.join(ready) or 'none'}. "
+        f"{', '.join(candidates) or 'none'}. "
         "Reconcile remaining acceptance, writers and delivery before stopping; "
-        "promotion alone does not complete acceptance. Inspect candidate scope, "
+        "promotion alone does not complete acceptance. Select queue work only from "
+        f"`{ready_command}`, which lists this session's project stream; never "
+        "claim another stream's bead from a project-wide `bd ready`. Inspect "
+        "candidate scope, "
         "prerequisite outcomes, approvals, ownership and resource pressure before "
         "claiming. Continue eligible project work under the executor skill unless "
         "the user explicitly limited the request to named work. Before treating "

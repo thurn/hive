@@ -46,6 +46,12 @@ def main() -> int:
             help="Continue through the project's ready queue (the executor default)",
         )
         executor_start.add_argument("--session")
+        executor_start.add_argument(
+            "--stream",
+            help="Work only beads whose hive_stream metadata names this stream",
+        )
+        executor_ready = executor_actions.add_parser("ready")
+        executor_ready.add_argument("--session")
         executor_stop = executor_actions.add_parser("stop")
         from hive.executor_state import StopKind
 
@@ -133,7 +139,14 @@ def main() -> int:
                 "directory": str(context.source),
             }
         elif parsed.group == "executor":
-            from hive.executor_hook import configuration, handle, start, stop, wait
+            from hive.executor_hook import (
+                configuration,
+                handle,
+                ready,
+                start,
+                stop,
+                wait,
+            )
 
             if parsed.action == "start":
                 result = start(
@@ -141,7 +154,10 @@ def main() -> int:
                     parsed.project,
                     continuous=parsed.continuous,
                     session=parsed.session,
+                    stream=parsed.stream,
                 )
+            elif parsed.action == "ready":
+                result = ready(context, parsed.session)
             elif parsed.action == "stop":
                 result = stop(
                     context,
