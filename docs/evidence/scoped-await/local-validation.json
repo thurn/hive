@@ -1,0 +1,19 @@
+{
+  "cause": "hv-kff6",
+  "origin": "hv-n7fn.44",
+  "base": "6a25dad92bf1a2cafe13046290622ea700ce32a1",
+  "newNativeJourney": {
+    "tests": 1,
+    "seconds": 10.418,
+    "passed": true
+  },
+  "allWaitJourneys": {
+    "tests": 3,
+    "seconds": 27.987,
+    "passed": true,
+    "includes": "controlled65min default, owned checkpoint and scoped parent/labels"
+  },
+  "typing": "Pyre passed; no type errors",
+  "review": "no actionable findings",
+  "scope": "disposable native Beads/Dolt public CLI; no live65min scopedwait, finalgate or Linux acceptance claim yet"
+}

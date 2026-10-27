@@ -138,6 +138,27 @@ Several executor sessions may work one project at once. In continuous mode the s
 
 Executor waits default to 3900 seconds (65 minutes), while native Beads reads retain their 30-second interval. The executor skill and generated stop correction direct Codex to retain one wait and collect every process-output chunk inside one long-yield tool cell, without minute-level model queue checks, standing-duty sweeps or unchanged-state commentary. Claude Code uses its existing background-shell completion notification. The shared [waiting guidance](../skills/shared/waiting.md) distinguishes the command deadline from process-output collection, preserves new-input disarming and exact-process cleanup, and makes no exclusive wake-one claim: multiple waiters may see candidates, and native Beads claims still determine ownership. A public CLI journey with a controlled idle clock verifies the default 65-minute timeout against native Beads without spending an hour in the shared gate; the peer-close journey also uses the default. A live Codex long-yield cell retained a controlled native wait for 125.518 seconds without intermediate model turns, returning ready work 0.361 seconds after its blocker closed at a verification interval of one second; a split-output exercise verified chunk accumulation. A separate retained native wait stayed pending for 1463.375 seconds before its owned disposable process group was cancelled; no full-hour duration or terminal readiness result is claimed for that run. Its elapsed duration is supplementary evidence, not a promotion gate. See [acceptance evidence](acceptance.md#retained-codex-executor-work-wait).
 
+## Scoped executor waits (hv-kff6)
+
+`executor await --parent <epic-id> --include-label ci-fix --include-label velocity`
+restricts ready/waiting work to a direct epic child or an included shared label.
+The existing project/stream binding still applies; no options keeps the default
+queue. Owned unfinished assignments remain visible, held peers remain
+project-wide, and the post-peer readiness recheck uses the same filter. Results
+report the applied query scope. This is a read-only wait option, not a claim or
+persistent session/stream change.
+
+A new public CLI journey against disposable native Beads/Dolt proves unrelated
+ready work does not wake or drain a scoped dependent while its peer holds the
+prerequisite, then wakes when that peer closes. It covers CI/velocity label OR
+semantics, foreign project/stream exclusions, default behavior, scoped draining,
+owned-assignment priority and empty-option rejection. The focused journey passes
+in 10.418 seconds. Existing controlled default-hour/deadline, ownership and stream
+journeys plus final checks, cold review, exact certification and the promoted
+commit's Portability result remain in the native cause bead's delivery record.
+The live motivating case belongs to Playlist Survivors `hv-n7fn.44`; no actual
+65-minute scoped idle duration or provider outage is claimed here.
+
 ## Executor streams (hv-e4ur)
 
 A project's peer executors can be split into streams, so one repository can run two plans with dedicated capacity (requested for `dreamtides_web`, whose main plan and Dreamtides 97 plan run side by side). `executor start --stream NAME` stores the stream in the session's activation record and refuses a later start that changes it. Beads carrying `hive_stream=NAME` belong to that stream; every other bead belongs to the default stream, so existing projects and their beads are unchanged. Ready and waiting reads in `await` and the stop check filter by stream, while held work and the session's own assignments stay project-wide: a blocker another stream holds keeps a dependent stream's wait pending rather than drained. `executor ready` returns the stream's unclaimed ready native records in native order, and the executor skill selects through it so agent selection matches the hooks. A native disposable journey covers default-stream exclusion, stream-only selection, refused rebinding and invalid names, a cross-stream held blocker keeping a stream wait and stop correction pending, and waking when that blocker closes. Stream membership is metadata the filing agent sets; nothing prevents a noncooperating agent from claiming outside its stream, and the dashboard still groups beads by project only. No live two-stream run has been observed.

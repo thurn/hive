@@ -1,0 +1,11 @@
+test_default_wait_spans_an_hour_with_a_controlled_clock (test_executor_hook.ExecutorHookTests.test_default_wait_spans_an_hour_with_a_controlled_clock)
+Public await spends its 65-minute budget without real elapsed delay. ... ok
+test_owned_checkpoint_waits_for_its_peer_prerequisite (test_executor_hook.ExecutorHookTests.test_owned_checkpoint_waits_for_its_peer_prerequisite)
+Native blockers keep a claimed checkpoint waiting without releasing it. ... ok
+test_wait_can_limit_epic_and_include_shared_labels (test_executor_hook.ExecutorHookTests.test_wait_can_limit_epic_and_include_shared_labels)
+An authorized subset waits beside unrelated ready work, then wakes. ... ok
+
+----------------------------------------------------------------------
+Ran 3 tests in 27.987s
+
+OK

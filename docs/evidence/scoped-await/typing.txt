@@ -1,0 +1,91 @@
+2026-10-26 21:39:36,513 [PID 8547] INFO No binary specified, looking for `pyre.bin` in PATH
+2026-10-26 21:39:36,515 [PID 8547] INFO Pyre binary is located at `.venv/bin/pyre.bin`
+2026-10-26 21:39:36,519 [PID 8547] INFO No typeshed specified, looking for it...
+2026-10-26 21:39:36,519 [PID 8547] INFO Found: `/Users/dthurn/hive/.worktrees/codex-epic-scoped-await/.venv/lib/pyre_check/typeshed`
+2026-10-26 21:39:36,521 [PID 8547] INFO Writing arguments into /var/folders/dw/rtc6lpnx293gdfl40kv4xt5m0000gn/T/pyre_arguments_dmu1v99c.json...
+2026-10-26 21:39:36,521 [PID 8547] DEBUG Arguments:
+{
+  "source_paths": {
+    "kind": "simple",
+    "paths": [
+      "/Users/dthurn/hive/.worktrees/codex-epic-scoped-await/src",
+      "/Users/dthurn/hive/.worktrees/codex-epic-scoped-await/tests",
+      "/Users/dthurn/hive/.worktrees/codex-epic-scoped-await/scripts"
+    ]
+  },
+  "search_paths": [
+    "/Users/dthurn/hive/.worktrees/codex-epic-scoped-await/.venv/lib/python3.12/site-packages$tomli",
+    "/Users/dthurn/hive/.worktrees/codex-epic-scoped-await/.venv/lib/python3.12/site-packages$platformdirs",
+    "/Users/dthurn/hive/.worktrees/codex-epic-scoped-await/.venv/lib/python3.12/site-packages$pyrefly",
+    "/Users/dthurn/hive/.worktrees/codex-epic-scoped-await/.venv/lib/python3.12/site-packages$black",
+    "/Users/dthurn/hive/.worktrees/codex-epic-scoped-await/.venv/lib/python3.12/site-packages$marshmallow",
+    "/Users/dthurn/hive/.worktrees/codex-epic-scoped-await/.venv/lib/python3.12/site-packages$typeguard",
+    "/Users/dthurn/hive/.worktrees/codex-epic-scoped-await/.venv/lib/python3.12/site-packages$pip",
+    "/Users/dthurn/hive/.worktrees/codex-epic-scoped-await/.venv/lib/python3.12/site-packages$packaging",
+    "/Users/dthurn/hive/.worktrees/codex-epic-scoped-await/.venv/lib/python3.12/site-packages$pytokens",
+    "/Users/dthurn/hive/.worktrees/codex-epic-scoped-await/.venv/lib/python3.12/site-packages$pathspec",
+    "/Users/dthurn/hive/.worktrees/codex-epic-scoped-await/.venv/lib/python3.12/site-packages$pkg_resources",
+    "/Users/dthurn/hive/.worktrees/codex-epic-scoped-await/.venv/lib/python3.12/site-packages$click",
+    "/Users/dthurn/hive/.worktrees/codex-epic-scoped-await/.venv/lib/python3.12/site-packages$dataclasses_json",
+    "/Users/dthurn/hive/.worktrees/codex-epic-scoped-await/.venv/lib/python3.12/site-packages$tomli_w",
+    "/Users/dthurn/hive/.worktrees/codex-epic-scoped-await/.venv/lib/python3.12/site-packages$testslide",
+    "/Users/dthurn/hive/.worktrees/codex-epic-scoped-await/.venv/lib/python3.12/site-packages$libcst",
+    "/Users/dthurn/hive/.worktrees/codex-epic-scoped-await/.venv/lib/pyre_check/typeshed/stdlib",
+    "/Users/dthurn/hive/.worktrees/codex-epic-scoped-await/.venv/lib/pyre_check/typeshed/stubs/ExifRead",
+    "/Users/dthurn/hive/.worktrees/codex-epic-scoped-await/.venv/lib/pyre_check/typeshed/stubs/PyMySQL",
+    "/Users/dthurn/hive/.worktrees/codex-epic-scoped-await/.venv/lib/pyre_check/typeshed/stubs/PyYAML",
+    "/Users/dthurn/hive/.worktrees/codex-epic-scoped-await/.venv/lib/pyre_check/typeshed/stubs/aiofiles",
+    "/Users/dthurn/hive/.worktrees/codex-epic-scoped-await/.venv/lib/pyre_check/typeshed/stubs/chevron",
+    "/Users/dthurn/hive/.worktrees/codex-epic-scoped-await/.venv/lib/pyre_check/typeshed/stubs/colorama",
+    "/Users/dthurn/hive/.worktrees/codex-epic-scoped-await/.venv/lib/pyre_check/typeshed/stubs/ldap3",
+    "/Users/dthurn/hive/.worktrees/codex-epic-scoped-await/.venv/lib/pyre_check/typeshed/stubs/mysqlclient",
+    "/Users/dthurn/hive/.worktrees/codex-epic-scoped-await/.venv/lib/pyre_check/typeshed/stubs/paramiko",
+    "/Users/dthurn/hive/.worktrees/codex-epic-scoped-await/.venv/lib/pyre_check/typeshed/stubs/psycopg2",
+    "/Users/dthurn/hive/.worktrees/codex-epic-scoped-await/.venv/lib/pyre_check/typeshed/stubs/pycurl",
+    "/Users/dthurn/hive/.worktrees/codex-epic-scoped-await/.venv/lib/pyre_check/typeshed/stubs/python-dateutil",
+    "/Users/dthurn/hive/.worktrees/codex-epic-scoped-await/.venv/lib/pyre_check/typeshed/stubs/pytz",
+    "/Users/dthurn/hive/.worktrees/codex-epic-scoped-await/.venv/lib/pyre_check/typeshed/stubs/regex",
+    "/Users/dthurn/hive/.worktrees/codex-epic-scoped-await/.venv/lib/pyre_check/typeshed/stubs/requests",
+    "/Users/dthurn/hive/.worktrees/codex-epic-scoped-await/.venv/lib/pyre_check/typeshed/stubs/retry",
+    "/Users/dthurn/hive/.worktrees/codex-epic-scoped-await/.venv/lib/pyre_check/typeshed/stubs/tqdm",
+    "/Users/dthurn/hive/.worktrees/codex-epic-scoped-await/.venv/lib/pyre_check/typeshed/stubs/ujson"
+  ],
+  "excludes": [],
+  "checked_directory_allowlist": [
+    "/Users/dthurn/hive/.worktrees/codex-epic-scoped-await/src",
+    "/Users/dthurn/hive/.worktrees/codex-epic-scoped-await/scripts",
+    "/Users/dthurn/hive/.worktrees/codex-epic-scoped-await/tests"
+  ],
+  "checked_directory_blocklist": [],
+  "extensions": [],
+  "log_path": "/Users/dthurn/hive/.worktrees/codex-epic-scoped-await/.pyre",
+  "global_root": "/Users/dthurn/hive/.worktrees/codex-epic-scoped-await",
+  "debug": false,
+  "python_version": {
+    "major": 3,
+    "minor": 12,
+    "micro": 14
+  },
+  "system_platform": "darwin",
+  "shared_memory": {},
+  "parallel": true,
+  "number_of_workers": 2,
+  "additional_logging_sections": [
+    "-progress"
+  ],
+  "show_error_traces": false,
+  "strict": true
+}
+2026-10-26 21:39:37,843 [PID 8547] PERFORMANCE  Initialized shared memory (heap size: 8589934592, dep table pow: 1, hash table pow: 26): 0.000s
+2026-10-26 21:39:37,843 [PID 8547] PERFORMANCE  Initialized multiprocessing workers (workers: 2): 0.001s
+2026-10-26 21:39:37,843 [PID 8547] INFO  Building module tracker...
+2026-10-26 21:39:37,952 [PID 8547] PERFORMANCE  Module tracker built: 0.105s
+2026-10-26 21:39:37,952 [PID 8547] PERFORMANCE  Full environment built: 0.105s
+2026-10-26 21:39:37,952 [PID 8547] INFO  Collecting all definitions...
+2026-10-26 21:39:38,230 [PID 8547] PERFORMANCE  Collected definitions (defines: 1028): 0.277s
+2026-10-26 21:39:38,230 [PID 8547] INFO  Checking 1028 functions...
+2026-10-26 21:39:39,963 [PID 8547] PERFORMANCE  Check_TypeCheck (defines: 1028, raw errors: 54): 1.733s
+2026-10-26 21:39:39,963 [PID 8547] MEMORY  Shared memory size post-typecheck (size: 7)
+2026-10-26 21:39:40,010 [PID 8547] PERFORMANCE  Check_Postprocessing: 0.055s
+2026-10-26 21:39:40,011 [PID 8547] PERFORMANCE  Check (request kind: FullCheck): 2.172s
+2026-10-26 21:39:40,034 [PID 8547] SUCCESS No type errors found

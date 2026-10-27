@@ -1,0 +1,7 @@
+test_wait_can_limit_epic_and_include_shared_labels (test_executor_hook.ExecutorHookTests.test_wait_can_limit_epic_and_include_shared_labels)
+An authorized subset waits beside unrelated ready work, then wakes. ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 10.418s
+
+OK

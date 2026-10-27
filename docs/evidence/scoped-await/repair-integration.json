@@ -1,0 +1,36 @@
+{
+  "oldSource": "2a682cd54e659dc2819bba1301e28c069039289a",
+  "repairBase": "bc96e7878b85a9222cd42fd004304c7424bd3cab",
+  "rebasedSourceBeforeEvidenceAmend": "f7182eff73a0dba658971e301d3183dac3d6b64d",
+  "repairBead": "hv-ylr7",
+  "repairPortability": "https://github.com/thurn/hive/actions/runs/40452632224",
+  "repairPortabilityConclusion": "success",
+  "ownReviewedSourceFiles": [
+    {
+      "path": "src/hive/cli.py",
+      "sha256": "e4ebf8ecab0749455b5e8adda647bc01d6232105c035dddd5f7c2939aa6e8279",
+      "unchanged": true
+    },
+    {
+      "path": "src/hive/executor_hook.py",
+      "sha256": "947e701c7d0274aaa50f0f24eb6a4ba189f9b938b4cd97d9c34463e407cc5ab0",
+      "unchanged": true
+    },
+    {
+      "path": "src/hive/executor_queue.py",
+      "sha256": "a15dad69100ca76e27e627aa05ed78cbee07444ca017742786722a5029803d13",
+      "unchanged": true
+    },
+    {
+      "path": "tests/test_executor_hook.py",
+      "sha256": "5484a03a35dca5745d81751edb6f619c06aefb166ade7629f1e6153f017b27c3",
+      "unchanged": true
+    },
+    {
+      "path": "skills/shared/waiting.md",
+      "sha256": "6350eda43118f69a4811f0b1d288f7f657cb62d16f60c5cb0ed98bb05a5cedd9",
+      "unchanged": true
+    }
+  ],
+  "review": "same reviewed implementation byte-identical, no confirmation review; test-only prerequisite has its own cold review/red-green/fullgate/Linux pass"
+}

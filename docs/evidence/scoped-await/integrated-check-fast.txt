@@ -1,0 +1,254 @@
+Check environment: Python 3.12.14, SQLite 3.53.4, Darwin arm64, TZ=UTC, LC_ALL=C
+Started: npm run check --prefix dashboard
+Finished (3.883s): npm run check --prefix dashboard
+
+> hive-dashboard@0.1.0 check
+> tsc -b && eslint . && vitest run
+
+
+ RUN  v3.2.4 /Users/dthurn/hive/.worktrees/codex-epic-scoped-await/dashboard
+
+ ✓ src/dashboard.test.tsx (33 tests) 721ms
+
+ Test Files  1 passed (1)
+      Tests  33 passed (33)
+   Start at  05:02:37
+   Duration  1.43s (transform 100ms, setup 78ms, collect 190ms, tests 721ms, environment 229ms, prepare 42ms)
+
+Started: /Users/dthurn/hive/.worktrees/codex-epic-scoped-await/.venv/bin/python -m ruff check src tests scripts
+Finished (0.110s): /Users/dthurn/hive/.worktrees/codex-epic-scoped-await/.venv/bin/python -m ruff check src tests scripts
+All checks passed!
+Started: /Users/dthurn/hive/.worktrees/codex-epic-scoped-await/.venv/bin/python -m black --check src tests scripts
+Finished (0.318s): /Users/dthurn/hive/.worktrees/codex-epic-scoped-await/.venv/bin/python -m black --check src tests scripts
+All done! ✨ 🍰 ✨
+154 files would be left unchanged.
+Started: /Users/dthurn/hive/.worktrees/codex-epic-scoped-await/.venv/bin/pyre --noninteractive check
+Finished (2.638s): /Users/dthurn/hive/.worktrees/codex-epic-scoped-await/.venv/bin/pyre --noninteractive check
+2026-10-27 05:02:39,869 [PID 59263] INFO No binary specified, looking for `pyre.bin` in PATH
+2026-10-27 05:02:39,869 [PID 59263] INFO Pyre binary is located at `/Users/dthurn/hive/.worktrees/codex-epic-scoped-await/.venv/bin/pyre.bin`
+2026-10-27 05:02:39,873 [PID 59263] INFO No typeshed specified, looking for it...
+2026-10-27 05:02:39,873 [PID 59263] INFO Found: `/Users/dthurn/hive/.worktrees/codex-epic-scoped-await/.venv/lib/pyre_check/typeshed`
+2026-10-27 05:02:39,875 [PID 59263] INFO Writing arguments into /var/folders/dw/rtc6lpnx293gdfl40kv4xt5m0000gn/T/pyre_arguments_pogpiq_l.json...
+2026-10-27 05:02:39,875 [PID 59263] DEBUG Arguments:
+{
+  "source_paths": {
+    "kind": "simple",
+    "paths": [
+      "/Users/dthurn/hive/.worktrees/codex-epic-scoped-await/src",
+      "/Users/dthurn/hive/.worktrees/codex-epic-scoped-await/tests",
+      "/Users/dthurn/hive/.worktrees/codex-epic-scoped-await/scripts"
+    ]
+  },
+  "search_paths": [
+    "/Users/dthurn/hive/.worktrees/codex-epic-scoped-await/.venv/lib/python3.12/site-packages$click",
+    "/Users/dthurn/hive/.worktrees/codex-epic-scoped-await/.venv/lib/python3.12/site-packages$libcst",
+    "/Users/dthurn/hive/.worktrees/codex-epic-scoped-await/.venv/lib/python3.12/site-packages$black",
+    "/Users/dthurn/hive/.worktrees/codex-epic-scoped-await/.venv/lib/python3.12/site-packages$testslide",
+    "/Users/dthurn/hive/.worktrees/codex-epic-scoped-await/.venv/lib/python3.12/site-packages$typeguard",
+    "/Users/dthurn/hive/.worktrees/codex-epic-scoped-await/.venv/lib/python3.12/site-packages$pip",
+    "/Users/dthurn/hive/.worktrees/codex-epic-scoped-await/.venv/lib/python3.12/site-packages$platformdirs",
+    "/Users/dthurn/hive/.worktrees/codex-epic-scoped-await/.venv/lib/python3.12/site-packages$dataclasses_json",
+    "/Users/dthurn/hive/.worktrees/codex-epic-scoped-await/.venv/lib/python3.12/site-packages$marshmallow",
+    "/Users/dthurn/hive/.worktrees/codex-epic-scoped-await/.venv/lib/python3.12/site-packages$pathspec",
+    "/Users/dthurn/hive/.worktrees/codex-epic-scoped-await/.venv/lib/python3.12/site-packages$pytokens",
+    "/Users/dthurn/hive/.worktrees/codex-epic-scoped-await/.venv/lib/python3.12/site-packages$pkg_resources",
+    "/Users/dthurn/hive/.worktrees/codex-epic-scoped-await/.venv/lib/python3.12/site-packages$tomli_w",
+    "/Users/dthurn/hive/.worktrees/codex-epic-scoped-await/.venv/lib/python3.12/site-packages$packaging",
+    "/Users/dthurn/hive/.worktrees/codex-epic-scoped-await/.venv/lib/python3.12/site-packages$tomli",
+    "/Users/dthurn/hive/.worktrees/codex-epic-scoped-await/.venv/lib/python3.12/site-packages$pyrefly",
+    "/Users/dthurn/hive/.worktrees/codex-epic-scoped-await/.venv/lib/pyre_check/typeshed/stdlib",
+    "/Users/dthurn/hive/.worktrees/codex-epic-scoped-await/.venv/lib/pyre_check/typeshed/stubs/ExifRead",
+    "/Users/dthurn/hive/.worktrees/codex-epic-scoped-await/.venv/lib/pyre_check/typeshed/stubs/PyMySQL",
+    "/Users/dthurn/hive/.worktrees/codex-epic-scoped-await/.venv/lib/pyre_check/typeshed/stubs/PyYAML",
+    "/Users/dthurn/hive/.worktrees/codex-epic-scoped-await/.venv/lib/pyre_check/typeshed/stubs/aiofiles",
+    "/Users/dthurn/hive/.worktrees/codex-epic-scoped-await/.venv/lib/pyre_check/typeshed/stubs/chevron",
+    "/Users/dthurn/hive/.worktrees/codex-epic-scoped-await/.venv/lib/pyre_check/typeshed/stubs/colorama",
+    "/Users/dthurn/hive/.worktrees/codex-epic-scoped-await/.venv/lib/pyre_check/typeshed/stubs/ldap3",
+    "/Users/dthurn/hive/.worktrees/codex-epic-scoped-await/.venv/lib/pyre_check/typeshed/stubs/mysqlclient",
+    "/Users/dthurn/hive/.worktrees/codex-epic-scoped-await/.venv/lib/pyre_check/typeshed/stubs/paramiko",
+    "/Users/dthurn/hive/.worktrees/codex-epic-scoped-await/.venv/lib/pyre_check/typeshed/stubs/psycopg2",
+    "/Users/dthurn/hive/.worktrees/codex-epic-scoped-await/.venv/lib/pyre_check/typeshed/stubs/pycurl",
+    "/Users/dthurn/hive/.worktrees/codex-epic-scoped-await/.venv/lib/pyre_check/typeshed/stubs/python-dateutil",
+    "/Users/dthurn/hive/.worktrees/codex-epic-scoped-await/.venv/lib/pyre_check/typeshed/stubs/pytz",
+    "/Users/dthurn/hive/.worktrees/codex-epic-scoped-await/.venv/lib/pyre_check/typeshed/stubs/regex",
+    "/Users/dthurn/hive/.worktrees/codex-epic-scoped-await/.venv/lib/pyre_check/typeshed/stubs/requests",
+    "/Users/dthurn/hive/.worktrees/codex-epic-scoped-await/.venv/lib/pyre_check/typeshed/stubs/retry",
+    "/Users/dthurn/hive/.worktrees/codex-epic-scoped-await/.venv/lib/pyre_check/typeshed/stubs/tqdm",
+    "/Users/dthurn/hive/.worktrees/codex-epic-scoped-await/.venv/lib/pyre_check/typeshed/stubs/ujson"
+  ],
+  "excludes": [],
+  "checked_directory_allowlist": [
+    "/Users/dthurn/hive/.worktrees/codex-epic-scoped-await/scripts",
+    "/Users/dthurn/hive/.worktrees/codex-epic-scoped-await/tests",
+    "/Users/dthurn/hive/.worktrees/codex-epic-scoped-await/src"
+  ],
+  "checked_directory_blocklist": [],
+  "extensions": [],
+  "log_path": "/Users/dthurn/hive/.worktrees/codex-epic-scoped-await/.pyre",
+  "global_root": "/Users/dthurn/hive/.worktrees/codex-epic-scoped-await",
+  "debug": false,
+  "python_version": {
+    "major": 3,
+    "minor": 12,
+    "micro": 14
+  },
+  "system_platform": "darwin",
+  "shared_memory": {},
+  "parallel": true,
+  "number_of_workers": 2,
+  "additional_logging_sections": [
+    "-progress"
+  ],
+  "show_error_traces": false,
+  "strict": true
+}
+2026-10-27 05:02:39,972 [PID 59263] PERFORMANCE  Initialized shared memory (heap size: 8589934592, dep table pow: 1, hash table pow: 26): 0.001s
+2026-10-27 05:02:39,972 [PID 59263] PERFORMANCE  Initialized multiprocessing workers (workers: 2): 0.001s
+2026-10-27 05:02:39,985 [PID 59263] INFO  Building module tracker...
+2026-10-27 05:02:40,060 [PID 59263] PERFORMANCE  Module tracker built: 0.080s
+2026-10-27 05:02:40,060 [PID 59263] PERFORMANCE  Full environment built: 0.081s
+2026-10-27 05:02:40,060 [PID 59263] INFO  Collecting all definitions...
+2026-10-27 05:02:40,350 [PID 59263] PERFORMANCE  Collected definitions (defines: 1028): 0.288s
+2026-10-27 05:02:40,350 [PID 59263] INFO  Checking 1028 functions...
+2026-10-27 05:02:42,017 [PID 59263] PERFORMANCE  Check_TypeCheck (defines: 1028, raw errors: 54): 1.672s
+2026-10-27 05:02:42,017 [PID 59263] MEMORY  Shared memory size post-typecheck (size: 7)
+2026-10-27 05:02:42,079 [PID 59263] PERFORMANCE  Check_Postprocessing: 0.055s
+2026-10-27 05:02:42,079 [PID 59263] PERFORMANCE  Check (request kind: FullCheck): 2.097s
+2026-10-27 05:02:42,090 [PID 59263] SUCCESS No type errors found
+Started: /Users/dthurn/hive/.worktrees/codex-epic-scoped-await/.venv/bin/python -m unittest discover -s tests -p test_dashboard_budget.py -v -k constrained_pages
+Finished (1.139s): /Users/dthurn/hive/.worktrees/codex-epic-scoped-await/.venv/bin/python -m unittest discover -s tests -p test_dashboard_budget.py -v -k constrained_pages
+test_constrained_pages_eventually_publish_every_unpriced_request (test_dashboard_budget.DashboardBudgetTests.test_constrained_pages_eventually_publish_every_unpriced_request) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 1.019s
+
+OK
+Started: /Users/dthurn/hive/.worktrees/codex-epic-scoped-await/.venv/bin/python -m unittest discover -s tests -p test_dashboard_api.py -v -k excerpts
+Finished (0.428s): /Users/dthurn/hive/.worktrees/codex-epic-scoped-await/.venv/bin/python -m unittest discover -s tests -p test_dashboard_api.py -v -k excerpts
+test_excerpts_identity_privacy_replacement_and_unmigrated_store (test_dashboard_api.DashboardTests.test_excerpts_identity_privacy_replacement_and_unmigrated_store) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.323s
+
+OK
+Started: /Users/dthurn/hive/.worktrees/codex-epic-scoped-await/.venv/bin/python -m unittest discover -s tests -p test_dashboard_server.py -v -k environment_failure
+Started: /Users/dthurn/hive/.worktrees/codex-epic-scoped-await/.venv/bin/python -m unittest discover -s tests -p test_usage.py -v
+Finished (0.535s): /Users/dthurn/hive/.worktrees/codex-epic-scoped-await/.venv/bin/python -m unittest discover -s tests -p test_usage.py -v
+test_collector_migrates_old_usage_without_repricing_or_recounting (test_usage.SchemaMigrationTests.test_collector_migrates_old_usage_without_repricing_or_recounting) ... ok
+test_migration_failure_rolls_back_schema_and_data (test_usage.SchemaMigrationTests.test_migration_failure_rolls_back_schema_and_data) ... ok
+test_newer_schema_refuses_reads_and_writes_without_changes (test_usage.SchemaMigrationTests.test_newer_schema_refuses_reads_and_writes_without_changes) ... ok
+test_batch_boundary_is_not_mistaken_for_an_incomplete_native_tail (test_usage.UsageTests.test_batch_boundary_is_not_mistaken_for_an_incomplete_native_tail) ... ok
+test_batch_failure_rolls_back_responses_and_cursor_together (test_usage.UsageTests.test_batch_failure_rolls_back_responses_and_cursor_together) ... ok
+test_both_hosts_resume_replace_and_rollback_one_file_lifecycle (test_usage.UsageTests.test_both_hosts_resume_replace_and_rollback_one_file_lifecycle) ... ok
+test_bounded_chunks_skip_oversized_records_and_surface_conflicting_usage (test_usage.UsageTests.test_bounded_chunks_skip_oversized_records_and_surface_conflicting_usage) ... ok
+test_independent_collectors_do_not_double_count_responses (test_usage.UsageTests.test_independent_collectors_do_not_double_count_responses) ... ok
+test_invalid_native_range_cannot_stall_later_records_or_overflow_reports (test_usage.UsageTests.test_invalid_native_range_cannot_stall_later_records_or_overflow_reports) ... ok
+
+----------------------------------------------------------------------
+Ran 9 tests in 0.481s
+
+OK
+Started: /Users/dthurn/hive/.worktrees/codex-epic-scoped-await/.venv/bin/python -m unittest discover -s tests -p test_cost.py -v
+Finished (0.217s): /Users/dthurn/hive/.worktrees/codex-epic-scoped-await/.venv/bin/python -m unittest discover -s tests -p test_cost.py -v
+test_cache_partitions_reasoning_and_full_request_context_prices (test_cost.CostTests.test_cache_partitions_reasoning_and_full_request_context_prices) ... ok
+test_large_totals_stay_exact_and_context_rolls_back_with_cursor (test_cost.CostTests.test_large_totals_stay_exact_and_context_rolls_back_with_cursor) ... ok
+test_unknown_usage_models_and_conflicts_cannot_become_zero (test_cost.CostTests.test_unknown_usage_models_and_conflicts_cannot_become_zero) ... ok
+
+----------------------------------------------------------------------
+Ran 3 tests in 0.144s
+
+OK
+Started: /Users/dthurn/hive/.worktrees/codex-epic-scoped-await/.venv/bin/python -m unittest discover -s tests -p test_links.py -v -k sweep_uses_links
+Finished (1.974s): /Users/dthurn/hive/.worktrees/codex-epic-scoped-await/.venv/bin/python -m unittest discover -s tests -p test_dashboard_server.py -v -k environment_failure
+test_environment_failure_backoff_and_explicit_retry (test_dashboard_server.DashboardServerTests.test_environment_failure_backoff_and_explicit_retry) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 1.877s
+
+OK
+Started: /Users/dthurn/hive/.worktrees/codex-epic-scoped-await/.venv/bin/python -m unittest discover -s tests -p test_contention.py -v
+Finished (3.297s): /Users/dthurn/hive/.worktrees/codex-epic-scoped-await/.venv/bin/python -m unittest discover -s tests -p test_links.py -v -k sweep_uses_links
+test_sweep_uses_links_and_survives_beads_outage (test_links.BeadLinkTests.test_sweep_uses_links_and_survives_beads_outage) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 3.196s
+
+OK
+Started: /Users/dthurn/hive/.worktrees/codex-epic-scoped-await/.venv/bin/python -m unittest discover -s tests -p test_check_runner.py -v
+Finished (2.769s): /Users/dthurn/hive/.worktrees/codex-epic-scoped-await/.venv/bin/python -m unittest discover -s tests -p test_contention.py -v
+test_exclusive_contention_is_busy_for_every_telemetry_command (test_contention.ContentionTests.test_exclusive_contention_is_busy_for_every_telemetry_command) ... ok
+test_reports_read_beside_a_writer_and_defer_estimate_retention (test_contention.ContentionTests.test_reports_read_beside_a_writer_and_defer_estimate_retention) ... ok
+test_sweep_contention_is_a_structured_busy_error (test_contention.ContentionTests.test_sweep_contention_is_a_structured_busy_error) ... ok
+
+----------------------------------------------------------------------
+Ran 3 tests in 2.677s
+
+OK
+Started: /Users/dthurn/hive/.worktrees/codex-epic-scoped-await/.venv/bin/python -m unittest discover -s tests -p test_resource_report.py -v
+Finished (2.895s): /Users/dthurn/hive/.worktrees/codex-epic-scoped-await/.venv/bin/python -m unittest discover -s tests -p test_resource_report.py -v
+test_identity_and_missing_execution_are_window_specific (test_resource_report.ResourceTests.test_identity_and_missing_execution_are_window_specific) ... ok
+test_missing_malformed_partial_and_oversized_evidence_are_explicit (test_resource_report.ResourceTests.test_missing_malformed_partial_and_oversized_evidence_are_explicit) ... ok
+test_sampling_is_read_only_bounded_and_reports_native_gate_identity (test_resource_report.ResourceTests.test_sampling_is_read_only_bounded_and_reports_native_gate_identity) ... ok
+test_windows_preserve_inclusive_cpu_wait_owners_and_provenance (test_resource_report.ResourceTests.test_windows_preserve_inclusive_cpu_wait_owners_and_provenance) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 2.808s
+
+OK
+Started: /Users/dthurn/hive/.worktrees/codex-epic-scoped-await/.venv/bin/python -m unittest discover -s tests -p test_claude.py -v
+Finished (5.085s): /Users/dthurn/hive/.worktrees/codex-epic-scoped-await/.venv/bin/python -m unittest discover -s tests -p test_check_runner.py -v
+test_failure_stops_active_sibling_and_pending_work (test_check_runner.CheckRunnerTests.test_failure_stops_active_sibling_and_pending_work) ... ok
+test_outer_cancellation_drains_nested_process_groups (test_check_runner.CheckRunnerTests.test_outer_cancellation_drains_nested_process_groups) ... ok
+test_outer_cancellation_kills_resistant_nested_worker (test_check_runner.CheckRunnerTests.test_outer_cancellation_kills_resistant_nested_worker) ... ok
+test_shared_deadline_and_interrupt_clean_up_workers (test_check_runner.CheckRunnerTests.test_shared_deadline_and_interrupt_clean_up_workers) ... ok
+test_two_workers_overlap_without_admitting_a_third (test_check_runner.CheckRunnerTests.test_two_workers_overlap_without_admitting_a_third) ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 5.042s
+
+OK
+Started: /Users/dthurn/hive/.worktrees/codex-epic-scoped-await/.venv/bin/python -m unittest discover -s tests -p test_install_skills.py -v
+Finished (0.162s): /Users/dthurn/hive/.worktrees/codex-epic-scoped-await/.venv/bin/python -m unittest discover -s tests -p test_install_skills.py -v
+test_claude_agent_defaults_to_claude_config_skills (test_install_skills.InstallSkillsTests.test_claude_agent_defaults_to_claude_config_skills) ... ok
+test_install_repeat_relative_shared_and_conflict_preflight (test_install_skills.InstallSkillsTests.test_install_repeat_relative_shared_and_conflict_preflight) ... ok
+
+----------------------------------------------------------------------
+Ran 2 tests in 0.098s
+
+OK
+Started: /Users/dthurn/hive/.worktrees/codex-epic-scoped-await/.venv/bin/python -m unittest discover -s tests -p test_request_detail.py -v
+Finished (1.393s): /Users/dthurn/hive/.worktrees/codex-epic-scoped-await/.venv/bin/python -m unittest discover -s tests -p test_request_detail.py -v
+test_claude_components_partial_updates_and_unpriced_rows (test_request_detail.RequestDetailTests.test_claude_components_partial_updates_and_unpriced_rows) ... ok
+test_contended_retention_is_visible_and_readers_do_not_lock (test_request_detail.RequestDetailTests.test_contended_retention_is_visible_and_readers_do_not_lock) ... ok
+test_pages_select_one_tier_and_preserve_large_integer_components (test_request_detail.RequestDetailTests.test_pages_select_one_tier_and_preserve_large_integer_components) ... ok
+
+----------------------------------------------------------------------
+Ran 3 tests in 1.298s
+
+OK
+Finished (8.739s): /Users/dthurn/hive/.worktrees/codex-epic-scoped-await/.venv/bin/python -m unittest discover -s tests -p test_claude.py -v
+test_each_model_and_modifier_is_exact_and_server_fees_are_separate (test_claude.ClaudePricingTests.test_each_model_and_modifier_is_exact_and_server_fees_are_separate) ... ok
+test_late_quote_retention_uses_latest_committed_output_and_old_rates (test_claude.ClaudePricingTests.test_late_quote_retention_uses_latest_committed_output_and_old_rates) ... ok
+test_retained_rate_evidence_survives_source_edit_and_later_output (test_claude.ClaudePricingTests.test_retained_rate_evidence_survives_source_edit_and_later_output) ... ok
+test_unknowns_partial_streams_and_explicit_tiers_are_visible (test_claude.ClaudePricingTests.test_unknowns_partial_streams_and_explicit_tiers_are_visible) ... ok
+test_commands_update_partial_requests_and_keep_each_file_cursor (test_claude.ClaudeTests.test_commands_update_partial_requests_and_keep_each_file_cursor) ... ok
+test_host_total_comparison_and_resume_guards (test_claude.ClaudeTests.test_host_total_comparison_and_resume_guards) ... ok
+test_host_total_must_cover_subagents_and_ignores_their_cost_states (test_claude.ClaudeTests.test_host_total_must_cover_subagents_and_ignores_their_cost_states) ... ok
+test_host_totals_replay_old_cursors_and_reject_late_output (test_claude.ClaudeTests.test_host_totals_replay_old_cursors_and_reject_late_output) ... ok
+test_identity_pending_mismatch_and_symlinks_do_not_advance (test_claude.ClaudeTests.test_identity_pending_mismatch_and_symlinks_do_not_advance) ... ok
+test_index_outage_requires_validated_source_and_duplicates_are_rejected (test_claude.ClaudeTests.test_index_outage_requires_validated_source_and_duplicates_are_rejected) ... ok
+test_invalid_counters_and_iterations_do_not_hide_later_usage (test_claude.ClaudeTests.test_invalid_counters_and_iterations_do_not_hide_later_usage) ... ok
+test_known_partial_replays_are_idempotent_but_new_decreases_are_gaps (test_claude.ClaudeTests.test_known_partial_replays_are_idempotent_but_new_decreases_are_gaps) ... ok
+test_legacy_source_pairs_require_native_revalidation (test_claude.ClaudeTests.test_legacy_source_pairs_require_native_revalidation) ... ok
+test_mixed_file_failures_remain_visible_and_reads_stay_bounded (test_claude.ClaudeTests.test_mixed_file_failures_remain_visible_and_reads_stay_bounded) ... ok
+test_modifier_migration_preserves_unrecoverable_conflict_evidence (test_claude.ClaudeTests.test_modifier_migration_preserves_unrecoverable_conflict_evidence) ... ok
+test_partial_modifier_enrichment_and_migration_recover_native_stream (test_claude.ClaudeTests.test_partial_modifier_enrichment_and_migration_recover_native_stream) ... ok
+test_rejected_host_candidate_cannot_relabel_cached_transcript (test_claude.ClaudeTests.test_rejected_host_candidate_cannot_relabel_cached_transcript) ... ok
+test_sweep_finds_uuid4_codex_late_subagents_and_both_host_ambiguity (test_claude.ClaudeTests.test_sweep_finds_uuid4_codex_late_subagents_and_both_host_ambiguity) ... ok
+test_v1_upgrade_preserves_codex_cursor_and_adds_claude_collection (test_claude.ClaudeTests.test_v1_upgrade_preserves_codex_cursor_and_adds_claude_collection) ... ok
+test_version_two_upgrade_collects_and_prices_claude (test_claude.ClaudeTests.test_version_two_upgrade_collects_and_prices_claude) ... ok
+
+----------------------------------------------------------------------
+Ran 20 tests in 8.629s
+
+OK

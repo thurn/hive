@@ -588,6 +588,109 @@ class ExecutorHookTests(unittest.TestCase):
             self.assertEqual(outcomes.count("waiting"), 3)
             self.assertEqual(outcomes.count("injected"), 2)
 
+    def test_wait_can_limit_epic_and_include_shared_labels(self) -> None:
+        """An authorized subset waits beside unrelated ready work, then wakes."""
+        with (
+            private_server() as (connection, _server),
+            tempfile.TemporaryDirectory() as tmp,
+        ):
+            _, _, environment, _, invoke, native, create = harness(
+                self, tmp, connection, {"CODEX_THREAD_ID": THREAD}
+            )
+            invoke("start", "--project", "hive", "--continuous")
+            epic = str(
+                record(native("create", "Authorized epic", "--type", "epic"))["id"]
+            )
+            held = create("Peer owns the scoped prerequisite")
+            child = create("Scoped dependent")
+            for identifier in (held, child):
+                native("dep", "add", identifier, epic, "--type", "parent-child")
+            native("update", held, "--assignee", OTHER, "--status", "in_progress")
+            native("dep", "add", child, held)
+            unrelated = create("Ready in another epic")
+            foreign = create("Other project's shared fix", "other")
+            streamed = create("Other stream's shared fix")
+            native("update", streamed, "--set-metadata", "hive_stream=assets")
+            for identifier in (foreign, streamed):
+                native("update", identifier, "--add-label", "ci-fix")
+            scope = (
+                "--parent",
+                epic,
+                "--include-label",
+                "ci-fix",
+                "--include-label",
+                "velocity",
+            )
+            default = invoke("await", "--timeout", "0")
+            self.assertEqual(default["code"], "ExecutorWorkReady")
+            self.assertEqual(default["ready"], [unrelated])
+            waiting = invoke("await", *scope, "--timeout", "0")
+            self.assertEqual(waiting["code"], "ExecutorAwaitTimeout")
+            self.assertEqual(waiting["waiting"], [child])
+            self.assertEqual(waiting["held"], [held])
+            self.assertEqual(
+                waiting["scope"],
+                {"parent": epic, "include_labels": ["ci-fix", "velocity"]},
+            )
+            # A labelled project/stream-local fix preempts the epic wait.
+            shared = create("Shared CI repair")
+            native("update", shared, "--add-label", "ci-fix")
+            ready = invoke("await", *scope, "--timeout", "0")
+            self.assertEqual(ready["ready"], [shared])
+            self.assertEqual(
+                invoke("await", "--include-label", "ci-fix", "--timeout", "0")["ready"],
+                [shared],
+            )
+            native("close", shared)
+            velocity = create("Operator feedback")
+            native("update", velocity, "--add-label", "velocity")
+            self.assertEqual(
+                invoke("await", *scope, "--timeout", "0")["ready"], [velocity]
+            )
+            native("close", velocity)
+            pending = subprocess.Popen(
+                [
+                    sys.executable,
+                    str(ROOT / "scripts/hive.py"),
+                    "executor",
+                    "await",
+                    *scope,
+                    "--interval",
+                    "0.1",
+                    "--json",
+                ],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                env=environment,
+                cwd=tmp,
+                text=True,
+            )
+            try:
+                native("update", held, "--set-metadata", "hive_resolution=completed")
+                native("close", held)
+                output, error = pending.communicate(timeout=20)
+            finally:
+                if pending.poll() is None:
+                    pending.kill()
+                    pending.communicate(timeout=5)
+            self.assertEqual(pending.returncode, 0, error)
+            woken = record(parse(output))
+            self.assertEqual(woken["code"], "ExecutorWorkReady")
+            self.assertEqual(woken["ready"], [child])
+            native("close", child)
+            self.assertEqual(
+                invoke("await", *scope, "--timeout", "0")["code"],
+                "ExecutorQueueDrained",
+            )
+            # Filtering readiness must never hide an owned unfinished assignment.
+            native("update", unrelated, "--claim")
+            assigned = invoke("await", *scope, "--timeout", "0")
+            self.assertEqual(assigned["code"], "ExecutorWorkAssigned")
+            self.assertEqual(assigned["assigned"], [unrelated])
+            for arguments in (("--parent", ""), ("--include-label", "")):
+                invalid = invoke("await", *arguments, success=False)
+                self.assertIn("non-empty", str(invalid))
+
     def test_owned_checkpoint_waits_for_its_peer_prerequisite(self) -> None:
         """Native blockers keep a claimed checkpoint waiting without releasing it."""
         with (

@@ -22,6 +22,39 @@ WAIT_TIMEOUT_SECONDS: float = 3900
 
 
 @dataclass(frozen=True)
+class WaitScope:
+    """Optional direct-parent or shared-label readiness filter, within a stream."""
+
+    parent: str | None = None
+    labels: tuple[str, ...] = ()
+
+    @property
+    def restricted(self) -> bool:
+        return self.parent is not None or bool(self.labels)
+
+    def allows(self, bead: dict[str, object]) -> bool:
+        if not self.restricted:
+            return True
+        if self.parent is not None:
+            if bead.get("parent") == self.parent:
+                return True
+            for raw in sequence(bead.get("dependencies") or [], "bead dependencies"):
+                edge = record(raw, "bead dependency")
+                if (
+                    edge.get("type") == "parent-child"
+                    and edge.get("depends_on_id", edge.get("id")) == self.parent
+                ):
+                    return True
+        return any(
+            label in self.labels
+            for label in sequence(bead.get("labels") or [], "bead labels")
+        )
+
+
+DEFAULT_WAIT_SCOPE = WaitScope()
+
+
+@dataclass(frozen=True)
 class Peers:
     """Unfinished project work other sessions hold, and the unclaimed rest.
 
@@ -38,7 +71,11 @@ class Peers:
 
 
 def ids(
-    value: object, project: str, owner: str | None, stream: str = ""
+    value: object,
+    project: str,
+    owner: str | None,
+    stream: str = "",
+    scope: WaitScope = DEFAULT_WAIT_SCOPE,
 ) -> tuple[str, ...]:
     """Unclaimed open tasks of one stream (owner None) or one owner's unfinished
     beads in any stream."""
@@ -46,7 +83,7 @@ def ids(
         return tuple(
             sorted(
                 string(bead.get("id"), "bead id")
-                for bead in claimable(value, project, stream)
+                for bead in claimable(value, project, stream, scope)
             )
         )
     result: list[str] = []
@@ -61,7 +98,7 @@ def ids(
 
 
 def claimable(
-    value: object, project: str, stream: str
+    value: object, project: str, stream: str, scope: WaitScope = DEFAULT_WAIT_SCOPE
 ) -> tuple[dict[str, object], ...]:
     """Unclaimed open non-epic beads of one project stream, in native order."""
     result: list[dict[str, object]] = []
@@ -75,7 +112,8 @@ def claimable(
             or bead.get("issue_type") == "epic"
         ):
             continue
-        result.append(bead)
+        if scope.allows(bead):
+            result.append(bead)
     return tuple(result)
 
 
@@ -85,6 +123,7 @@ def peers(
     session: str,
     ready: tuple[str, ...],
     stream: str,
+    scope: WaitScope = DEFAULT_WAIT_SCOPE,
 ) -> Peers:
     held: list[str] = []
     waiting: list[str] = []
@@ -102,6 +141,7 @@ def peers(
             status in {"open", "blocked"}
             and identifier not in ready
             and _in_stream(bead, stream)
+            and scope.allows(bead)
         ):
             waiting.append(identifier)
     return Peers(tuple(sorted(held)), tuple(sorted(waiting)))
@@ -116,6 +156,7 @@ def await_work(
     interval: float,
     active: Callable[[], bool],
     stream: str,
+    scope: WaitScope = DEFAULT_WAIT_SCOPE,
 ) -> dict[str, object]:
     """Poll until this session has work, peers hold nothing it could take next,
     the session is disarmed or re-armed, or the deadline passes.
@@ -132,15 +173,19 @@ def await_work(
         result = None
         if active():
             try:
-                result, found = _poll(process, project, session, deadline, stream)
+                result, found = _poll(
+                    process, project, session, deadline, stream, scope
+                )
                 error = None
             except HiveError as failure:
                 error = str(failure)
         # New input during a slow read wins over whatever the read found.
         if not active():
-            return _scoped({"code": "ExecutorInactive", "project": project}, stream)
+            return _scoped(
+                {"code": "ExecutorInactive", "project": project}, stream, scope
+            )
         if result is not None:
-            return _scoped(result, stream)
+            return _scoped(result, stream, scope)
         remaining = deadline - time.monotonic()
         if remaining <= 0:
             timed_out: dict[str, object] = {
@@ -151,12 +196,17 @@ def await_work(
             }
             if error is not None:
                 timed_out["error"] = error
-            return _scoped(timed_out, stream)
+            return _scoped(timed_out, stream, scope)
         time.sleep(min(interval, remaining))
 
 
 def settled_ready(
-    process: BeadsProcess, project: str, session: str, found: Peers, stream: str
+    process: BeadsProcess,
+    project: str,
+    session: str,
+    found: Peers,
+    stream: str,
+    scope: WaitScope = DEFAULT_WAIT_SCOPE,
 ) -> tuple[str, ...]:
     """Ready beads read again after peers looked drained.
 
@@ -167,12 +217,17 @@ def settled_ready(
     return (
         ()
         if found.pending
-        else ids(process.ready(project, session), project, None, stream)
+        else ids(process.ready(project, session), project, None, stream, scope)
     )
 
 
 def _poll(
-    process: BeadsProcess, project: str, session: str, deadline: float, stream: str
+    process: BeadsProcess,
+    project: str,
+    session: str,
+    deadline: float,
+    stream: str,
+    scope: WaitScope,
 ) -> tuple[dict[str, object] | None, Peers]:
     def bounded() -> BeadsProcess:
         """Each call gets what remains of the deadline, at least one second."""
@@ -193,14 +248,14 @@ def _poll(
             "project": project,
             "assigned": list(actionable),
         }, Peers((), ())
-    ready = ids(bounded().ready(project, session), project, None, stream)
+    ready = ids(bounded().ready(project, session), project, None, stream, scope)
     found = Peers((), ())
     if not ready:
-        found = peers(bounded(), project, session, ready, stream)
+        found = peers(bounded(), project, session, ready, stream, scope)
         found = replace(
             found, waiting=tuple(sorted(set(found.waiting).union(waiting_assigned)))
         )
-        ready = settled_ready(bounded(), project, session, found, stream)
+        ready = settled_ready(bounded(), project, session, found, stream, scope)
     if ready:
         return {
             "code": "ExecutorWorkReady",
@@ -229,8 +284,16 @@ def _in_stream(bead: dict[str, object], stream: str) -> bool:
     return value == stream if stream else value in (None, "")
 
 
-def _scoped(result: dict[str, object], stream: str) -> dict[str, object]:
-    return {**result, "stream": stream} if stream else result
+def _scoped(
+    result: dict[str, object], stream: str, scope: WaitScope
+) -> dict[str, object]:
+    scoped = {**result, "stream": stream} if stream else result
+    if scope.restricted:
+        return {
+            **scoped,
+            "scope": {"parent": scope.parent, "include_labels": list(scope.labels)},
+        }
+    return scoped
 
 
 def _assignee(bead: dict[str, object]) -> str:

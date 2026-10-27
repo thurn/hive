@@ -12,6 +12,7 @@ from hive.errors import HiveError
 from hive.executor_diagnostics import Receipt, append, identity
 from hive.executor_queue import (
     WAIT_TIMEOUT_SECONDS,
+    WaitScope,
     await_work,
     claimable,
     ids,
@@ -153,6 +154,9 @@ def wait(
     session: str | None = None,
     timeout: float = WAIT_TIMEOUT_SECONDS,
     interval: float = 30,
+    *,
+    parent: str | None = None,
+    include_labels: tuple[str, ...] = (),
 ) -> dict[str, object]:
     """Block an armed executor until peer executors leave it work to claim.
 
@@ -161,6 +165,12 @@ def wait(
     """
     if timeout < 0 or interval <= 0:
         raise ValueError("Await requires a non-negative timeout and positive interval")
+    if (
+        parent is not None
+        and not parent.strip()
+        or any(not label.strip() for label in include_labels)
+    ):
+        raise ValueError("Await parent and included labels must be non-empty")
     store: ExecutorStore = ExecutorStore(context.state, _host_session(session))
     state = store.read()
     if state is None or not state.active:
@@ -182,6 +192,7 @@ def wait(
         interval=interval,
         active=armed,
         stream=state.stream,
+        scope=WaitScope(parent, include_labels),
     )
 
 

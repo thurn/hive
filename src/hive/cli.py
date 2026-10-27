@@ -69,6 +69,15 @@ def main() -> int:
             "--timeout", type=float, default=WAIT_TIMEOUT_SECONDS
         )
         executor_await.add_argument("--interval", type=float, default=30)
+        executor_await.add_argument(
+            "--parent", help="Wait for direct children of this epic"
+        )
+        executor_await.add_argument(
+            "--include-label",
+            action="append",
+            default=[],
+            help="Also include ready/waiting beads with this label (repeatable)",
+        )
         executor_actions.add_parser("hook")
         executor_hook_config = executor_actions.add_parser("hook-config")
         executor_hook_config.add_argument(
@@ -167,7 +176,14 @@ def main() -> int:
                     parsed.session,
                 )
             elif parsed.action == "await":
-                result = wait(context, parsed.session, parsed.timeout, parsed.interval)
+                result = wait(
+                    context,
+                    parsed.session,
+                    parsed.timeout,
+                    parsed.interval,
+                    parent=parsed.parent,
+                    include_labels=tuple(parsed.include_label),
+                )
             elif parsed.action == "hook-config":
                 result = configuration(context, parsed.host)
             elif parsed.action == "diagnostics":
