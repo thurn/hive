@@ -165,6 +165,29 @@ trust, not host invocation. Post-promotion live exercise results belong in the
 native hv-48p acceptance record, including any concrete host activation gap;
 missing receipts never establish historical non-invocation.
 
+## Bounded observation journey progress (hv-ylr7)
+
+An unrelated scoped-wait candidate's full gate found zero candidate records in
+the existing ownership/branch/cache/outage journey after three fixed collection
+sweeps and one poll. The bounded observation APIs promise resumable progress,
+not completion in that fixed number of passes; the failed run did not retain
+per-poll health sufficient to identify exactly which slice exhausted first.
+
+The journey now first exhausts a poll deadline and proves no native call or
+candidate row was produced, then resumes real collection/poll slices until both
+records and complete bead history exist within a bounded fixture deadline.
+Every original identity/ownership/branch/promotion/cache/outage assertion remains.
+The cold review exposed an early-poll ordering hazard: repository mapping can
+cache missing branch matches before bead snapshots exist. Polling now starts
+only after history is caught up. A disposable external Beads wrapper fails its
+first read and delegates subsequent reads to the real CLI; that regression
+fails with empty branch links before the ordering fix and passes afterwards.
+Production code and its timeouts are unchanged; the existing delayed-external-CLI
+test still enforces the 100 ms allowance with its 500 ms outer assertion.
+Focused checks, cold review, final certification and the promoted commit's
+Portability result are recorded on the native repair bead. No controlled test
+is represented as reproducing the gate host's exact scheduling contention.
+
 ## Local and hosted validation parity (hv-gog)
 
 The 25 consecutive Linux failures after `242daef2` had two causes: 17 runs rejected a history fixture's hard-coded Pacific repeated hour under a UTC Dolt server, then eight runs stopped earlier at the 500 ms dashboard feed limit (512–935 ms). Tollgate's retained log for the exact `b9c3f075` commit passed both tests on macOS. Identical commands had inherited different environments; local certification did not establish Linux acceptance.

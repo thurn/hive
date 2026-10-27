@@ -1,0 +1,503 @@
+Collecting black==26.5.1 (from -r /Users/dthurn/Library/Application Support/dev.Tollgate.Tollgate/cache/01a0cc79-6fa9-7be1-ac9c-3f2d23fad671/slots/01a17baa-1a38-7683-99e8-32f32b31d35e/requirements-dev.lock (line 1))
+  Using cached black-26.5.1-cp312-cp312-macosx_11_0_arm64.whl.metadata (95 kB)
+Collecting click==8.1.8 (from -r /Users/dthurn/Library/Application Support/dev.Tollgate.Tollgate/cache/01a0cc79-6fa9-7be1-ac9c-3f2d23fad671/slots/01a17baa-1a38-7683-99e8-32f32b31d35e/requirements-dev.lock (line 2))
+  Using cached click-8.1.8-py3-none-any.whl.metadata (2.3 kB)
+Collecting dataclasses-json==0.5.7 (from -r /Users/dthurn/Library/Application Support/dev.Tollgate.Tollgate/cache/01a0cc79-6fa9-7be1-ac9c-3f2d23fad671/slots/01a17baa-1a38-7683-99e8-32f32b31d35e/requirements-dev.lock (line 3))
+  Using cached dataclasses_json-0.5.7-py3-none-any.whl.metadata (22 kB)
+Collecting libcst==1.9.0 (from -r /Users/dthurn/Library/Application Support/dev.Tollgate.Tollgate/cache/01a0cc79-6fa9-7be1-ac9c-3f2d23fad671/slots/01a17baa-1a38-7683-99e8-32f32b31d35e/requirements-dev.lock (line 4))
+  Using cached libcst-1.9.0-cp312-cp312-macosx_11_0_arm64.whl.metadata (15 kB)
+Collecting marshmallow==3.26.2 (from -r /Users/dthurn/Library/Application Support/dev.Tollgate.Tollgate/cache/01a0cc79-6fa9-7be1-ac9c-3f2d23fad671/slots/01a17baa-1a38-7683-99e8-32f32b31d35e/requirements-dev.lock (line 5))
+  Using cached marshmallow-3.26.2-py3-none-any.whl.metadata (7.3 kB)
+Collecting marshmallow-enum==1.5.1 (from -r /Users/dthurn/Library/Application Support/dev.Tollgate.Tollgate/cache/01a0cc79-6fa9-7be1-ac9c-3f2d23fad671/slots/01a17baa-1a38-7683-99e8-32f32b31d35e/requirements-dev.lock (line 6))
+  Using cached marshmallow_enum-1.5.1-py2.py3-none-any.whl.metadata (2.5 kB)
+Collecting mypy-extensions==1.1.0 (from -r /Users/dthurn/Library/Application Support/dev.Tollgate.Tollgate/cache/01a0cc79-6fa9-7be1-ac9c-3f2d23fad671/slots/01a17baa-1a38-7683-99e8-32f32b31d35e/requirements-dev.lock (line 7))
+  Using cached mypy_extensions-1.1.0-py3-none-any.whl.metadata (1.1 kB)
+Collecting packaging==26.3 (from -r /Users/dthurn/Library/Application Support/dev.Tollgate.Tollgate/cache/01a0cc79-6fa9-7be1-ac9c-3f2d23fad671/slots/01a17baa-1a38-7683-99e8-32f32b31d35e/requirements-dev.lock (line 8))
+  Using cached packaging-26.3-py3-none-any.whl.metadata (3.5 kB)
+Collecting pathspec==1.1.1 (from -r /Users/dthurn/Library/Application Support/dev.Tollgate.Tollgate/cache/01a0cc79-6fa9-7be1-ac9c-3f2d23fad671/slots/01a17baa-1a38-7683-99e8-32f32b31d35e/requirements-dev.lock (line 9))
+  Using cached pathspec-1.1.1-py3-none-any.whl.metadata (14 kB)
+Collecting platformdirs==4.11.12 (from -r /Users/dthurn/Library/Application Support/dev.Tollgate.Tollgate/cache/01a0cc79-6fa9-7be1-ac9c-3f2d23fad671/slots/01a17baa-1a38-7683-99e8-32f32b31d35e/requirements-dev.lock (line 10))
+  Using cached platformdirs-4.11.12-py3-none-any.whl.metadata (5.5 kB)
+Collecting psutil==7.2.2 (from -r /Users/dthurn/Library/Application Support/dev.Tollgate.Tollgate/cache/01a0cc79-6fa9-7be1-ac9c-3f2d23fad671/slots/01a17baa-1a38-7683-99e8-32f32b31d35e/requirements-dev.lock (line 11))
+  Using cached psutil-7.2.2-cp36-abi3-macosx_11_0_arm64.whl.metadata (22 kB)
+Collecting pygments==2.21.0 (from -r /Users/dthurn/Library/Application Support/dev.Tollgate.Tollgate/cache/01a0cc79-6fa9-7be1-ac9c-3f2d23fad671/slots/01a17baa-1a38-7683-99e8-32f32b31d35e/requirements-dev.lock (line 12))
+  Using cached pygments-2.21.0-py3-none-any.whl.metadata (2.5 kB)
+Collecting pyre-check==0.10.0 (from -r /Users/dthurn/Library/Application Support/dev.Tollgate.Tollgate/cache/01a0cc79-6fa9-7be1-ac9c-3f2d23fad671/slots/01a17baa-1a38-7683-99e8-32f32b31d35e/requirements-dev.lock (line 13))
+  Using cached pyre_check-0.10.0-py3-none-macosx_11_0_arm64.whl.metadata (3.8 kB)
+Collecting pyre-extensions==0.0.32 (from -r /Users/dthurn/Library/Application Support/dev.Tollgate.Tollgate/cache/01a0cc79-6fa9-7be1-ac9c-3f2d23fad671/slots/01a17baa-1a38-7683-99e8-32f32b31d35e/requirements-dev.lock (line 14))
+  Using cached pyre_extensions-0.0.32-py3-none-any.whl.metadata (4.0 kB)
+Collecting pyrefly==1.3.1 (from -r /Users/dthurn/Library/Application Support/dev.Tollgate.Tollgate/cache/01a0cc79-6fa9-7be1-ac9c-3f2d23fad671/slots/01a17baa-1a38-7683-99e8-32f32b31d35e/requirements-dev.lock (line 15))
+  Using cached pyrefly-1.3.1-py3-none-macosx_11_0_arm64.whl.metadata (4.9 kB)
+Collecting pytokens==0.4.1 (from -r /Users/dthurn/Library/Application Support/dev.Tollgate.Tollgate/cache/01a0cc79-6fa9-7be1-ac9c-3f2d23fad671/slots/01a17baa-1a38-7683-99e8-32f32b31d35e/requirements-dev.lock (line 16))
+  Using cached pytokens-0.4.1-cp312-cp312-macosx_11_0_arm64.whl.metadata (3.8 kB)
+Collecting pyyaml==6.0.3 (from -r /Users/dthurn/Library/Application Support/dev.Tollgate.Tollgate/cache/01a0cc79-6fa9-7be1-ac9c-3f2d23fad671/slots/01a17baa-1a38-7683-99e8-32f32b31d35e/requirements-dev.lock (line 17))
+  Using cached pyyaml-6.0.3-cp312-cp312-macosx_11_0_arm64.whl.metadata (2.4 kB)
+Collecting ruff==0.16.8 (from -r /Users/dthurn/Library/Application Support/dev.Tollgate.Tollgate/cache/01a0cc79-6fa9-7be1-ac9c-3f2d23fad671/slots/01a17baa-1a38-7683-99e8-32f32b31d35e/requirements-dev.lock (line 18))
+  Using cached ruff-0.16.8-py3-none-macosx_11_0_arm64.whl.metadata (20 kB)
+Collecting setuptools==80.9.0 (from -r /Users/dthurn/Library/Application Support/dev.Tollgate.Tollgate/cache/01a0cc79-6fa9-7be1-ac9c-3f2d23fad671/slots/01a17baa-1a38-7683-99e8-32f32b31d35e/requirements-dev.lock (line 19))
+  Using cached setuptools-80.9.0-py3-none-any.whl.metadata (6.6 kB)
+Collecting tabulate==0.10.0 (from -r /Users/dthurn/Library/Application Support/dev.Tollgate.Tollgate/cache/01a0cc79-6fa9-7be1-ac9c-3f2d23fad671/slots/01a17baa-1a38-7683-99e8-32f32b31d35e/requirements-dev.lock (line 20))
+  Using cached tabulate-0.10.0-py3-none-any.whl.metadata (40 kB)
+Collecting testslide==2.7.1 (from -r /Users/dthurn/Library/Application Support/dev.Tollgate.Tollgate/cache/01a0cc79-6fa9-7be1-ac9c-3f2d23fad671/slots/01a17baa-1a38-7683-99e8-32f32b31d35e/requirements-dev.lock (line 21))
+  Using cached testslide-2.7.1-py3-none-any.whl
+Collecting tomli==2.4.1 (from -r /Users/dthurn/Library/Application Support/dev.Tollgate.Tollgate/cache/01a0cc79-6fa9-7be1-ac9c-3f2d23fad671/slots/01a17baa-1a38-7683-99e8-32f32b31d35e/requirements-dev.lock (line 22))
+  Using cached tomli-2.4.1-cp312-cp312-macosx_11_0_arm64.whl.metadata (10 kB)
+Collecting tomli-w==1.2.0 (from -r /Users/dthurn/Library/Application Support/dev.Tollgate.Tollgate/cache/01a0cc79-6fa9-7be1-ac9c-3f2d23fad671/slots/01a17baa-1a38-7683-99e8-32f32b31d35e/requirements-dev.lock (line 23))
+  Using cached tomli_w-1.2.0-py3-none-any.whl.metadata (5.7 kB)
+Collecting typeguard==2.13.3 (from -r /Users/dthurn/Library/Application Support/dev.Tollgate.Tollgate/cache/01a0cc79-6fa9-7be1-ac9c-3f2d23fad671/slots/01a17baa-1a38-7683-99e8-32f32b31d35e/requirements-dev.lock (line 24))
+  Using cached typeguard-2.13.3-py3-none-any.whl.metadata (3.6 kB)
+Collecting typing-extensions==4.16.0 (from -r /Users/dthurn/Library/Application Support/dev.Tollgate.Tollgate/cache/01a0cc79-6fa9-7be1-ac9c-3f2d23fad671/slots/01a17baa-1a38-7683-99e8-32f32b31d35e/requirements-dev.lock (line 25))
+  Using cached typing_extensions-4.16.0-py3-none-any.whl.metadata (3.3 kB)
+Collecting typing-inspect==0.9.0 (from -r /Users/dthurn/Library/Application Support/dev.Tollgate.Tollgate/cache/01a0cc79-6fa9-7be1-ac9c-3f2d23fad671/slots/01a17baa-1a38-7683-99e8-32f32b31d35e/requirements-dev.lock (line 26))
+  Using cached typing_inspect-0.9.0-py3-none-any.whl.metadata (1.5 kB)
+Using cached black-26.5.1-cp312-cp312-macosx_11_0_arm64.whl (1.8 MB)
+Using cached pytokens-0.4.1-cp312-cp312-macosx_11_0_arm64.whl (160 kB)
+Using cached click-8.1.8-py3-none-any.whl (98 kB)
+Using cached dataclasses_json-0.5.7-py3-none-any.whl (25 kB)
+Using cached marshmallow-3.26.2-py3-none-any.whl (50 kB)
+Using cached marshmallow_enum-1.5.1-py2.py3-none-any.whl (4.2 kB)
+Using cached libcst-1.9.0-cp312-cp312-macosx_11_0_arm64.whl (2.0 MB)
+Using cached mypy_extensions-1.1.0-py3-none-any.whl (5.0 kB)
+Using cached packaging-26.3-py3-none-any.whl (129 kB)
+Using cached pathspec-1.1.1-py3-none-any.whl (57 kB)
+Using cached platformdirs-4.11.12-py3-none-any.whl (24 kB)
+Using cached psutil-7.2.2-cp36-abi3-macosx_11_0_arm64.whl (129 kB)
+Using cached pygments-2.21.0-py3-none-any.whl (1.3 MB)
+Using cached pyre_check-0.10.0-py3-none-macosx_11_0_arm64.whl (24.1 MB)
+Using cached pyre_extensions-0.0.32-py3-none-any.whl (12 kB)
+Using cached pyrefly-1.3.1-py3-none-macosx_11_0_arm64.whl (14.4 MB)
+Using cached pyyaml-6.0.3-cp312-cp312-macosx_11_0_arm64.whl (173 kB)
+Using cached ruff-0.16.8-py3-none-macosx_11_0_arm64.whl (9.8 MB)
+Using cached setuptools-80.9.0-py3-none-any.whl (1.2 MB)
+Using cached tabulate-0.10.0-py3-none-any.whl (39 kB)
+Using cached typeguard-2.13.3-py3-none-any.whl (17 kB)
+Using cached tomli-2.4.1-cp312-cp312-macosx_11_0_arm64.whl (150 kB)
+Using cached tomli_w-1.2.0-py3-none-any.whl (6.7 kB)
+Using cached typing_extensions-4.16.0-py3-none-any.whl (45 kB)
+Using cached typing_inspect-0.9.0-py3-none-any.whl (8.8 kB)
+Installing collected packages: typing-extensions, typeguard, tomli-w, tomli, tabulate, setuptools, ruff, pyyaml, pytokens, pyrefly, pygments, psutil, platformdirs, pathspec, packaging, mypy-extensions, click, typing-inspect, testslide, marshmallow, libcst, black, pyre-extensions, marshmallow-enum, dataclasses-json, pyre-check
+
+Successfully installed black-26.5.1 click-8.1.8 dataclasses-json-0.5.7 libcst-1.9.0 marshmallow-3.26.2 marshmallow-enum-1.5.1 mypy-extensions-1.1.0 packaging-26.3 pathspec-1.1.1 platformdirs-4.11.12 psutil-7.2.2 pygments-2.21.0 pyre-check-0.10.0 pyre-extensions-0.0.32 pyrefly-1.3.1 pytokens-0.4.1 pyyaml-6.0.3 ruff-0.16.8 setuptools-80.9.0 tabulate-0.10.0 testslide-2.7.1 tomli-2.4.1 tomli-w-1.2.0 typeguard-2.13.3 typing-extensions-4.16.0 typing-inspect-0.9.0
+Obtaining file:///Users/dthurn/Library/Application%20Support/dev.Tollgate.Tollgate/cache/01a0cc79-6fa9-7be1-ac9c-3f2d23fad671/slots/01a17baa-1a38-7683-99e8-32f32b31d35e
+  Checking if build backend supports build_editable: started
+  Checking if build backend supports build_editable: finished with status 'done'
+  Preparing editable metadata (pyproject.toml): started
+  Preparing editable metadata (pyproject.toml): finished with status 'done'
+Building wheels for collected packages: hive-agent
+  Building editable for hive-agent (pyproject.toml): started
+  Building editable for hive-agent (pyproject.toml): finished with status 'done'
+  Created wheel for hive-agent: filename=hive_agent-0-0.editable-py3-none-any.whl size=9606 sha256=2d7014df4b235024150a7f8bfe0d3f934a4f22933e034dd8a96578bf43f3e7be
+  Stored in directory: /private/var/folders/dw/rtc6lpnx293gdfl40kv4xt5m0000gn/T/pip-ephem-wheel-cache-1jwn2l1l/wheels/9f/da/dd/b80c8ef824ed149989c686b6794d15bb3483dfa8669e0e1039
+Successfully built hive-agent
+Installing collected packages: hive-agent
+Successfully installed hive-agent-0
+Using bd 1.2.2: /Users/dthurn/.local/bin/bd
+Using dolt 2.2.0: /Users/dthurn/.local/bin/dolt
+npm warn deprecated whatwg-encoding@3.1.1: Use @exodus/bytes instead for a more spec-conformant and faster implementation
+npm warn deprecated eslint@9.34.0: This version is no longer supported. Please see https://eslint.org/version-support for other options.
+
+added 363 packages in 1s
+Check environment: Python 3.12.14, SQLite 3.53.4, Darwin arm64, TZ=UTC, LC_ALL=C
+Started: npm run check --prefix dashboard
+Finished (4.568s): npm run check --prefix dashboard
+
+> hive-dashboard@0.1.0 check
+> tsc -b && eslint . && vitest run
+
+
+ RUN  v3.2.4 /Users/dthurn/Library/Application Support/dev.Tollgate.Tollgate/cache/01a0cc79-6fa9-7be1-ac9c-3f2d23fad671/slots/01a17baa-1a38-7683-99e8-32f32b31d35e/dashboard
+
+ ✓ src/dashboard.test.tsx (33 tests) 765ms
+
+ Test Files  1 passed (1)
+      Tests  33 passed (33)
+   Start at  04:41:57
+   Duration  1.41s (transform 109ms, setup 60ms, collect 178ms, tests 765ms, environment 160ms, prepare 51ms)
+
+Started: /Users/dthurn/Library/Application Support/dev.Tollgate.Tollgate/cache/01a0cc79-6fa9-7be1-ac9c-3f2d23fad671/slots/01a17baa-1a38-7683-99e8-32f32b31d35e/.venv/bin/python -m ruff check src tests scripts
+Finished (0.537s): /Users/dthurn/Library/Application Support/dev.Tollgate.Tollgate/cache/01a0cc79-6fa9-7be1-ac9c-3f2d23fad671/slots/01a17baa-1a38-7683-99e8-32f32b31d35e/.venv/bin/python -m ruff check src tests scripts
+All checks passed!
+Started: /Users/dthurn/Library/Application Support/dev.Tollgate.Tollgate/cache/01a0cc79-6fa9-7be1-ac9c-3f2d23fad671/slots/01a17baa-1a38-7683-99e8-32f32b31d35e/.venv/bin/python -m black --check src tests scripts
+Finished (1.234s): /Users/dthurn/Library/Application Support/dev.Tollgate.Tollgate/cache/01a0cc79-6fa9-7be1-ac9c-3f2d23fad671/slots/01a17baa-1a38-7683-99e8-32f32b31d35e/.venv/bin/python -m black --check src tests scripts
+All done! ✨ 🍰 ✨
+154 files would be left unchanged.
+Started: /Users/dthurn/Library/Application Support/dev.Tollgate.Tollgate/cache/01a0cc79-6fa9-7be1-ac9c-3f2d23fad671/slots/01a17baa-1a38-7683-99e8-32f32b31d35e/.venv/bin/pyre --noninteractive check
+Finished (4.586s): /Users/dthurn/Library/Application Support/dev.Tollgate.Tollgate/cache/01a0cc79-6fa9-7be1-ac9c-3f2d23fad671/slots/01a17baa-1a38-7683-99e8-32f32b31d35e/.venv/bin/pyre --noninteractive check
+2026-10-27 04:42:01,539 [PID 23037] INFO No binary specified, looking for `pyre.bin` in PATH
+2026-10-27 04:42:01,540 [PID 23037] INFO Pyre binary is located at `/Users/dthurn/Library/Application Support/dev.Tollgate.Tollgate/cache/01a0cc79-6fa9-7be1-ac9c-3f2d23fad671/slots/01a17baa-1a38-7683-99e8-32f32b31d35e/.venv/bin/pyre.bin`
+2026-10-27 04:42:01,541 [PID 23037] INFO No typeshed specified, looking for it...
+2026-10-27 04:42:01,541 [PID 23037] INFO Found: `/Users/dthurn/Library/Application Support/dev.Tollgate.Tollgate/cache/01a0cc79-6fa9-7be1-ac9c-3f2d23fad671/slots/01a17baa-1a38-7683-99e8-32f32b31d35e/.venv/lib/pyre_check/typeshed`
+2026-10-27 04:42:01,542 [PID 23037] INFO Writing arguments into /var/folders/dw/rtc6lpnx293gdfl40kv4xt5m0000gn/T/pyre_arguments__dwewnzj.json...
+2026-10-27 04:42:01,542 [PID 23037] DEBUG Arguments:
+{
+  "source_paths": {
+    "kind": "simple",
+    "paths": [
+      "/Users/dthurn/Library/Application Support/dev.Tollgate.Tollgate/cache/01a0cc79-6fa9-7be1-ac9c-3f2d23fad671/slots/01a17baa-1a38-7683-99e8-32f32b31d35e/src",
+      "/Users/dthurn/Library/Application Support/dev.Tollgate.Tollgate/cache/01a0cc79-6fa9-7be1-ac9c-3f2d23fad671/slots/01a17baa-1a38-7683-99e8-32f32b31d35e/tests",
+      "/Users/dthurn/Library/Application Support/dev.Tollgate.Tollgate/cache/01a0cc79-6fa9-7be1-ac9c-3f2d23fad671/slots/01a17baa-1a38-7683-99e8-32f32b31d35e/scripts"
+    ]
+  },
+  "search_paths": [
+    "/Users/dthurn/Library/Application Support/dev.Tollgate.Tollgate/cache/01a0cc79-6fa9-7be1-ac9c-3f2d23fad671/slots/01a17baa-1a38-7683-99e8-32f32b31d35e/.venv/lib/python3.12/site-packages$click",
+    "/Users/dthurn/Library/Application Support/dev.Tollgate.Tollgate/cache/01a0cc79-6fa9-7be1-ac9c-3f2d23fad671/slots/01a17baa-1a38-7683-99e8-32f32b31d35e/.venv/lib/python3.12/site-packages$libcst",
+    "/Users/dthurn/Library/Application Support/dev.Tollgate.Tollgate/cache/01a0cc79-6fa9-7be1-ac9c-3f2d23fad671/slots/01a17baa-1a38-7683-99e8-32f32b31d35e/.venv/lib/python3.12/site-packages$black",
+    "/Users/dthurn/Library/Application Support/dev.Tollgate.Tollgate/cache/01a0cc79-6fa9-7be1-ac9c-3f2d23fad671/slots/01a17baa-1a38-7683-99e8-32f32b31d35e/.venv/lib/python3.12/site-packages$testslide",
+    "/Users/dthurn/Library/Application Support/dev.Tollgate.Tollgate/cache/01a0cc79-6fa9-7be1-ac9c-3f2d23fad671/slots/01a17baa-1a38-7683-99e8-32f32b31d35e/.venv/lib/python3.12/site-packages$typeguard",
+    "/Users/dthurn/Library/Application Support/dev.Tollgate.Tollgate/cache/01a0cc79-6fa9-7be1-ac9c-3f2d23fad671/slots/01a17baa-1a38-7683-99e8-32f32b31d35e/.venv/lib/python3.12/site-packages$pip",
+    "/Users/dthurn/Library/Application Support/dev.Tollgate.Tollgate/cache/01a0cc79-6fa9-7be1-ac9c-3f2d23fad671/slots/01a17baa-1a38-7683-99e8-32f32b31d35e/.venv/lib/python3.12/site-packages$platformdirs",
+    "/Users/dthurn/Library/Application Support/dev.Tollgate.Tollgate/cache/01a0cc79-6fa9-7be1-ac9c-3f2d23fad671/slots/01a17baa-1a38-7683-99e8-32f32b31d35e/.venv/lib/python3.12/site-packages$dataclasses_json",
+    "/Users/dthurn/Library/Application Support/dev.Tollgate.Tollgate/cache/01a0cc79-6fa9-7be1-ac9c-3f2d23fad671/slots/01a17baa-1a38-7683-99e8-32f32b31d35e/.venv/lib/python3.12/site-packages$marshmallow",
+    "/Users/dthurn/Library/Application Support/dev.Tollgate.Tollgate/cache/01a0cc79-6fa9-7be1-ac9c-3f2d23fad671/slots/01a17baa-1a38-7683-99e8-32f32b31d35e/.venv/lib/python3.12/site-packages$pathspec",
+    "/Users/dthurn/Library/Application Support/dev.Tollgate.Tollgate/cache/01a0cc79-6fa9-7be1-ac9c-3f2d23fad671/slots/01a17baa-1a38-7683-99e8-32f32b31d35e/.venv/lib/python3.12/site-packages$pytokens",
+    "/Users/dthurn/Library/Application Support/dev.Tollgate.Tollgate/cache/01a0cc79-6fa9-7be1-ac9c-3f2d23fad671/slots/01a17baa-1a38-7683-99e8-32f32b31d35e/.venv/lib/python3.12/site-packages$pkg_resources",
+    "/Users/dthurn/Library/Application Support/dev.Tollgate.Tollgate/cache/01a0cc79-6fa9-7be1-ac9c-3f2d23fad671/slots/01a17baa-1a38-7683-99e8-32f32b31d35e/.venv/lib/python3.12/site-packages$tomli_w",
+    "/Users/dthurn/Library/Application Support/dev.Tollgate.Tollgate/cache/01a0cc79-6fa9-7be1-ac9c-3f2d23fad671/slots/01a17baa-1a38-7683-99e8-32f32b31d35e/.venv/lib/python3.12/site-packages$packaging",
+    "/Users/dthurn/Library/Application Support/dev.Tollgate.Tollgate/cache/01a0cc79-6fa9-7be1-ac9c-3f2d23fad671/slots/01a17baa-1a38-7683-99e8-32f32b31d35e/.venv/lib/python3.12/site-packages$tomli",
+    "/Users/dthurn/Library/Application Support/dev.Tollgate.Tollgate/cache/01a0cc79-6fa9-7be1-ac9c-3f2d23fad671/slots/01a17baa-1a38-7683-99e8-32f32b31d35e/.venv/lib/python3.12/site-packages$pyrefly",
+    "/Users/dthurn/Library/Application Support/dev.Tollgate.Tollgate/cache/01a0cc79-6fa9-7be1-ac9c-3f2d23fad671/slots/01a17baa-1a38-7683-99e8-32f32b31d35e/.venv/lib/pyre_check/typeshed/stdlib",
+    "/Users/dthurn/Library/Application Support/dev.Tollgate.Tollgate/cache/01a0cc79-6fa9-7be1-ac9c-3f2d23fad671/slots/01a17baa-1a38-7683-99e8-32f32b31d35e/.venv/lib/pyre_check/typeshed/stubs/ExifRead",
+    "/Users/dthurn/Library/Application Support/dev.Tollgate.Tollgate/cache/01a0cc79-6fa9-7be1-ac9c-3f2d23fad671/slots/01a17baa-1a38-7683-99e8-32f32b31d35e/.venv/lib/pyre_check/typeshed/stubs/PyMySQL",
+    "/Users/dthurn/Library/Application Support/dev.Tollgate.Tollgate/cache/01a0cc79-6fa9-7be1-ac9c-3f2d23fad671/slots/01a17baa-1a38-7683-99e8-32f32b31d35e/.venv/lib/pyre_check/typeshed/stubs/PyYAML",
+    "/Users/dthurn/Library/Application Support/dev.Tollgate.Tollgate/cache/01a0cc79-6fa9-7be1-ac9c-3f2d23fad671/slots/01a17baa-1a38-7683-99e8-32f32b31d35e/.venv/lib/pyre_check/typeshed/stubs/aiofiles",
+    "/Users/dthurn/Library/Application Support/dev.Tollgate.Tollgate/cache/01a0cc79-6fa9-7be1-ac9c-3f2d23fad671/slots/01a17baa-1a38-7683-99e8-32f32b31d35e/.venv/lib/pyre_check/typeshed/stubs/chevron",
+    "/Users/dthurn/Library/Application Support/dev.Tollgate.Tollgate/cache/01a0cc79-6fa9-7be1-ac9c-3f2d23fad671/slots/01a17baa-1a38-7683-99e8-32f32b31d35e/.venv/lib/pyre_check/typeshed/stubs/colorama",
+    "/Users/dthurn/Library/Application Support/dev.Tollgate.Tollgate/cache/01a0cc79-6fa9-7be1-ac9c-3f2d23fad671/slots/01a17baa-1a38-7683-99e8-32f32b31d35e/.venv/lib/pyre_check/typeshed/stubs/ldap3",
+    "/Users/dthurn/Library/Application Support/dev.Tollgate.Tollgate/cache/01a0cc79-6fa9-7be1-ac9c-3f2d23fad671/slots/01a17baa-1a38-7683-99e8-32f32b31d35e/.venv/lib/pyre_check/typeshed/stubs/mysqlclient",
+    "/Users/dthurn/Library/Application Support/dev.Tollgate.Tollgate/cache/01a0cc79-6fa9-7be1-ac9c-3f2d23fad671/slots/01a17baa-1a38-7683-99e8-32f32b31d35e/.venv/lib/pyre_check/typeshed/stubs/paramiko",
+    "/Users/dthurn/Library/Application Support/dev.Tollgate.Tollgate/cache/01a0cc79-6fa9-7be1-ac9c-3f2d23fad671/slots/01a17baa-1a38-7683-99e8-32f32b31d35e/.venv/lib/pyre_check/typeshed/stubs/psycopg2",
+    "/Users/dthurn/Library/Application Support/dev.Tollgate.Tollgate/cache/01a0cc79-6fa9-7be1-ac9c-3f2d23fad671/slots/01a17baa-1a38-7683-99e8-32f32b31d35e/.venv/lib/pyre_check/typeshed/stubs/pycurl",
+    "/Users/dthurn/Library/Application Support/dev.Tollgate.Tollgate/cache/01a0cc79-6fa9-7be1-ac9c-3f2d23fad671/slots/01a17baa-1a38-7683-99e8-32f32b31d35e/.venv/lib/pyre_check/typeshed/stubs/python-dateutil",
+    "/Users/dthurn/Library/Application Support/dev.Tollgate.Tollgate/cache/01a0cc79-6fa9-7be1-ac9c-3f2d23fad671/slots/01a17baa-1a38-7683-99e8-32f32b31d35e/.venv/lib/pyre_check/typeshed/stubs/pytz",
+    "/Users/dthurn/Library/Application Support/dev.Tollgate.Tollgate/cache/01a0cc79-6fa9-7be1-ac9c-3f2d23fad671/slots/01a17baa-1a38-7683-99e8-32f32b31d35e/.venv/lib/pyre_check/typeshed/stubs/regex",
+    "/Users/dthurn/Library/Application Support/dev.Tollgate.Tollgate/cache/01a0cc79-6fa9-7be1-ac9c-3f2d23fad671/slots/01a17baa-1a38-7683-99e8-32f32b31d35e/.venv/lib/pyre_check/typeshed/stubs/requests",
+    "/Users/dthurn/Library/Application Support/dev.Tollgate.Tollgate/cache/01a0cc79-6fa9-7be1-ac9c-3f2d23fad671/slots/01a17baa-1a38-7683-99e8-32f32b31d35e/.venv/lib/pyre_check/typeshed/stubs/retry",
+    "/Users/dthurn/Library/Application Support/dev.Tollgate.Tollgate/cache/01a0cc79-6fa9-7be1-ac9c-3f2d23fad671/slots/01a17baa-1a38-7683-99e8-32f32b31d35e/.venv/lib/pyre_check/typeshed/stubs/tqdm",
+    "/Users/dthurn/Library/Application Support/dev.Tollgate.Tollgate/cache/01a0cc79-6fa9-7be1-ac9c-3f2d23fad671/slots/01a17baa-1a38-7683-99e8-32f32b31d35e/.venv/lib/pyre_check/typeshed/stubs/ujson"
+  ],
+  "excludes": [],
+  "checked_directory_allowlist": [
+    "/Users/dthurn/Library/Application Support/dev.Tollgate.Tollgate/cache/01a0cc79-6fa9-7be1-ac9c-3f2d23fad671/slots/01a17baa-1a38-7683-99e8-32f32b31d35e/src",
+    "/Users/dthurn/Library/Application Support/dev.Tollgate.Tollgate/cache/01a0cc79-6fa9-7be1-ac9c-3f2d23fad671/slots/01a17baa-1a38-7683-99e8-32f32b31d35e/tests",
+    "/Users/dthurn/Library/Application Support/dev.Tollgate.Tollgate/cache/01a0cc79-6fa9-7be1-ac9c-3f2d23fad671/slots/01a17baa-1a38-7683-99e8-32f32b31d35e/scripts"
+  ],
+  "checked_directory_blocklist": [],
+  "extensions": [],
+  "log_path": "/Users/dthurn/Library/Application Support/dev.Tollgate.Tollgate/cache/01a0cc79-6fa9-7be1-ac9c-3f2d23fad671/slots/01a17baa-1a38-7683-99e8-32f32b31d35e/.pyre",
+  "global_root": "/Users/dthurn/Library/Application Support/dev.Tollgate.Tollgate/cache/01a0cc79-6fa9-7be1-ac9c-3f2d23fad671/slots/01a17baa-1a38-7683-99e8-32f32b31d35e",
+  "debug": false,
+  "python_version": {
+    "major": 3,
+    "minor": 12,
+    "micro": 14
+  },
+  "system_platform": "darwin",
+  "shared_memory": {},
+  "parallel": true,
+  "number_of_workers": 2,
+  "additional_logging_sections": [
+    "-progress"
+  ],
+  "show_error_traces": false,
+  "strict": true
+}
+2026-10-27 04:42:02,835 [PID 23037] PERFORMANCE  Initialized shared memory (heap size: 8589934592, dep table pow: 1, hash table pow: 26): 0.000s
+2026-10-27 04:42:02,835 [PID 23037] PERFORMANCE  Initialized multiprocessing workers (workers: 2): 0.001s
+2026-10-27 04:42:02,835 [PID 23037] INFO  Building module tracker...
+2026-10-27 04:42:02,922 [PID 23037] PERFORMANCE  Module tracker built: 0.084s
+2026-10-27 04:42:02,922 [PID 23037] PERFORMANCE  Full environment built: 0.085s
+2026-10-27 04:42:02,922 [PID 23037] INFO  Collecting all definitions...
+2026-10-27 04:42:03,206 [PID 23037] PERFORMANCE  Collected definitions (defines: 1028): 0.286s
+2026-10-27 04:42:03,206 [PID 23037] INFO  Checking 1028 functions...
+2026-10-27 04:42:04,943 [PID 23037] PERFORMANCE  Check_TypeCheck (defines: 1028, raw errors: 54): 1.725s
+2026-10-27 04:42:04,943 [PID 23037] MEMORY  Shared memory size post-typecheck (size: 7)
+2026-10-27 04:42:04,991 [PID 23037] PERFORMANCE  Check_Postprocessing: 0.058s
+2026-10-27 04:42:04,991 [PID 23037] PERFORMANCE  Check (request kind: FullCheck): 2.156s
+2026-10-27 04:42:05,004 [PID 23037] SUCCESS No type errors found
+Started: /Users/dthurn/Library/Application Support/dev.Tollgate.Tollgate/cache/01a0cc79-6fa9-7be1-ac9c-3f2d23fad671/slots/01a17baa-1a38-7683-99e8-32f32b31d35e/.venv/bin/python -m unittest discover -s tests -p test_dashboard_budget.py -v
+Finished (10.758s): /Users/dthurn/Library/Application Support/dev.Tollgate.Tollgate/cache/01a0cc79-6fa9-7be1-ac9c-3f2d23fad671/slots/01a17baa-1a38-7683-99e8-32f32b31d35e/.venv/bin/python -m unittest discover -s tests -p test_dashboard_budget.py -v
+test_active_root_stages_atomically_then_applies_one_request_delta (test_dashboard_budget.DashboardBudgetTests.test_active_root_stages_atomically_then_applies_one_request_delta) ... ok
+test_constrained_pages_eventually_publish_every_unpriced_request (test_dashboard_budget.DashboardBudgetTests.test_constrained_pages_eventually_publish_every_unpriced_request) ... ok
+test_large_diagnostic_baseline_makes_bounded_progress (test_dashboard_budget.DashboardBudgetTests.test_large_diagnostic_baseline_makes_bounded_progress) ... ok
+
+----------------------------------------------------------------------
+Ran 3 tests in 10.558s
+
+OK
+Started: /Users/dthurn/Library/Application Support/dev.Tollgate.Tollgate/cache/01a0cc79-6fa9-7be1-ac9c-3f2d23fad671/slots/01a17baa-1a38-7683-99e8-32f32b31d35e/.venv/bin/python -m unittest discover -s tests -p test_dashboard_api.py -v
+Finished (47.954s): /Users/dthurn/Library/Application Support/dev.Tollgate.Tollgate/cache/01a0cc79-6fa9-7be1-ac9c-3f2d23fad671/slots/01a17baa-1a38-7683-99e8-32f32b31d35e/.venv/bin/python -m unittest discover -s tests -p test_dashboard_api.py -v
+test_ci_log_selects_exact_observed_attempt_and_retains_no_content (test_dashboard_api.DashboardTests.test_ci_log_selects_exact_observed_attempt_and_retains_no_content) ... ok
+test_excerpts_identity_privacy_replacement_and_unmigrated_store (test_dashboard_api.DashboardTests.test_excerpts_identity_privacy_replacement_and_unmigrated_store) ... ok
+test_native_shared_costs_stable_tail_details_and_read_only_reads (test_dashboard_api.DashboardTests.test_native_shared_costs_stable_tail_details_and_read_only_reads) ... ok
+test_paging_filters_exact_large_amounts_and_scale (test_dashboard_api.DashboardTests.test_paging_filters_exact_large_amounts_and_scale) ... 7,000-card feed: 0.161s (limit 0.500s)
+ok
+test_small_tails_unknown_and_deleted_beads_reconcile (test_dashboard_api.DashboardTests.test_small_tails_unknown_and_deleted_beads_reconcile) ... ok
+test_native_descendants_progress_costs_ci_and_history_are_separate (test_dashboard_api.EpicProgressTests.test_native_descendants_progress_costs_ci_and_history_are_separate) ... ok
+
+----------------------------------------------------------------------
+Ran 6 tests in 47.764s
+
+OK
+Started: /Users/dthurn/Library/Application Support/dev.Tollgate.Tollgate/cache/01a0cc79-6fa9-7be1-ac9c-3f2d23fad671/slots/01a17baa-1a38-7683-99e8-32f32b31d35e/.venv/bin/python -m unittest discover -s tests -p test_bead_cost.py -v
+Started: /Users/dthurn/Library/Application Support/dev.Tollgate.Tollgate/cache/01a0cc79-6fa9-7be1-ac9c-3f2d23fad671/slots/01a17baa-1a38-7683-99e8-32f32b31d35e/.venv/bin/python -m unittest discover -s tests -p test_dashboard_server.py -v
+Finished (26.747s): /Users/dthurn/Library/Application Support/dev.Tollgate.Tollgate/cache/01a0cc79-6fa9-7be1-ac9c-3f2d23fad671/slots/01a17baa-1a38-7683-99e8-32f32b31d35e/.venv/bin/python -m unittest discover -s tests -p test_dashboard_server.py -v
+test_browser_failure_keeps_server_available (test_dashboard_server.DashboardServerTests.test_browser_failure_keeps_server_available) ... ok
+test_browser_opens_ready_url_and_can_be_disabled (test_dashboard_server.DashboardServerTests.test_browser_opens_ready_url_and_can_be_disabled) ... ok
+test_environment_failure_backoff_and_explicit_retry (test_dashboard_server.DashboardServerTests.test_environment_failure_backoff_and_explicit_retry) ... ok
+test_header_api_timeouts_and_connection_limits (test_dashboard_server.DashboardServerTests.test_header_api_timeouts_and_connection_limits) ... ok
+test_loopback_build_cache_security_and_source_reload (test_dashboard_server.DashboardServerTests.test_loopback_build_cache_security_and_source_reload) ... ok
+test_serve_preserves_unrelated_listener (test_dashboard_server.DashboardServerTests.test_serve_preserves_unrelated_listener) ... ok
+test_serve_replaces_instances_concurrent_starts_and_stale_socket (test_dashboard_server.DashboardServerTests.test_serve_replaces_instances_concurrent_starts_and_stale_socket) ... ok
+test_shutdown_reaps_build_descendants_and_temporary_copy (test_dashboard_server.DashboardServerTests.test_shutdown_reaps_build_descendants_and_temporary_copy) ... ok
+
+----------------------------------------------------------------------
+Ran 8 tests in 26.677s
+
+OK
+Started: /Users/dthurn/Library/Application Support/dev.Tollgate.Tollgate/cache/01a0cc79-6fa9-7be1-ac9c-3f2d23fad671/slots/01a17baa-1a38-7683-99e8-32f32b31d35e/.venv/bin/python -m unittest discover -s tests -p test_executor_hook.py -v
+Finished (69.650s): /Users/dthurn/Library/Application Support/dev.Tollgate.Tollgate/cache/01a0cc79-6fa9-7be1-ac9c-3f2d23fad671/slots/01a17baa-1a38-7683-99e8-32f32b31d35e/.venv/bin/python -m unittest discover -s tests -p test_bead_cost.py -v
+test_assigned_creation_rename_prefix_and_delete_preserve_charges (test_bead_cost.BeadCostTests.test_assigned_creation_rename_prefix_and_delete_preserve_charges) ... ok
+test_event_timestamp_controls_detail_handoff_hour_and_upgrade (test_bead_cost.BeadCostTests.test_event_timestamp_controls_detail_handoff_hour_and_upgrade) ... ok
+test_missing_middle_event_is_unknown_until_rebuild_recovers (test_bead_cost.BeadCostTests.test_missing_middle_event_is_unknown_until_rebuild_recovers) ... ok
+test_mixed_host_handoff_reopen_and_unowned_time_reconcile (test_bead_cost.BeadCostTests.test_mixed_host_handoff_reopen_and_unowned_time_reconcile) ... ok
+test_mixed_pricing_survives_contention_stream_completion_and_source_change (test_bead_cost.BeadCostTests.test_mixed_pricing_survives_contention_stream_completion_and_source_change) ... ok
+test_native_labels_preserve_assigned_creation_and_owned_cost (test_bead_cost.BeadCostTests.test_native_labels_preserve_assigned_creation_and_owned_cost) ... ok
+test_rename_after_unobserved_close_replaces_open_interval (test_bead_cost.BeadCostTests.test_rename_after_unobserved_close_replaces_open_interval) ... ok
+test_shared_picodollar_remainders_event_time_and_contended_retention (test_bead_cost.BeadCostTests.test_shared_picodollar_remainders_event_time_and_contended_retention) ... ok
+
+----------------------------------------------------------------------
+Ran 8 tests in 69.545s
+
+OK
+Started: /Users/dthurn/Library/Application Support/dev.Tollgate.Tollgate/cache/01a0cc79-6fa9-7be1-ac9c-3f2d23fad671/slots/01a17baa-1a38-7683-99e8-32f32b31d35e/.venv/bin/python -m unittest discover -s tests -p test_usage.py -v
+Finished (0.799s): /Users/dthurn/Library/Application Support/dev.Tollgate.Tollgate/cache/01a0cc79-6fa9-7be1-ac9c-3f2d23fad671/slots/01a17baa-1a38-7683-99e8-32f32b31d35e/.venv/bin/python -m unittest discover -s tests -p test_usage.py -v
+test_collector_migrates_old_usage_without_repricing_or_recounting (test_usage.SchemaMigrationTests.test_collector_migrates_old_usage_without_repricing_or_recounting) ... ok
+test_migration_failure_rolls_back_schema_and_data (test_usage.SchemaMigrationTests.test_migration_failure_rolls_back_schema_and_data) ... ok
+test_newer_schema_refuses_reads_and_writes_without_changes (test_usage.SchemaMigrationTests.test_newer_schema_refuses_reads_and_writes_without_changes) ... ok
+test_batch_boundary_is_not_mistaken_for_an_incomplete_native_tail (test_usage.UsageTests.test_batch_boundary_is_not_mistaken_for_an_incomplete_native_tail) ... ok
+test_batch_failure_rolls_back_responses_and_cursor_together (test_usage.UsageTests.test_batch_failure_rolls_back_responses_and_cursor_together) ... ok
+test_both_hosts_resume_replace_and_rollback_one_file_lifecycle (test_usage.UsageTests.test_both_hosts_resume_replace_and_rollback_one_file_lifecycle) ... ok
+test_bounded_chunks_skip_oversized_records_and_surface_conflicting_usage (test_usage.UsageTests.test_bounded_chunks_skip_oversized_records_and_surface_conflicting_usage) ... ok
+test_independent_collectors_do_not_double_count_responses (test_usage.UsageTests.test_independent_collectors_do_not_double_count_responses) ... ok
+test_invalid_native_range_cannot_stall_later_records_or_overflow_reports (test_usage.UsageTests.test_invalid_native_range_cannot_stall_later_records_or_overflow_reports) ... ok
+
+----------------------------------------------------------------------
+Ran 9 tests in 0.725s
+
+OK
+Started: /Users/dthurn/Library/Application Support/dev.Tollgate.Tollgate/cache/01a0cc79-6fa9-7be1-ac9c-3f2d23fad671/slots/01a17baa-1a38-7683-99e8-32f32b31d35e/.venv/bin/python -m unittest discover -s tests -p test_cost.py -v
+Finished (0.269s): /Users/dthurn/Library/Application Support/dev.Tollgate.Tollgate/cache/01a0cc79-6fa9-7be1-ac9c-3f2d23fad671/slots/01a17baa-1a38-7683-99e8-32f32b31d35e/.venv/bin/python -m unittest discover -s tests -p test_cost.py -v
+test_cache_partitions_reasoning_and_full_request_context_prices (test_cost.CostTests.test_cache_partitions_reasoning_and_full_request_context_prices) ... ok
+test_large_totals_stay_exact_and_context_rolls_back_with_cursor (test_cost.CostTests.test_large_totals_stay_exact_and_context_rolls_back_with_cursor) ... ok
+test_unknown_usage_models_and_conflicts_cannot_become_zero (test_cost.CostTests.test_unknown_usage_models_and_conflicts_cannot_become_zero) ... ok
+
+----------------------------------------------------------------------
+Ran 3 tests in 0.204s
+
+OK
+Started: /Users/dthurn/Library/Application Support/dev.Tollgate.Tollgate/cache/01a0cc79-6fa9-7be1-ac9c-3f2d23fad671/slots/01a17baa-1a38-7683-99e8-32f32b31d35e/.venv/bin/python -m unittest discover -s tests -p test_links.py -v
+Finished (16.214s): /Users/dthurn/Library/Application Support/dev.Tollgate.Tollgate/cache/01a0cc79-6fa9-7be1-ac9c-3f2d23fad671/slots/01a17baa-1a38-7683-99e8-32f32b31d35e/.venv/bin/python -m unittest discover -s tests -p test_links.py -v
+test_closed_beads_and_multiple_roles_deduplicate_thread_total (test_links.BeadLinkTests.test_closed_beads_and_multiple_roles_deduplicate_thread_total) ... ok
+test_invalid_metadata_is_a_gap_beside_valid_links (test_links.BeadLinkTests.test_invalid_metadata_is_a_gap_beside_valid_links) ... ok
+test_missing_and_legacy_references_are_visible_gaps (test_links.BeadLinkTests.test_missing_and_legacy_references_are_visible_gaps) ... ok
+test_missing_transcripts_are_visible_and_retried_without_uuid_routing (test_links.BeadLinkTests.test_missing_transcripts_are_visible_and_retried_without_uuid_routing) ... ok
+test_sweep_uses_links_and_survives_beads_outage (test_links.BeadLinkTests.test_sweep_uses_links_and_survives_beads_outage) ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 16.117s
+
+OK
+Started: /Users/dthurn/Library/Application Support/dev.Tollgate.Tollgate/cache/01a0cc79-6fa9-7be1-ac9c-3f2d23fad671/slots/01a17baa-1a38-7683-99e8-32f32b31d35e/.venv/bin/python -m unittest discover -s tests -p test_contention.py -v
+Finished (2.933s): /Users/dthurn/Library/Application Support/dev.Tollgate.Tollgate/cache/01a0cc79-6fa9-7be1-ac9c-3f2d23fad671/slots/01a17baa-1a38-7683-99e8-32f32b31d35e/.venv/bin/python -m unittest discover -s tests -p test_contention.py -v
+test_exclusive_contention_is_busy_for_every_telemetry_command (test_contention.ContentionTests.test_exclusive_contention_is_busy_for_every_telemetry_command) ... ok
+test_reports_read_beside_a_writer_and_defer_estimate_retention (test_contention.ContentionTests.test_reports_read_beside_a_writer_and_defer_estimate_retention) ... ok
+test_sweep_contention_is_a_structured_busy_error (test_contention.ContentionTests.test_sweep_contention_is_a_structured_busy_error) ... ok
+
+----------------------------------------------------------------------
+Ran 3 tests in 2.801s
+
+OK
+Started: /Users/dthurn/Library/Application Support/dev.Tollgate.Tollgate/cache/01a0cc79-6fa9-7be1-ac9c-3f2d23fad671/slots/01a17baa-1a38-7683-99e8-32f32b31d35e/.venv/bin/python -m unittest discover -s tests -p test_check_runner.py -v
+Finished (5.279s): /Users/dthurn/Library/Application Support/dev.Tollgate.Tollgate/cache/01a0cc79-6fa9-7be1-ac9c-3f2d23fad671/slots/01a17baa-1a38-7683-99e8-32f32b31d35e/.venv/bin/python -m unittest discover -s tests -p test_check_runner.py -v
+test_failure_stops_active_sibling_and_pending_work (test_check_runner.CheckRunnerTests.test_failure_stops_active_sibling_and_pending_work) ... ok
+test_outer_cancellation_drains_nested_process_groups (test_check_runner.CheckRunnerTests.test_outer_cancellation_drains_nested_process_groups) ... ok
+test_outer_cancellation_kills_resistant_nested_worker (test_check_runner.CheckRunnerTests.test_outer_cancellation_kills_resistant_nested_worker) ... ok
+test_shared_deadline_and_interrupt_clean_up_workers (test_check_runner.CheckRunnerTests.test_shared_deadline_and_interrupt_clean_up_workers) ... ok
+test_two_workers_overlap_without_admitting_a_third (test_check_runner.CheckRunnerTests.test_two_workers_overlap_without_admitting_a_third) ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 5.185s
+
+OK
+Started: /Users/dthurn/Library/Application Support/dev.Tollgate.Tollgate/cache/01a0cc79-6fa9-7be1-ac9c-3f2d23fad671/slots/01a17baa-1a38-7683-99e8-32f32b31d35e/.venv/bin/python -m unittest discover -s tests -p test_resource_report.py -v
+Finished (2.871s): /Users/dthurn/Library/Application Support/dev.Tollgate.Tollgate/cache/01a0cc79-6fa9-7be1-ac9c-3f2d23fad671/slots/01a17baa-1a38-7683-99e8-32f32b31d35e/.venv/bin/python -m unittest discover -s tests -p test_resource_report.py -v
+test_identity_and_missing_execution_are_window_specific (test_resource_report.ResourceTests.test_identity_and_missing_execution_are_window_specific) ... ok
+test_missing_malformed_partial_and_oversized_evidence_are_explicit (test_resource_report.ResourceTests.test_missing_malformed_partial_and_oversized_evidence_are_explicit) ... ok
+test_sampling_is_read_only_bounded_and_reports_native_gate_identity (test_resource_report.ResourceTests.test_sampling_is_read_only_bounded_and_reports_native_gate_identity) ... ok
+test_windows_preserve_inclusive_cpu_wait_owners_and_provenance (test_resource_report.ResourceTests.test_windows_preserve_inclusive_cpu_wait_owners_and_provenance) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 2.736s
+
+OK
+Started: /Users/dthurn/Library/Application Support/dev.Tollgate.Tollgate/cache/01a0cc79-6fa9-7be1-ac9c-3f2d23fad671/slots/01a17baa-1a38-7683-99e8-32f32b31d35e/.venv/bin/python -m unittest discover -s tests -p test_claude.py -v
+Finished (79.194s): /Users/dthurn/Library/Application Support/dev.Tollgate.Tollgate/cache/01a0cc79-6fa9-7be1-ac9c-3f2d23fad671/slots/01a17baa-1a38-7683-99e8-32f32b31d35e/.venv/bin/python -m unittest discover -s tests -p test_executor_hook.py -v
+test_claude_code_session_lifecycle (test_executor_hook.ExecutorHookTests.test_claude_code_session_lifecycle)
+Claude Code binds by its own session ID; injected prompts keep it armed. ... ok
+test_default_wait_spans_an_hour_with_a_controlled_clock (test_executor_hook.ExecutorHookTests.test_default_wait_spans_an_hour_with_a_controlled_clock)
+Public await spends its 65-minute budget without real elapsed delay. ... ok
+test_native_lifecycle_and_source_reload (test_executor_hook.ExecutorHookTests.test_native_lifecycle_and_source_reload) ... ok
+test_owned_checkpoint_waits_for_its_peer_prerequisite (test_executor_hook.ExecutorHookTests.test_owned_checkpoint_waits_for_its_peer_prerequisite)
+Native blockers keep a claimed checkpoint waiting without releasing it. ... ok
+test_peer_executors_share_a_project_queue (test_executor_hook.ExecutorHookTests.test_peer_executors_share_a_project_queue)
+Work peers still hold keeps an executor waiting instead of draining. ... ok
+test_streams_partition_a_project_queue (test_executor_hook.ExecutorHookTests.test_streams_partition_a_project_queue)
+Stream sessions see only their stream's work; held work spans streams. ... ok
+test_wait_can_limit_epic_and_include_shared_labels (test_executor_hook.ExecutorHookTests.test_wait_can_limit_epic_and_include_shared_labels)
+An authorized subset waits beside unrelated ready work, then wakes. ... ok
+
+----------------------------------------------------------------------
+Ran 7 tests in 79.135s
+
+OK
+Started: /Users/dthurn/Library/Application Support/dev.Tollgate.Tollgate/cache/01a0cc79-6fa9-7be1-ac9c-3f2d23fad671/slots/01a17baa-1a38-7683-99e8-32f32b31d35e/.venv/bin/python -m unittest discover -s tests -p test_install_skills.py -v
+Finished (0.161s): /Users/dthurn/Library/Application Support/dev.Tollgate.Tollgate/cache/01a0cc79-6fa9-7be1-ac9c-3f2d23fad671/slots/01a17baa-1a38-7683-99e8-32f32b31d35e/.venv/bin/python -m unittest discover -s tests -p test_install_skills.py -v
+test_claude_agent_defaults_to_claude_config_skills (test_install_skills.InstallSkillsTests.test_claude_agent_defaults_to_claude_config_skills) ... ok
+test_install_repeat_relative_shared_and_conflict_preflight (test_install_skills.InstallSkillsTests.test_install_repeat_relative_shared_and_conflict_preflight) ... ok
+
+----------------------------------------------------------------------
+Ran 2 tests in 0.098s
+
+OK
+Started: /Users/dthurn/Library/Application Support/dev.Tollgate.Tollgate/cache/01a0cc79-6fa9-7be1-ac9c-3f2d23fad671/slots/01a17baa-1a38-7683-99e8-32f32b31d35e/.venv/bin/python -m unittest discover -s tests -p test_request_detail.py -v
+Finished (8.781s): /Users/dthurn/Library/Application Support/dev.Tollgate.Tollgate/cache/01a0cc79-6fa9-7be1-ac9c-3f2d23fad671/slots/01a17baa-1a38-7683-99e8-32f32b31d35e/.venv/bin/python -m unittest discover -s tests -p test_claude.py -v
+test_each_model_and_modifier_is_exact_and_server_fees_are_separate (test_claude.ClaudePricingTests.test_each_model_and_modifier_is_exact_and_server_fees_are_separate) ... ok
+test_late_quote_retention_uses_latest_committed_output_and_old_rates (test_claude.ClaudePricingTests.test_late_quote_retention_uses_latest_committed_output_and_old_rates) ... ok
+test_retained_rate_evidence_survives_source_edit_and_later_output (test_claude.ClaudePricingTests.test_retained_rate_evidence_survives_source_edit_and_later_output) ... ok
+test_unknowns_partial_streams_and_explicit_tiers_are_visible (test_claude.ClaudePricingTests.test_unknowns_partial_streams_and_explicit_tiers_are_visible) ... ok
+test_commands_update_partial_requests_and_keep_each_file_cursor (test_claude.ClaudeTests.test_commands_update_partial_requests_and_keep_each_file_cursor) ... ok
+test_host_total_comparison_and_resume_guards (test_claude.ClaudeTests.test_host_total_comparison_and_resume_guards) ... ok
+test_host_total_must_cover_subagents_and_ignores_their_cost_states (test_claude.ClaudeTests.test_host_total_must_cover_subagents_and_ignores_their_cost_states) ... ok
+test_host_totals_replay_old_cursors_and_reject_late_output (test_claude.ClaudeTests.test_host_totals_replay_old_cursors_and_reject_late_output) ... ok
+test_identity_pending_mismatch_and_symlinks_do_not_advance (test_claude.ClaudeTests.test_identity_pending_mismatch_and_symlinks_do_not_advance) ... ok
+test_index_outage_requires_validated_source_and_duplicates_are_rejected (test_claude.ClaudeTests.test_index_outage_requires_validated_source_and_duplicates_are_rejected) ... ok
+test_invalid_counters_and_iterations_do_not_hide_later_usage (test_claude.ClaudeTests.test_invalid_counters_and_iterations_do_not_hide_later_usage) ... ok
+test_known_partial_replays_are_idempotent_but_new_decreases_are_gaps (test_claude.ClaudeTests.test_known_partial_replays_are_idempotent_but_new_decreases_are_gaps) ... ok
+test_legacy_source_pairs_require_native_revalidation (test_claude.ClaudeTests.test_legacy_source_pairs_require_native_revalidation) ... ok
+test_mixed_file_failures_remain_visible_and_reads_stay_bounded (test_claude.ClaudeTests.test_mixed_file_failures_remain_visible_and_reads_stay_bounded) ... ok
+test_modifier_migration_preserves_unrecoverable_conflict_evidence (test_claude.ClaudeTests.test_modifier_migration_preserves_unrecoverable_conflict_evidence) ... ok
+test_partial_modifier_enrichment_and_migration_recover_native_stream (test_claude.ClaudeTests.test_partial_modifier_enrichment_and_migration_recover_native_stream) ... ok
+test_rejected_host_candidate_cannot_relabel_cached_transcript (test_claude.ClaudeTests.test_rejected_host_candidate_cannot_relabel_cached_transcript) ... ok
+test_sweep_finds_uuid4_codex_late_subagents_and_both_host_ambiguity (test_claude.ClaudeTests.test_sweep_finds_uuid4_codex_late_subagents_and_both_host_ambiguity) ... ok
+test_v1_upgrade_preserves_codex_cursor_and_adds_claude_collection (test_claude.ClaudeTests.test_v1_upgrade_preserves_codex_cursor_and_adds_claude_collection) ... ok
+test_version_two_upgrade_collects_and_prices_claude (test_claude.ClaudeTests.test_version_two_upgrade_collects_and_prices_claude) ... ok
+
+----------------------------------------------------------------------
+Ran 20 tests in 8.693s
+
+OK
+Started: /Users/dthurn/Library/Application Support/dev.Tollgate.Tollgate/cache/01a0cc79-6fa9-7be1-ac9c-3f2d23fad671/slots/01a17baa-1a38-7683-99e8-32f32b31d35e/.venv/bin/python -m unittest discover -s tests -p test_tollgate*.py -v
+Finished (1.353s): /Users/dthurn/Library/Application Support/dev.Tollgate.Tollgate/cache/01a0cc79-6fa9-7be1-ac9c-3f2d23fad671/slots/01a17baa-1a38-7683-99e8-32f32b31d35e/.venv/bin/python -m unittest discover -s tests -p test_request_detail.py -v
+test_claude_components_partial_updates_and_unpriced_rows (test_request_detail.RequestDetailTests.test_claude_components_partial_updates_and_unpriced_rows) ... ok
+test_contended_retention_is_visible_and_readers_do_not_lock (test_request_detail.RequestDetailTests.test_contended_retention_is_visible_and_readers_do_not_lock) ... ok
+test_pages_select_one_tier_and_preserve_large_integer_components (test_request_detail.RequestDetailTests.test_pages_select_one_tier_and_preserve_large_integer_components) ... ok
+
+----------------------------------------------------------------------
+Ran 3 tests in 1.240s
+
+OK
+Started: /Users/dthurn/Library/Application Support/dev.Tollgate.Tollgate/cache/01a0cc79-6fa9-7be1-ac9c-3f2d23fad671/slots/01a17baa-1a38-7683-99e8-32f32b31d35e/.venv/bin/python -m unittest discover -s tests -p test_diagnostics.py -v
+Finished (1.427s): /Users/dthurn/Library/Application Support/dev.Tollgate.Tollgate/cache/01a0cc79-6fa9-7be1-ac9c-3f2d23fad671/slots/01a17baa-1a38-7683-99e8-32f32b31d35e/.venv/bin/python -m unittest discover -s tests -p test_diagnostics.py -v
+test_claude_errors_human_wait_and_cached_prefix_event (test_diagnostics.DiagnosticTests.test_claude_errors_human_wait_and_cached_prefix_event) ... ok
+test_codex_chunks_waits_retries_roles_and_privacy (test_diagnostics.DiagnosticTests.test_codex_chunks_waits_retries_roles_and_privacy) ... ok
+test_late_parent_discovery_preserves_diagnostics_and_nested_roles (test_diagnostics.DiagnosticTests.test_late_parent_discovery_preserves_diagnostics_and_nested_roles) ... ok
+
+----------------------------------------------------------------------
+Ran 3 tests in 1.292s
+
+OK
+Started: /Users/dthurn/Library/Application Support/dev.Tollgate.Tollgate/cache/01a0cc79-6fa9-7be1-ac9c-3f2d23fad671/slots/01a17baa-1a38-7683-99e8-32f32b31d35e/.venv/bin/python -m unittest discover -s tests -p test_project_observation.py -v
+Finished (9.945s): /Users/dthurn/Library/Application Support/dev.Tollgate.Tollgate/cache/01a0cc79-6fa9-7be1-ac9c-3f2d23fad671/slots/01a17baa-1a38-7683-99e8-32f32b31d35e/.venv/bin/python -m unittest discover -s tests -p test_tollgate*.py -v
+test_bad_timestamp_and_unproven_uuids_never_become_candidates (test_tollgate_observation.TollgateTests.test_bad_timestamp_and_unproven_uuids_never_become_candidates) ... ok
+test_confirmed_mentions_ownership_branch_cache_and_outage (test_tollgate_observation.TollgateTests.test_confirmed_mentions_ownership_branch_cache_and_outage) ... FAIL
+test_missing_native_candidate_on_stderr_is_not_an_outage (test_tollgate_observation.TollgateTests.test_missing_native_candidate_on_stderr_is_not_an_outage) ... ok
+test_native_timeout_respects_poll_allowance (test_tollgate_observation.TollgateTests.test_native_timeout_respects_poll_allowance) ... ok
+test_events_retries_checks_window_and_upgrade (test_tollgate_outcomes.OutcomesTests.test_events_retries_checks_window_and_upgrade) ... ok
+test_legacy_check_with_unavailable_details_stays_out_of_denominator (test_tollgate_outcomes.OutcomesTests.test_legacy_check_with_unavailable_details_stays_out_of_denominator) ... ok
+test_recorded_native_history_reconciles_and_survives_rollover (test_tollgate_outcomes.OutcomesTests.test_recorded_native_history_reconciles_and_survives_rollover) ... ok
+
+======================================================================
+FAIL: test_confirmed_mentions_ownership_branch_cache_and_outage (test_tollgate_observation.TollgateTests.test_confirmed_mentions_ownership_branch_cache_and_outage)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/dthurn/Library/Application Support/dev.Tollgate.Tollgate/cache/01a0cc79-6fa9-7be1-ac9c-3f2d23fad671/slots/01a17baa-1a38-7683-99e8-32f32b31d35e/tests/test_tollgate_observation.py", line 242, in test_confirmed_mentions_ownership_branch_cache_and_outage
+    self.assertEqual(len(results), 2, results)
+AssertionError: 0 != 2 : []
+
+----------------------------------------------------------------------
+Ran 7 tests in 9.813s
+
+FAILED (failures=1)
+Finished (7.986s): /Users/dthurn/Library/Application Support/dev.Tollgate.Tollgate/cache/01a0cc79-6fa9-7be1-ac9c-3f2d23fad671/slots/01a17baa-1a38-7683-99e8-32f32b31d35e/.venv/bin/python -m unittest discover -s tests -p test_project_observation.py -v
+test_changed_session_runs_ahead_of_one_hundred_idle_sessions (test_project_observation.ProjectObservationTests.test_changed_session_runs_ahead_of_one_hundred_idle_sessions) ... ok
+test_claude_record_without_its_session_id_is_a_visible_error (test_project_observation.ProjectObservationTests.test_claude_record_without_its_session_id_is_a_visible_error) ... ok
+test_copied_claude_history_is_skipped_until_the_copy_continues (test_project_observation.ProjectObservationTests.test_copied_claude_history_is_skipped_until_the_copy_continues) ... ok
+test_git_membership_cutoff_claude_and_spawned_folding (test_project_observation.ProjectObservationTests.test_git_membership_cutoff_claude_and_spawned_folding) ... ok
+test_long_or_unfinished_claude_copies_resume_discovery (test_project_observation.ProjectObservationTests.test_long_or_unfinished_claude_copies_resume_discovery) ... ok
+test_native_child_claim_overrides_root_and_migrates_retained_cost_once (test_project_observation.ProjectObservationTests.test_native_child_claim_overrides_root_and_migrates_retained_cost_once) ... Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/opt/homebrew/Cellar/python@3.12/3.12.14/Frameworks/Python.framework/Versions/3.12/lib/python3.12/unittest/__main__.py", line 18, in <module>
+    main(module=None)
+  File "/opt/homebrew/Cellar/python@3.12/3.12.14/Frameworks/Python.framework/Versions/3.12/lib/python3.12/unittest/main.py", line 105, in __init__
+    self.runTests()
+  File "/opt/homebrew/Cellar/python@3.12/3.12.14/Frameworks/Python.framework/Versions/3.12/lib/python3.12/unittest/main.py", line 281, in runTests
+    self.result = testRunner.run(self.test)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.12/3.12.14/Frameworks/Python.framework/Versions/3.12/lib/python3.12/unittest/runner.py", line 240, in run
+    test(result)
+  File "/opt/homebrew/Cellar/python@3.12/3.12.14/Frameworks/Python.framework/Versions/3.12/lib/python3.12/unittest/suite.py", line 84, in __call__
+    return self.run(*args, **kwds)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.12/3.12.14/Frameworks/Python.framework/Versions/3.12/lib/python3.12/unittest/suite.py", line 122, in run
+    test(result)
+  File "/opt/homebrew/Cellar/python@3.12/3.12.14/Frameworks/Python.framework/Versions/3.12/lib/python3.12/unittest/suite.py", line 84, in __call__
+    return self.run(*args, **kwds)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.12/3.12.14/Frameworks/Python.framework/Versions/3.12/lib/python3.12/unittest/suite.py", line 122, in run
+    test(result)
+  File "/opt/homebrew/Cellar/python@3.12/3.12.14/Frameworks/Python.framework/Versions/3.12/lib/python3.12/unittest/suite.py", line 84, in __call__
+    return self.run(*args, **kwds)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.12/3.12.14/Frameworks/Python.framework/Versions/3.12/lib/python3.12/unittest/suite.py", line 122, in run
+    test(result)
+  File "/opt/homebrew/Cellar/python@3.12/3.12.14/Frameworks/Python.framework/Versions/3.12/lib/python3.12/unittest/case.py", line 690, in __call__
+    return self.run(*args, **kwds)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.12/3.12.14/Frameworks/Python.framework/Versions/3.12/lib/python3.12/unittest/case.py", line 634, in run
+    self._callTestMethod(testMethod)
+  File "/opt/homebrew/Cellar/python@3.12/3.12.14/Frameworks/Python.framework/Versions/3.12/lib/python3.12/unittest/case.py", line 589, in _callTestMethod
+    if method() is not None:
+       ^^^^^^^^
+  File "/Users/dthurn/Library/Application Support/dev.Tollgate.Tollgate/cache/01a0cc79-6fa9-7be1-ac9c-3f2d23fad671/slots/01a17baa-1a38-7683-99e8-32f32b31d35e/tests/test_project_observation.py", line 248, in test_native_child_claim_overrides_root_and_migrates_retained_cost_once
+    with private_server() as (beads, _), tempfile.TemporaryDirectory() as temporary:
+         ^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.12/3.12.14/Frameworks/Python.framework/Versions/3.12/lib/python3.12/contextlib.py", line 137, in __enter__
+    return next(self.gen)
+           ^^^^^^^^^^^^^^
+  File "/Users/dthurn/Library/Application Support/dev.Tollgate.Tollgate/cache/01a0cc79-6fa9-7be1-ac9c-3f2d23fad671/slots/01a17baa-1a38-7683-99e8-32f32b31d35e/tests/server_fixture.py", line 78, in private_server
+    result = subprocess.run(
+             ^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.12/3.12.14/Frameworks/Python.framework/Versions/3.12/lib/python3.12/subprocess.py", line 550, in run
+    stdout, stderr = process.communicate(input, timeout=timeout)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.12/3.12.14/Frameworks/Python.framework/Versions/3.12/lib/python3.12/subprocess.py", line 1209, in communicate
+    stdout, stderr = self._communicate(input, endtime, timeout)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.12/3.12.14/Frameworks/Python.framework/Versions/3.12/lib/python3.12/subprocess.py", line 2115, in _communicate
+    ready = selector.select(timeout)
+            ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.12/3.12.14/Frameworks/Python.framework/Versions/3.12/lib/python3.12/selectors.py", line 415, in select
+    fd_event_list = self._selector.poll(timeout)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+KeyboardInterrupt

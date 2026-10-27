@@ -1,0 +1,12 @@
+Failure origin: OriginUnknown
+  class       unspecified
+  confidence  insufficient comparable evidence; use --replay for another experiment
+  executions  0 new full gate(s), 0 in-flight gate(s) reused
+  queue       no new work
+  candidate   2a682cd54e (buildset 01a17baa-1a0e-7481-9945-1a12c148d942)
+  base        6a25dad92b
+  config      af10a7232cad
+  graph       264bf841a392
+  environment 9e62e603306f
+  ci: OriginUnknown (candidate exit-failure, base no comparable run, base buildset none)
+    candidate log: tg logs 01a17baa-18a8-7ad0-afe6-b4594ae882c3 --buildset 01a17baa-1a0e-7481-9945-1a12c148d942 --step ci

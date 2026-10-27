@@ -1,0 +1,15 @@
+test_confirmed_mentions_ownership_branch_cache_and_outage (test_tollgate_observation.TollgateTests.test_confirmed_mentions_ownership_branch_cache_and_outage) ... ERROR
+
+======================================================================
+ERROR: test_confirmed_mentions_ownership_branch_cache_and_outage (test_tollgate_observation.TollgateTests.test_confirmed_mentions_ownership_branch_cache_and_outage)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/dthurn/hive/.worktrees/codex-observation-progress-gate/tests/test_tollgate_observation.py", line 289, in test_confirmed_mentions_ownership_branch_cache_and_outage
+    record(sequence(by_id[FALLBACK]["links"], "links")[0])[
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^
+IndexError: list index out of range
+
+----------------------------------------------------------------------
+Ran 1 test in 4.296s
+
+FAILED (errors=1)

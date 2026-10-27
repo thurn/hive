@@ -1,0 +1,21 @@
+{
+  "bead": "hv-ylr7",
+  "blocks": "hv-kff6",
+  "base": "6a25dad92bf1a2cafe13046290622ea700ce32a1",
+  "failedCandidate": "01a17baa-18a8-7ad0-afe6-b4594ae882c3",
+  "originalFailure": "expected2candidate rows got0; no per-poll health retained, exact exhausted slice unknown",
+  "regressionRed": {
+    "tests": 1,
+    "seconds": 4.296,
+    "result": "IndexError empty fallback branch links with controlledfirstexternalBeadsfailure"
+  },
+  "regressionGreen": {
+    "tests": 4,
+    "seconds": 4.966,
+    "passed": true
+  },
+  "productionChanged": false,
+  "reviewFindings": 1,
+  "confirmedFixed": 1,
+  "limits": "Controlled budget/provider-boundary regression; no claim of reproducing gate scheduling contention, no finalgate or Linux acceptance claim yet"
+}

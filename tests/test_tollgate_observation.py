@@ -2,6 +2,7 @@
 
 import json
 import os
+import shutil
 import sqlite3
 import tempfile
 import time
@@ -230,13 +231,51 @@ class TollgateTests(unittest.TestCase):
             context = launch(root, root, beads.directory)
             index = root / "native.sqlite3"
             native_index(index)
+            # Fail the first external Beads read, then delegate to the real CLI.
+            real_bd = shutil.which("bd")
+            self.assertIsNotNone(real_bd)
+            bead_cli = root / "bd"
+            bead_cli.write_text(
+                "#!/usr/bin/env python3\n"
+                "import os,sys\nfrom pathlib import Path\n"
+                "marker=Path(__file__).with_suffix('.seen')\n"
+                "if not marker.exists():\n"
+                " marker.write_text('first read unavailable')\n"
+                " print('controlled first Beads read unavailable',file=sys.stderr)\n"
+                " raise SystemExit(1)\n"
+                f"os.execv({real_bd!r}, [{real_bd!r}, *sys.argv[1:]])\n"
+            )
+            bead_cli.chmod(0o755)
             with patch.dict(
                 os.environ, {"PATH": str(root) + os.pathsep + os.environ["PATH"]}
             ):
-                for _ in range(3):
-                    sweep(replace(context, projects=()), index, 32)
                 store = UsageStore(context.state / "telemetry.sqlite3")
-                poll(store, context, time.monotonic() + 2)
+                # An exhausted slice is valid and must resume without losing work.
+                health = poll(store, context, time.monotonic() - 1)
+                self.assertFalse((root / "calls.jsonl").exists())
+                with store.connect(write=False) as db:
+                    self.assertEqual(candidates(db), [])
+                deadline = time.monotonic() + 30
+                while True:
+                    batch = sweep(replace(context, projects=()), index, 32)
+                    if batch["bead_events_caught_up"] is True:
+                        health = poll(
+                            store, context, min(deadline, time.monotonic() + 2)
+                        )
+                    else:
+                        # Mapping caches branch matches: history must precede polling.
+                        self.assertFalse((root / "calls.jsonl").exists())
+                    with store.connect(write=False) as db:
+                        results = candidates(db)
+                    self.assertLess(
+                        time.monotonic(),
+                        deadline,
+                        f"Observation did not settle: health={health}, batch={batch}, candidates={results}",
+                    )
+                    if len(results) == 2 and batch["bead_events_caught_up"] is True:
+                        break
+                    time.sleep(0.01)
+                self.assertTrue(bead_cli.with_suffix(".seen").exists())
                 with store.connect(write=False) as db:
                     results = candidates(db)
                     self.assertEqual(len(results), 2, results)
